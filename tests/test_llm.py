@@ -6,7 +6,7 @@ import anthropic
 import httpx2
 import pytest
 
-from sbobina.llm import Claude, ErroreClaude, Utilizzo, costo_stimato
+from sbobina.llm import Claude, ErroreClaude, Locale, Utilizzo, costo_stimato, crea_modello
 
 
 def _sse(eventi: list[dict]) -> bytes:
@@ -109,3 +109,48 @@ def test_costo_stimato():
     utilizzo = {"appunti": {"input": 1_000_000, "output": 100_000, "cache_lettura": 0, "cache_scrittura": 0}}
     assert costo_stimato("claude-opus-5-5", utilizzo) == pytest.approx(4.0 + 2.0)
     assert costo_stimato("modello-sconosciuto", utilizzo) is None
+
+
+def _locale(risposta: dict | None, richieste: list, stato: int = 200) -> Locale:
+    def gestore(req: httpx2.Request) -> httpx2.Response:
+        richieste.append(req)
+        return httpx2.Response(stato, json=risposta or {"error": "model not found"})
+
+    return Locale("gemma4:12b", client=httpx2.Client(transport=httpx2.MockTransport(gestore)))
+
+
+def test_locale_testo_e_json():
+    richieste = []
+    pronta = {"message": {"content": '{"termini": ["Rolle"]}'}, "done_reason": "stop",
+              "prompt_eval_count": 900, "eval_count": 40}
+    system = [{"type": "text", "text": "Sei un revisore.", "cache_control": {"type": "ephemeral"}}]
+    contenuto = [{"type": "text", "text": "trascrizione"},
+                 {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": "QUJD"}}]
+    dati, uso = _locale(pronta, richieste).json(system=system, contenuto=contenuto, schema={"type": "object"}, sforzo="high")
+    assert dati == {"termini": ["Rolle"]} and uso == Utilizzo(input=900, output=40)
+    corpo = json.loads(richieste[0].content)
+    assert corpo["model"] == "gemma4:12b" and corpo["format"] == {"type": "object"} and corpo["stream"] is False
+    assert corpo["messages"][0] == {"role": "system", "content": "Sei un revisore."}
+    assert corpo["messages"][1]["content"] == "trascrizione" and corpo["messages"][1]["images"] == ["QUJD"]
+    assert corpo["options"]["num_ctx"] >= 32768
+
+
+def test_locale_errori_chiari():
+    with pytest.raises(ErroreClaude, match="ollama pull gemma4:12b"):
+        _locale(None, [], stato=404).testo(system="s", contenuto=[{"type": "text", "text": "x"}], sforzo="low")
+    troncata = {"message": {"content": "metà"}, "done_reason": "length"}
+    with pytest.raises(ErroreClaude, match="troncata"):
+        _locale(troncata, []).testo(system="s", contenuto=[{"type": "text", "text": "x"}], sforzo="low")
+
+    def spento(req):
+        raise httpx2.ConnectError("rifiutata", request=req)
+
+    locale = Locale("gemma4:12b", client=httpx2.Client(transport=httpx2.MockTransport(spento)))
+    with pytest.raises(ErroreClaude, match="Ollama non è in esecuzione"):
+        locale.testo(system="s", contenuto=[{"type": "text", "text": "x"}], sforzo="low")
+
+
+def test_crea_modello_sceglie_il_motore(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
+    assert isinstance(crea_modello("gemma4:12b"), Locale)
+    assert isinstance(crea_modello("claude-opus-5-5"), Claude)

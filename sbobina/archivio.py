@@ -75,6 +75,7 @@ class Lezione:
     durata_secondi: float | None = None
     motori: list[str] = field(default_factory=list)
     utilizzo: dict[str, dict[str, int]] = field(default_factory=dict)
+    da_approfondire: list[str] = field(default_factory=list)
     creata: str = field(default_factory=adesso)
     aggiornata: str = field(default_factory=adesso)
 

@@ -37,7 +37,7 @@ def test_elaborazione_completa(config, archivio, audio_prova, tmp_path):
     fasi = llm.fasi()
     assert fasi[0] == "termini"
     assert fasi.count("revisione") >= 2
-    assert fasi[-3:] == ["appunti", "verifica", "correzione"]
+    assert fasi[-4:] == ["appunti", "verifica", "correzione", "approfondimento"]
 
     # I termini estratti dai materiali arrivano al motore di trascrizione
     assert motore.chiamate[0]["termini"][:2] == ["Rolle", "Lagrange"]
@@ -61,7 +61,7 @@ def test_elaborazione_completa(config, archivio, audio_prova, tmp_path):
     assert "teorema di Rolle" in glossario
 
     # Utilizzo registrato per fase e pagina esportata con gli appunti
-    assert set(risultato.utilizzo) == {"termini", "revisione", "appunti", "verifica", "correzione"}
+    assert set(risultato.utilizzo) == {"termini", "revisione", "appunti", "verifica", "correzione", "approfondimento"}
     html = f.html.read_text()
     assert "Sbobina.render" in html and "teorema di rolle" in html.lower()
     assert "</script>" not in html.split("Sbobina.render(")[1].split(");</script>")[0]
@@ -142,7 +142,7 @@ def test_ripresa_e_rielaborazione_non_ripetono_il_lavoro(config, archivio, audio
     prepara_rielaborazione(archivio, lezione.id, "appunti")
     assert elaborazione.esegui(lezione.id).stato == "completata"
     nuove = llm.fasi()[chiamate_iniziali:]
-    assert nuove == ["appunti", "verifica", "correzione"]
+    assert nuove == ["appunti", "verifica", "correzione", "approfondimento"]
     assert len(motore.chiamate) == 1
 
     # Ricominciare da capo ritrascrive
@@ -206,3 +206,21 @@ def test_dati_lezione_salvati_come_json_leggibile(config, archivio, audio_prova,
     dati = json.loads((archivio.cartella(lezione.id) / "lezione.json").read_text())
     assert dati["corso"] == "Analisi 1" and dati["materiali"] == ["slide-lezione-3.txt"]
     assert dati["titolo"] == "Lezione 3 - Rolle"
+
+
+def test_approfondimento_ed_espansioni(config, archivio, audio_prova, tmp_path):
+    lezione = archivio.crea_lezione(audio=audio_prova, nome_audio="rolle.m4a", corso="Analisi", titolo="Rolle")
+    llm = FintoLLM()
+    Elaborazione(config, archivio, llm, [FintoMotore()]).esegui(lezione.id)
+    f = File(archivio.cartella(lezione.id))
+    assert f.approfondimento.read_text().startswith("# Approfondimento: Rolle")
+
+    # Lo studente chiede di andare più a fondo: si aggiunge una sezione, il resto non si rifà.
+    archivio.modifica(lezione.id, lambda lez: lez.da_approfondire.append("teorema di Lagrange"))
+    chiamate_prima = len(llm.fasi())
+    risultato = Elaborazione(config, archivio, llm, [FintoMotore()]).esegui(lezione.id)
+    assert risultato.stato == "completata", risultato.errore
+    assert llm.fasi()[chiamate_prima:] == ["espansione"]
+    testo = f.approfondimento.read_text()
+    assert "## Il quadro generale" in testo and "## Approfondimento: teorema di Lagrange" in testo
+    assert archivio.carica(lezione.id).da_approfondire == []

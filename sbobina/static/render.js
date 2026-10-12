@@ -68,7 +68,7 @@
     radice.querySelectorAll("code").forEach((code) => {
       if (code.closest("pre")) return;
       const m = code.textContent.match(RE_SOLO_TEMPO);
-      if (m) code.replaceWith(creaTempo(`⏱ ${m[1]}`, m[1], onTempo));
+      if (m) code.replaceWith(creaTempo(m[1], m[1], onTempo));
     });
     const walker = document.createTreeWalker(radice, NodeFilter.SHOW_TEXT, {
       acceptNode(nodo) {
@@ -90,7 +90,7 @@
       while ((m = RE_TEMPO.exec(testo)) !== null) {
         frammento.append(testo.slice(ultimo, m.index));
         const valore = m[2] || m[3];
-        frammento.append(creaTempo(m[2] ? `⏱ ${valore}` : `[${valore}]`, valore, onTempo));
+        frammento.append(creaTempo(valore, valore, onTempo));
         ultimo = m.index + m[0].length;
       }
       frammento.append(testo.slice(ultimo));

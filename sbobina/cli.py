@@ -13,11 +13,11 @@ from sbobina.config import Config
 
 
 def _elaborazione(config: Config, archivio: Archivio):
-    from sbobina.llm import Claude
+    from sbobina.llm import crea_modello
     from sbobina.pipeline import Elaborazione
     from sbobina.trascrizione import crea_motori
 
-    return Elaborazione(config, archivio, Claude(config.modello), crea_motori(config))
+    return Elaborazione(config, archivio, crea_modello(config.modello), crea_motori(config))
 
 
 def _file_audio(percorsi: list[Path]) -> list[Path]:
@@ -119,8 +119,12 @@ def _comando_stato(config: Config) -> int:
     from sbobina.audio import ffmpeg_disponibile
 
     print(f"Cartella dati:  {config.cartella_dati.resolve()}")
-    print(f"Modello Claude: {config.modello}")
-    print(f"Chiave Claude:  {'presente' if config.claude_configurato else 'NON TROVATA (ANTHROPIC_API_KEY)'}")
+    print(f"Modello AI:     {config.modello} ({'locale, gratuito' if config.locale else 'Claude, a pagamento'})")
+    if config.locale:
+        pronto = "pronto" if config.llm_pronto else f"NON PRONTO: apri Ollama ed esegui `ollama pull {config.modello}`"
+    else:
+        pronto = "chiave presente" if config.llm_pronto else "NON TROVATA (ANTHROPIC_API_KEY)"
+    print(f"Stato AI:       {pronto}")
     print(f"Trascrizione:   {' + '.join(config.motori)}")
     print(f"ffmpeg:         {'ok' if ffmpeg_disponibile() else 'NON INSTALLATO'}")
     print(f"Verifica:       {'attiva' if config.verifica else 'disattivata'}")

@@ -1,15 +1,15 @@
 /* Tipografia degli appunti: condivisa tra app e pagine esportate. */
 :root {
-  --sfondo: #f6f8f8;
-  --superficie: #ffffff;
-  --superficie-2: #eef2f2;
-  --testo: #142624;
-  --testo-tenue: #56656a;
-  --bordo: #dbe3e2;
-  --accento: #0f766e;
-  --accento-forte: #115e59;
+  --sfondo: #e3e7ee;
+  --superficie: #fbfcfe;
+  --superficie-2: #edf0f5;
+  --testo: #1d2330;
+  --testo-tenue: #4f596d;
+  --bordo: #d3dae6;
+  --accento: #a8420a;
+  --accento-forte: #8a3507;
   --su-accento: #ffffff;
-  --accento-tenue: #e2f2ef;
+  --accento-tenue: #fbe6d8;
   --definizione: #2563c9;
   --definizione-sfondo: #eef3fd;
   --teorema: #7a4ad8;
@@ -22,7 +22,7 @@
   --attenzione-sfondo: #fdf0e9;
   --errore: #b42318;
   --font-testo: "Iowan Old Style", "Charter", "Georgia", "Times New Roman", serif;
-  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-ui: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-codice: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --raggio: 10px;
   --durata: 160ms;
@@ -117,10 +117,10 @@ body {
 
 .appunti blockquote {
   margin: 1em 0;
-  padding: 0.7em 1em;
-  border-left: 4px solid var(--bordo);
+  padding: 0.8em 1.1em;
+  border: 1px solid var(--bordo);
   background: var(--superficie-2);
-  border-radius: 0 8px 8px 0;
+  border-radius: 14px;
 }
 .appunti blockquote > :first-child { margin-top: 0; }
 .appunti blockquote > :last-child { margin-bottom: 0; }
@@ -211,6 +211,17 @@ body {
   border-radius: 999px;
   text-decoration: none;
   vertical-align: 0.1em;
+}
+.appunti .tempo::before {
+  content: "";
+  display: inline-block;
+  width: 0.95em;
+  height: 0.95em;
+  margin-right: 0.3em;
+  vertical-align: -0.12em;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Cpath d='M12 7.5V12l3 2'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Cpath d='M12 7.5V12l3 2'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .appunti a.tempo:hover { filter: brightness(0.95); text-decoration: underline; }
 

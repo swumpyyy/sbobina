@@ -29,7 +29,7 @@ sbobina = "sbobina.cli:main"
 include = ["sbobina*"]
 
 [tool.setuptools.package-data]
-sbobina = ["static/*"]
+sbobina = ["static/*", "static/fonts/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

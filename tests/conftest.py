@@ -104,6 +104,11 @@ class FintoLLM:
                 risposta = "\n\n".join(riga.replace("parola", "Parola") for riga in blocco.splitlines())
         elif testo.startswith("Scrivi gli appunti"):
             fase, risposta = "appunti", APPUNTI_FINTI
+        elif testo.startswith("Scrivi l'approfondimento"):
+            fase, risposta = "approfondimento", "# Approfondimento: Rolle\n\n## Il quadro generale\n\nPerché conta."
+        elif testo.startswith("Lo studente vuole andare più a fondo su:"):
+            argomento = testo.split(":", 1)[1].split("\n", 1)[0].strip()
+            fase, risposta = "espansione", f"## Approfondimento: {argomento}\n\n### Dettaglio\n\nSpiegazione."
         elif "problemi trovati dal revisore" in testo:
             fase, risposta = "correzione", APPUNTI_FINTI.replace("continua in", "continua nell'intervallo chiuso")
         else:

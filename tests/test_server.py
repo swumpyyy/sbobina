@@ -85,7 +85,7 @@ def test_ciclo_completo(client, audio_prova):
     assert dettaglio["trascrizione"].startswith("[00:00]")
     assert dettaglio["verifica"]["problemi"]
     assert dettaglio["audio"] is True
-    assert dettaglio["costo"] is not None
+    assert dettaglio["costo"] is None  # modello locale predefinito: gratuito
 
     audio = client.get(f"/api/lezioni/{creata['id']}/audio", headers={"Range": "bytes=0-99"})
     assert audio.status_code == 206 and len(audio.content) == 100
@@ -130,3 +130,33 @@ def test_glossario_modificabile(client):
 def test_id_non_valido(client):
     assert client.get("/api/lezioni/..%2F..%2Fetc").status_code == 404
     assert client.get("/api/lezioni/NON-ESISTE").status_code == 404
+
+
+def test_approfondisci_e_pdf(client, audio_prova):
+    [creata] = _carica(client, audio_prova).json()
+    assert _attendi(client, creata["id"])["stato"] == "completata"
+    dettaglio = client.get(f"/api/lezioni/{creata['id']}").json()
+    assert dettaglio["approfondimento"].startswith("# Approfondimento")
+
+    risposta = client.post(f"/api/lezioni/{creata['id']}/approfondisci", headers=PROTETTO,
+                           json={"argomento": "  moto   parabolico "})
+    assert risposta.status_code == 200, risposta.text
+    assert _attendi(client, creata["id"])["stato"] == "completata"
+    dettaglio = client.get(f"/api/lezioni/{creata['id']}").json()
+    assert "## Approfondimento: moto parabolico" in dettaglio["approfondimento"]
+    assert dettaglio["lezione"]["da_approfondire"] == []
+
+    from sbobina.esporta import trova_browser
+    if not trova_browser():
+        pytest.skip("Chrome non installato: il PDF non si può generare")
+    pdf = client.get(f"/api/lezioni/{creata['id']}/scarica/pdf")
+    assert pdf.status_code == 200, pdf.text
+    assert pdf.content.startswith(b"%PDF") and pdf.headers["content-type"] == "application/pdf"
+
+
+def test_approfondisci_richiede_appunti_pronti(client, audio_prova):
+    [creata] = _carica(client, audio_prova).json()
+    _attendi(client, creata["id"])
+    client.app.state.archivio.aggiorna(creata["id"], stato="errore")
+    risposta = client.post(f"/api/lezioni/{creata['id']}/approfondisci", headers=PROTETTO, json={"argomento": "x"})
+    assert risposta.status_code == 409

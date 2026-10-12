@@ -42,9 +42,10 @@ FASI = {
     "termini": ("Analisi dei materiali", 0.04, 0.07),
     "trascrizione": ("Trascrizione", 0.07, 0.55),
     "revisione": ("Revisione della trascrizione", 0.55, 0.75),
-    "appunti": ("Scrittura degli appunti", 0.75, 0.88),
-    "verifica": ("Verifica dell'accuratezza", 0.88, 0.94),
-    "correzione": ("Correzione finale", 0.94, 0.99),
+    "appunti": ("Scrittura degli appunti", 0.75, 0.85),
+    "verifica": ("Verifica dell'accuratezza", 0.85, 0.90),
+    "correzione": ("Correzione finale", 0.90, 0.93),
+    "approfondimento": ("Approfondimento", 0.93, 0.99),
 }
 
 # "riprendi" continua dall'ultimo passo salvato; le altre cancellano i risultati da quella fase in poi.
@@ -67,6 +68,8 @@ class File:
         self.verifica = cartella / "verifica.json"
         self.appunti = cartella / "appunti.md"
         self.html = cartella / "appunti.html"
+        self.approfondimento = cartella / "approfondimento.md"
+        self.pdf = cartella / "appunti.pdf"
 
     def trascrizione_motore(self, motore: str) -> Path:
         return self.cartella / f"trascrizione_{motore}.json"
@@ -91,7 +94,7 @@ def prepara_rielaborazione(archivio: Archivio, id_lezione: str, da: str) -> Lezi
     if da not in RIPARTENZE:
         raise ValueError(f"Fase di ripartenza non valida: {da} (ammesse: {', '.join(RIPARTENZE)})")
     f = File(archivio.cartella(id_lezione))
-    da_togliere = [] if da == "riprendi" else [f.bozza, f.verifica, f.appunti, f.html]
+    da_togliere = [] if da == "riprendi" else [f.bozza, f.verifica, f.appunti, f.html, f.approfondimento, f.pdf]
     if da in ("revisione", "tutto"):
         da_togliere.append(f.trascrizione)
         shutil.rmtree(f.revisione, ignore_errors=True)
@@ -180,6 +183,7 @@ class Elaborazione:
         bozza = self._fase_appunti(lezione, f, base)
         verifica = self._fase_verifica(lezione, f, base, bozza)
         appunti = self._fase_correzione(lezione, f, base, bozza, verifica)
+        self._fase_approfondimento(lezione, f, base, appunti)
 
         if verifica:
             # Il glossario del corso cresce lezione dopo lezione e migliora le trascrizioni successive.
@@ -368,7 +372,7 @@ class Elaborazione:
     def _fase_appunti(self, lezione: Lezione, f: File, base: list[dict]) -> str:
         if f.bozza.is_file():
             return f.bozza.read_text(encoding="utf-8")
-        self._avanza(lezione.id, "appunti", 0.05, "Claude sta scrivendo gli appunti (qualche minuto)")
+        self._avanza(lezione.id, "appunti", 0.05, "Sto scrivendo gli appunti (qualche minuto)")
         testo, uso = self.llm.testo(
             system=prompt.SYSTEM_APPUNTI,
             contenuto=[*base, {"type": "text", "text": prompt.ISTRUZIONI_APPUNTI}],
@@ -380,6 +384,39 @@ class Elaborazione:
         scrivi_atomico(f.bozza, bozza + "\n")
         self._avanza(lezione.id, "appunti", 1.0)
         return bozza
+
+    def _fase_approfondimento(self, lezione: Lezione, f: File, base: list[dict], appunti: str) -> None:
+        if not f.approfondimento.is_file():
+            self._avanza(lezione.id, "approfondimento", 0.05, "Sto scrivendo l'approfondimento (qualche minuto)")
+            testo, uso = self.llm.testo(
+                system=prompt.SYSTEM_APPUNTI,
+                contenuto=[*base, {"type": "text", "text": prompt.istruzioni_approfondimento(appunti)}],
+                sforzo=self.config.sforzo_appunti,
+                max_tokens=96000,
+            )
+            self._registra(lezione.id, "approfondimento", uso)
+            scrivi_atomico(f.approfondimento, pulisci_markdown(testo) + "\n")
+            f.pdf.unlink(missing_ok=True)
+        richieste = self.archivio.carica(lezione.id).da_approfondire
+        for i, argomento in enumerate(richieste):
+            self._avanza(lezione.id, "approfondimento", (i + 0.5) / len(richieste), f"Approfondisco: {argomento}")
+            attuale = f.approfondimento.read_text(encoding="utf-8")
+            testo, uso = self.llm.testo(
+                system=prompt.SYSTEM_APPUNTI,
+                contenuto=[*base, {"type": "text", "text": prompt.istruzioni_espansione(argomento, attuale)}],
+                sforzo=self.config.sforzo_appunti,
+                max_tokens=64000,
+            )
+            self._registra(lezione.id, "approfondimento", uso)
+            scrivi_atomico(f.approfondimento, attuale.rstrip() + "\n\n" + pulisci_markdown(testo) + "\n")
+            f.pdf.unlink(missing_ok=True)
+
+            def togli(lez: Lezione, a: str = argomento) -> None:
+                if a in lez.da_approfondire:
+                    lez.da_approfondire.remove(a)
+
+            self.archivio.modifica(lezione.id, togli)
+        self._avanza(lezione.id, "approfondimento", 1.0)
 
     def _fase_verifica(self, lezione: Lezione, f: File, base: list[dict], bozza: str) -> dict | None:
         if not self.config.verifica:

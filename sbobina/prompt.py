@@ -310,3 +310,58 @@ def istruzioni_correzione(bozza: str, problemi: list[dict]) -> str:
         f"<problemi>\n{elenco}\n</problemi>\n\n"
         "Rispondi solo con il Markdown completo degli appunti corretti."
     )
+
+
+# --------------------------------------------------------------------------
+# 5. Approfondimento: oltre il riassunto, per studiare l'argomento a fondo
+# --------------------------------------------------------------------------
+
+REGOLE_APPROFONDIMENTO = """\
+Non è un riassunto: gli appunti della lezione esistono già (sono qui sotto). Il tuo compito è far \
+capire l'argomento a fondo, come un buon tutor che prepara lo studente all'esame.
+
+Fedeltà
+- Puoi andare oltre la lezione, ma ogni contenuto che non viene dalla trascrizione o dai materiali va \
+dentro un riquadro che inizia con "> **Integrazione:**". Fuori dai riquadri Integrazione scrivi solo \
+ciò che è stato detto a lezione o è nei materiali, spiegato meglio.
+- Non inventare articoli di legge, sentenze, autori, date, numeri o formule di cui non sei certo: se \
+un dettaglio ti serve ma non ne sei sicuro, scrivilo comunque seguito da [da verificare].
+
+Struttura (titoli esattamente così)
+# Approfondimento: <argomento della lezione>
+## Il quadro generale
+Perché l'argomento conta, dove si colloca nel corso, quali concetti lo reggono.
+## <una sezione ## per ciascun argomento principale della lezione>
+Per ognuna: spiegazione più ampia e ragionata (il perché, non solo il cosa); almeno un esempio \
+concreto nuovo; collegamenti con altri concetti del corso; errori tipici e come evitarli. Usa tabelle \
+per i confronti e > **Definizione (nome):** per le definizioni.
+## Esercizi e casi pratici
+3-5 casi o esercizi con soluzione ragionata dentro <details><summary>Soluzione</summary>...</details>.
+## Domande d'esame probabili
+5-8 domande, ciascuna come paragrafo che inizia con il numero in grassetto, con la risposta dentro \
+<details><summary>Risposta</summary>...</details>.
+## Per approfondire ancora
+3-6 voci di elenco puntato, ciascuna un argomento preciso (massimo 8 parole) su cui ha senso andare \
+ancora più a fondo.
+
+Formule in LaTeX ($...$ e $$...$$). Italiano chiaro. Rispondi solo con il Markdown, senza premesse."""
+
+
+def istruzioni_approfondimento(appunti: str) -> str:
+    return (
+        "Scrivi l'approfondimento di studio di questa lezione in Markdown.\n\n"
+        f"{REGOLE_APPROFONDIMENTO}\n\n<appunti>\n{appunti}\n</appunti>"
+    )
+
+
+def istruzioni_espansione(argomento: str, approfondimento: str) -> str:
+    return (
+        f"Lo studente vuole andare più a fondo su: {argomento}\n\n"
+        "Scrivi una nuova sezione da aggiungere all'approfondimento qui sotto. Inizia esattamente con "
+        f'"## Approfondimento: {argomento}", poi 3-6 sottosezioni ### con spiegazione ragionata, esempi '
+        "concreti, collegamenti e almeno un esercizio con soluzione dentro <details>. Non ripetere ciò che "
+        "c'è già. Stesse regole di fedeltà: ciò che non viene dalla lezione o dai materiali va nei riquadri "
+        '"> **Integrazione:**" e i dettagli incerti si segnano con [da verificare]. '
+        "Rispondi solo con il Markdown della nuova sezione.\n\n"
+        f"<approfondimento>\n{approfondimento}\n</approfondimento>"
+    )

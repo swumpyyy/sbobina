@@ -16,7 +16,11 @@ per non far inventare nulla agli appunti.
 - **Glossario** dei termini tecnici e **domande di ripasso** con risposta nascosta.
 - **Tempi cliccabili** `⏱ 23:15`: un clic e riascolti quel punto della registrazione.
 - **Trascrizione revisionata** completa e un **rapporto di verifica** con i problemi trovati e corretti.
-- Esportazione in **PDF** (versione stampabile) e **Markdown** (per Obsidian, Notion, ecc.).
+- **Approfondimento**: non un riassunto ma una spiegazione più ampia dell'argomento, con esempi,
+  esercizi svolti e domande d'esame. Puoi chiedere di **approfondire ancora** un punto: l'AI aggiunge
+  una nuova sezione.
+- **PDF della lezione** con copertina, appunti e approfondimento, pronto da stampare o ricopiare;
+  esportazione anche in **Markdown** (per Obsidian, Notion, ecc.).
 
 ## Perché è accurato
 
@@ -24,12 +28,12 @@ Un'app che "registra e scrive" fa una trascrizione e un riassunto. Sbobina fa se
 
 1. **Audio ripulito**: ffmpeg converte qualsiasi formato, toglie i rimbombi e uniforma il volume
    (utile quando il docente si allontana dal microfono).
-2. **Termini dalle slide**: se carichi slide o dispense, Claude ne estrae termini tecnici, nomi e
+2. **Termini dalle slide**: se carichi slide o dispense, l'AI ne estrae termini tecnici, nomi e
    sigle e li passa al riconoscimento vocale, che così li scrive giusti.
 3. **Trascrizione con uno o due motori**: AssemblyAI (Universal-3.5 Pro) ed ElevenLabs (Scribe v2)
    sono tra i più accurati sull'italiano; Whisper large-v3 funziona in locale e gratis. Con due
    motori attivi, l'audio viene trascritto due volte in modo indipendente.
-4. **Revisione della trascrizione**: Claude la corregge blocco per blocco (termini, nomi, formule
+4. **Revisione della trascrizione**: l'AI la corregge blocco per blocco (termini, nomi, formule
    dettate a voce, punteggiatura) usando glossario e materiali. Quando i due motori non sono
    d'accordo sceglie la versione giusta. Non riassume e non aggiunge nulla: i punti dubbi restano
    segnati come `[incerto]`.
@@ -38,6 +42,8 @@ Un'app che "registra e scrive" fa una trascrizione e un riassunto. Sbobina fa se
 6. **Verifica e correzione**: una seconda lettura confronta gli appunti con la trascrizione frase per
    frase (affermazioni non supportate, formule o ipotesi sbagliate, contenuti omessi, schemi errati)
    e una terza applica le correzioni.
+7. **Approfondimento**: spiega l'argomento oltre la lezione. Ciò che non è stato detto a lezione
+   sta nei riquadri **Integrazione**; i dettagli incerti sono segnati come `[da verificare]`.
 
 In più il **glossario del corso cresce da solo**: i termini di ogni lezione vengono usati per
 riconoscere meglio le lezioni successive dello stesso corso. Puoi modificarlo dall'app (ad esempio
@@ -45,7 +51,8 @@ aggiungendo il nome del docente).
 
 ## Installazione
 
-Ti servono **Python 3.10 o più recente** e **ffmpeg**.
+Ti servono **Python 3.10 o più recente**, **ffmpeg** e **Ollama** (l'AI gratuita che scrive gli appunti
+sul tuo computer). Per creare i PDF serve anche Google Chrome (o Chromium o Edge).
 
 ```bash
 # ffmpeg
@@ -53,24 +60,27 @@ brew install ffmpeg            # macOS
 sudo apt install ffmpeg        # Ubuntu/Debian
 winget install ffmpeg          # Windows
 
+# Ollama: scarica l'app da https://ollama.com, aprila, poi una volta sola:
+ollama pull gemma4:12b         # circa 8 GB; con meno di 16 GB di RAM usa gemma4:latest
+
 # Sbobina
 git clone <questo repository> sbobina && cd sbobina
 python -m venv .venv
 source .venv/bin/activate      # su Windows: .venv\Scripts\activate
-pip install -e .
-cp .env.example .env           # poi apri .env e inserisci le chiavi
+pip install -e ".[locale]"     # [locale] = Whisper per la trascrizione gratuita
+cp .env.example .env
 ```
 
-Nel file `.env`:
+Così tutto è **gratuito e in locale**: nessun account, nessuna chiave. Nel file `.env` puoi
+aggiungere, se vuoi, servizi a pagamento:
 
 | Chiave | Serve per | Dove si ottiene |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | **obbligatoria**: revisione, appunti, verifica | console.anthropic.com |
+| `ANTHROPIC_API_KEY` | facoltativa: Claude al posto dell'AI locale (con `SBOBINA_MODELLO=claude-opus-5-5`) | console.anthropic.com |
 | `ASSEMBLYAI_API_KEY` | trascrizione cloud (consigliata) | assemblyai.com |
 | `ELEVENLABS_API_KEY` | seconda trascrizione cloud (massima accuratezza) | elevenlabs.io |
 
-Senza chiavi di trascrizione Sbobina usa **Whisper in locale**: installalo con
-`pip install -e ".[locale]"`. È gratuito e l'audio non lascia il tuo computer, ma senza una
+Senza chiavi di trascrizione Sbobina usa **Whisper in locale**. È gratuito e l'audio non lascia il tuo computer, ma senza una
 scheda video NVIDIA una lezione di 90 minuti può richiedere più di un'ora. Per andare più veloce
 puoi impostare `SBOBINA_WHISPER_MODELLO=large-v3-turbo`, un po' meno accurato.
 
@@ -117,11 +127,11 @@ Gli appunti finiscono in `dati/lezioni/<id>/appunti.md` e `appunti.html` (aprila
 
 ## Costi
 
-- **Claude**: con Claude Opus 5.5 una lezione di 90 minuti costa indicativamente **2-4 $**, perché
-  la trascrizione viene letta più volte (revisione, appunti, verifica, correzione). La cache del
-  prompt riduce il costo delle letture successive. L'app mostra il costo stimato di ogni lezione.
-  Per spendere meno: `SBOBINA_MODELLO=claude-sonnet-5-5` (circa la metà) oppure `SBOBINA_VERIFICA=0`
-  (salta verifica e correzione, meno accurato).
+- **Con le impostazioni predefinite Sbobina è gratuito**: Whisper e Gemma (via Ollama) girano sul tuo
+  computer. Il prezzo è il tempo: su un Mac con chip M una lezione di un'ora richiede indicativamente
+  da mezz'ora a un'ora tra trascrizione e scrittura.
+- **Claude** (facoltativo): con Claude Opus 5.5 una lezione di 90 minuti costa indicativamente **2-4 $**.
+  L'app mostra il costo stimato di ogni lezione.
 - **Trascrizione**: AssemblyAI ed ElevenLabs si pagano a ore di audio; controlla i loro listini.
   ElevenLabs applica un supplemento quando si passano i termini del glossario. Whisper locale è
   gratuito.
@@ -136,8 +146,8 @@ Gli appunti finiscono in `dati/lezioni/<id>/appunti.md` e `appunti.html` (aprila
 ## Privacy
 
 L'audio resta sul tuo computer, salvo quando usi i servizi cloud di trascrizione (AssemblyAI,
-ElevenLabs), a cui viene inviato l'audio. Trascrizione e materiali vengono inviati a Claude
-(Anthropic) per scrivere gli appunti. Tutti i risultati sono salvati in locale nella cartella `dati/`.
+ElevenLabs), a cui viene inviato l'audio. Con l'AI locale (predefinita) anche trascrizione e
+materiali restano sul computer; solo se scegli Claude vengono inviati ad Anthropic. Tutti i risultati sono salvati in locale nella cartella `dati/`.
 Il server ascolta solo su `localhost`.
 
 ## Struttura del progetto
@@ -146,9 +156,9 @@ Il server ascolta solo su `localhost`.
 sbobina/
   audio.py              preparazione dell'audio con ffmpeg
   trascrizione/         motori: AssemblyAI, ElevenLabs, Whisper locale
-  materiali.py          slide PDF, immagini, testi → contenuti per Claude
-  prompt.py             istruzioni per Claude (revisione, appunti, verifica, correzione)
-  llm.py                chiamate a Claude (streaming, ragionamento adattivo, fallback)
+  materiali.py          slide PDF, immagini, testi → contenuti per l'AI
+  prompt.py             istruzioni per l'AI (revisione, appunti, verifica, correzione, approfondimento)
+  llm.py                modello che scrive: Ollama in locale (predefinito) o Claude
   pipeline.py           le fasi dell'elaborazione, con ripresa dai punti salvati
   archivio.py           lezioni e corsi salvati come file JSON
   server.py, static/    app web
@@ -167,5 +177,5 @@ pip install -e ".[dev,locale]"
 pytest
 ```
 
-I test non usano servizi a pagamento: Claude e i motori di trascrizione sono sostituiti da versioni
+I test non usano servizi esterni: il modello AI e i motori di trascrizione sono sostituiti da versioni
 finte, mentre ffmpeg, l'SDK di Anthropic (con un trasporto HTTP simulato) e l'app web sono reali.

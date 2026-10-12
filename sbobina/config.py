@@ -59,7 +59,8 @@ def _sforzo(valore: str | None, predefinito: str) -> str:
 @dataclass(frozen=True)
 class Config:
     cartella_dati: Path = Path("dati")
-    modello: str = "claude-opus-5-5"
+    # Modello locale gratuito via Ollama; un nome "claude-..." usa invece l'API Anthropic (a pagamento).
+    modello: str = "gemma4:12b"
     # Sforzo per appunti, verifica e correzione finale (le tre fasi condividono la cache del prompt).
     sforzo_appunti: str = "high"
     # Sforzo per la revisione della trascrizione, blocco per blocco.
@@ -78,9 +79,12 @@ class Config:
     def da_ambiente(cls, file_env: Path = Path(".env")) -> Config:
         carica_dotenv(file_env)
         env = os.environ
+        modello = env.get("SBOBINA_MODELLO", cls.modello)
+        # In locale le richieste parallele si contendono la memoria del Mac: una alla volta.
+        parallele_predefinite = "4" if modello.startswith("claude") else "1"
         return cls(
             cartella_dati=Path(env.get("SBOBINA_DATI", "dati")),
-            modello=env.get("SBOBINA_MODELLO", "claude-opus-5-5"),
+            modello=modello,
             sforzo_appunti=_sforzo(env.get("SBOBINA_SFORZO"), "high"),
             sforzo_revisione=_sforzo(env.get("SBOBINA_SFORZO_REVISIONE"), "medium"),
             motori=scegli_motori(env.get("SBOBINA_MOTORI", "auto"), env),
@@ -88,12 +92,21 @@ class Config:
             whisper_modello=env.get("SBOBINA_WHISPER_MODELLO", "large-v3"),
             whisper_dispositivo=env.get("SBOBINA_WHISPER_DISPOSITIVO", "auto"),
             minuti_per_blocco=float(env.get("SBOBINA_MINUTI_PER_BLOCCO", "8")),
-            richieste_parallele=max(1, int(env.get("SBOBINA_RICHIESTE_PARALLELE", "4"))),
+            richieste_parallele=max(1, int(env.get("SBOBINA_RICHIESTE_PARALLELE", parallele_predefinite))),
             verifica=env.get("SBOBINA_VERIFICA", "1").strip().lower() not in ("0", "no", "false"),
             assemblyai_chiave=env.get("ASSEMBLYAI_API_KEY", ""),
             elevenlabs_chiave=env.get("ELEVENLABS_API_KEY", ""),
         )
 
     @property
-    def claude_configurato(self) -> bool:
+    def locale(self) -> bool:
+        return not self.modello.startswith("claude")
+
+    @property
+    def llm_pronto(self) -> bool:
+        """Il modello che scrive gli appunti è utilizzabile: Ollama acceso con il modello scaricato, o chiave Claude."""
+        if self.locale:
+            from sbobina.llm import locale_pronto
+
+            return locale_pronto(self.modello)
         return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))

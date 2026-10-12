@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "sbobina/static/index.html"
+        ],
+        "createdAt": "2026-10-12T16:41:50.177Z",
+        "reason": "model decision: halo is the literal glow of the amber indicator LEDs required by the hi-fi direction contract (OWN-WORLD), limited to lamp dots and the meter needle"
+      }
+    ]
+  }
+}

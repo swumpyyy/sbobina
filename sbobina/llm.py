@@ -1,7 +1,9 @@
-"""Chiamate a Claude (Anthropic API)."""
+"""Modelli linguistici: in locale con Ollama (gratuito) oppure Claude (Anthropic API, a pagamento)."""
 
 from __future__ import annotations
 
+import base64
+import io
 import json
 import logging
 import time
@@ -9,6 +11,8 @@ from dataclasses import asdict, dataclass
 from typing import Any, Protocol
 
 import anthropic
+import httpx2
+from pypdf import PdfReader
 
 log = logging.getLogger(__name__)
 
@@ -161,3 +165,97 @@ class Claude:
             cache_scrittura=getattr(u, "cache_creation_input_tokens", None) or 0,
         )
         return testo, utilizzo
+
+
+OLLAMA_URL = "http://localhost:11434"
+
+
+def _testo_documento(blocco: dict) -> str:
+    """I modelli locali non leggono i PDF: ne passiamo il testo estratto."""
+    pdf = PdfReader(io.BytesIO(base64.standard_b64decode(blocco["source"]["data"])))
+    testo = "\n".join((p.extract_text() or "") for p in pdf.pages).strip()
+    return f"<materiale nome=\"{blocco.get('title', 'documento')}\">\n{testo}\n</materiale>" if testo else ""
+
+
+class Locale:
+    """Modello open source eseguito sul computer da Ollama: gratuito e senza inviare dati all'esterno."""
+
+    def __init__(
+        self, modello: str, *, url: str = OLLAMA_URL, client: httpx2.Client | None = None, contesto: int = 65536
+    ):
+        self.modello = modello
+        self.url = url.rstrip("/")
+        # Trascrizione di una lezione lunga + slide supera i 40.000 token: il contesto predefinito di Ollama non basta.
+        self.contesto = contesto
+        # Su un portatile la scrittura degli appunti può richiedere molti minuti.
+        self.client = client or httpx2.Client(timeout=httpx2.Timeout(30.0, read=3600.0))
+
+    def testo(
+        self, *, system: str | list[dict], contenuto: list[dict], sforzo: str, max_tokens: int = 64000
+    ) -> tuple[str, Utilizzo]:
+        return self._chiama(system, contenuto, None, max_tokens)  # sforzo: solo per Claude
+
+    def json(
+        self, *, system: str | list[dict], contenuto: list[dict], schema: dict, sforzo: str, max_tokens: int = 32000
+    ) -> tuple[dict, Utilizzo]:
+        testo, utilizzo = self._chiama(system, contenuto, schema, max_tokens)
+        try:
+            return json.loads(testo), utilizzo
+        except json.JSONDecodeError as e:
+            raise ErroreClaude(f"Risposta JSON non valida dal modello locale: {e}") from e
+
+    def _chiama(
+        self, system: str | list[dict], contenuto: list[dict], schema: dict | None, max_tokens: int
+    ) -> tuple[str, Utilizzo]:
+        if not isinstance(system, str):
+            system = "\n\n".join(b["text"] for b in system if b.get("type") == "text")
+        testi: list[str] = []
+        immagini: list[str] = []
+        for blocco in contenuto:
+            if blocco["type"] == "text":
+                testi.append(blocco["text"])
+            elif blocco["type"] == "image":
+                immagini.append(blocco["source"]["data"])
+            elif blocco["type"] == "document":
+                testi.append(_testo_documento(blocco))
+        utente: dict[str, Any] = {"role": "user", "content": "\n\n".join(t for t in testi if t)}
+        if immagini:
+            utente["images"] = immagini
+        corpo: dict[str, Any] = {
+            "model": self.modello,
+            "stream": False,
+            "messages": [{"role": "system", "content": system}, utente],
+            "options": {"num_ctx": self.contesto, "num_predict": max_tokens},
+        }
+        if schema is not None:
+            corpo["format"] = schema
+        try:
+            risposta = self.client.post(f"{self.url}/api/chat", json=corpo)
+        except httpx2.ConnectError as e:
+            raise ErroreClaude("Ollama non è in esecuzione: apri l'app Ollama e riprova.") from e
+        except httpx2.HTTPError as e:
+            raise ErroreClaude(f"Errore di comunicazione con Ollama: {e}") from e
+        if risposta.status_code == 404:
+            raise ErroreClaude(f"Modello {self.modello} non scaricato: esegui `ollama pull {self.modello}`.")
+        if risposta.status_code >= 400:
+            raise ErroreClaude(f"Errore da Ollama ({risposta.status_code}): {risposta.text[:300]}")
+        dati = risposta.json()
+        if dati.get("done_reason") == "length":
+            raise ErroreClaude("La risposta del modello locale è stata troncata (limite di lunghezza raggiunto).")
+        testo = (dati.get("message") or {}).get("content", "").strip()
+        if not testo:
+            raise ErroreClaude("Il modello locale ha restituito una risposta vuota.")
+        return testo, Utilizzo(input=dati.get("prompt_eval_count") or 0, output=dati.get("eval_count") or 0)
+
+
+def locale_pronto(modello: str, url: str = OLLAMA_URL) -> bool:
+    """True se Ollama è in esecuzione e il modello è già scaricato."""
+    try:
+        nomi = {m["name"] for m in httpx2.get(f"{url}/api/tags", timeout=2.0).json().get("models", [])}
+    except (httpx2.HTTPError, ValueError):
+        return False
+    return modello in nomi or f"{modello}:latest" in nomi
+
+
+def crea_modello(modello: str) -> ModelloLinguistico:
+    return Claude(modello) if modello.startswith("claude") else Locale(modello)

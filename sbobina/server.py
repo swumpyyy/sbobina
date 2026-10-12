@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
 import tempfile
 from contextlib import asynccontextmanager
 from dataclasses import asdict
@@ -28,7 +29,7 @@ from sbobina.archivio import (
 from sbobina.audio import ffmpeg_disponibile
 from sbobina.coda import ATTIVI, Coda
 from sbobina.config import Config
-from sbobina.esporta import LIBRERIE
+from sbobina.esporta import LIBRERIE, crea_pdf, esporta_pdf_html
 from sbobina.llm import costo_stimato
 from sbobina.pipeline import RIPARTENZE, Elaborazione, File, prepara_rielaborazione
 
@@ -47,6 +48,10 @@ def richiede_intestazione(x_sbobina: str | None = Header(default=None)) -> None:
 
 class Rielaborazione(BaseModel):
     da: str = "appunti"
+
+
+class Approfondimento(BaseModel):
+    argomento: str = ""
 
 
 class Glossario(BaseModel):
@@ -86,10 +91,10 @@ def crea_app(
     if crea_elaborazione is None:
 
         def crea_elaborazione() -> Elaborazione:
-            from sbobina.llm import Claude
+            from sbobina.llm import crea_modello
             from sbobina.trascrizione import crea_motori
 
-            return Elaborazione(config, archivio, Claude(config.modello), crea_motori(config))
+            return Elaborazione(config, archivio, crea_modello(config.modello), crea_motori(config))
 
     coda = Coda(archivio, crea_elaborazione)
 
@@ -120,7 +125,8 @@ def crea_app(
         return {
             "modello": config.modello,
             "motori": list(config.motori),
-            "claude": config.claude_configurato,
+            "locale": config.locale,
+            "llm": config.llm_pronto,
             "ffmpeg": ffmpeg_disponibile(),
             "verifica": config.verifica,
             "corsi": [{"nome": c.nome, "termini": len(c.glossario)} for c in archivio.corsi()],
@@ -194,6 +200,7 @@ def crea_app(
             "appunti": appunti or leggi(f.bozza),
             "bozza": appunti is None and f.bozza.is_file(),
             "trascrizione": leggi(f.trascrizione),
+            "approfondimento": leggi(f.approfondimento),
             "verifica": leggi_json(f.verifica) if f.verifica.is_file() else None,
             "audio": f.ascolto.is_file(),
             "costo": costo_stimato(config.modello, lezione.utilizzo),
@@ -217,6 +224,8 @@ def crea_app(
             "html": (f.html, "text/html; charset=utf-8", f"{nome}.html"),
             "trascrizione": (f.trascrizione, "text/markdown; charset=utf-8", f"{nome}-trascrizione.md"),
         }
+        if formato == "pdf":
+            return _pdf(lezione, f, nome)
         if formato not in opzioni:
             raise HTTPException(404, "Formato non disponibile")
         percorso, tipo, nome_file = opzioni[formato]
@@ -225,6 +234,43 @@ def crea_app(
         if formato == "html" and not allegato:
             return FileResponse(percorso, media_type=tipo)  # si apre nel browser, pronta da stampare
         return FileResponse(percorso, media_type=tipo, filename=nome_file)
+
+    def _pdf(lezione: Lezione, f: File, nome: str) -> FileResponse:
+        if not f.appunti.is_file():
+            raise HTTPException(404, "Gli appunti non sono ancora pronti.")
+        fonti = [f.appunti, f.approfondimento]
+        if not f.pdf.is_file() or any(p.is_file() and p.stat().st_mtime > f.pdf.stat().st_mtime for p in fonti):
+            pagina = esporta_pdf_html(
+                titolo=lezione.titolo,
+                corso=lezione.corso,
+                data=lezione.data,
+                appunti=f.appunti.read_text(encoding="utf-8"),
+                approfondimento=f.approfondimento.read_text(encoding="utf-8") if f.approfondimento.is_file() else None,
+            )
+            try:
+                crea_pdf(pagina, f.pdf)
+            except (RuntimeError, OSError, subprocess.TimeoutExpired) as e:
+                raise HTTPException(503, str(e)) from e
+        return FileResponse(f.pdf, media_type="application/pdf", filename=f"{nome}.pdf")
+
+    @app.post("/api/lezioni/{id_lezione}/approfondisci", dependencies=protetto)
+    def approfondisci(id_lezione: str, corpo: Approfondimento) -> dict:
+        """Aggiunge un argomento da approfondire (o crea l'approfondimento mancante) e rimette in coda."""
+        lezione = trova(id_lezione)
+        if lezione.stato in ATTIVI:
+            raise HTTPException(409, "La lezione è già in elaborazione.")
+        if lezione.stato != "completata":
+            raise HTTPException(409, "Prima devono essere pronti gli appunti.")
+        argomento = " ".join(corpo.argomento.split())[:200]
+
+        def aggiungi(lez: Lezione) -> None:
+            if argomento and argomento not in lez.da_approfondire:
+                lez.da_approfondire.append(argomento)
+            lez.stato, lez.fase, lez.progresso, lez.errore, lez.messaggio = "in_coda", "In coda", 0.0, "", ""
+
+        lezione = archivio.modifica(id_lezione, aggiungi)
+        coda.accoda(id_lezione)
+        return riassunto(lezione)
 
     @app.post("/api/lezioni/{id_lezione}/rielabora", dependencies=protetto)
     def rielabora(id_lezione: str, corpo: Rielaborazione) -> dict:
