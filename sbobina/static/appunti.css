@@ -1,48 +1,54 @@
 /* Tipografia degli appunti: condivisa tra app e pagine esportate. */
 :root {
-  --sfondo: #f7f6f3;
+  --sfondo: #f6f8f8;
   --superficie: #ffffff;
-  --superficie-2: #f0eee9;
-  --testo: #1d1c1a;
-  --testo-tenue: #6b6862;
-  --bordo: #e2dfd8;
-  --accento: #2f5fd0;
-  --accento-tenue: #e8eefc;
-  --definizione: #2f6fd0;
+  --superficie-2: #eef2f2;
+  --testo: #142624;
+  --testo-tenue: #56656a;
+  --bordo: #dbe3e2;
+  --accento: #0f766e;
+  --accento-forte: #115e59;
+  --su-accento: #ffffff;
+  --accento-tenue: #e2f2ef;
+  --definizione: #2563c9;
   --definizione-sfondo: #eef3fd;
   --teorema: #7a4ad8;
   --teorema-sfondo: #f3eefd;
-  --integrazione: #b7791f;
+  --integrazione: #a16207;
   --integrazione-sfondo: #fdf6e7;
-  --sintesi: #2b8a5e;
-  --sintesi-sfondo: #ecf7f1;
+  --sintesi: #4d7c0f;
+  --sintesi-sfondo: #f0f7e6;
   --attenzione: #c2410c;
   --attenzione-sfondo: #fdf0e9;
   --errore: #b42318;
   --font-testo: "Iowan Old Style", "Charter", "Georgia", "Times New Roman", serif;
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-codice: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --raggio: 10px;
+  --durata: 160ms;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --sfondo: #151514;
-    --superficie: #1e1e1c;
-    --superficie-2: #262624;
-    --testo: #ecebe7;
-    --testo-tenue: #a4a19a;
-    --bordo: #34332f;
-    --accento: #7aa2ff;
-    --accento-tenue: #1d2740;
+    --sfondo: #0f1514;
+    --superficie: #161e1d;
+    --superficie-2: #1e2827;
+    --testo: #e6eeec;
+    --testo-tenue: #9fb0ad;
+    --bordo: #2b3735;
+    --accento: #2dd4bf;
+    --accento-forte: #5eead4;
+    --su-accento: #04201d;
+    --accento-tenue: #11302c;
     --definizione: #7aa2ff;
-    --definizione-sfondo: #1a2336;
+    --definizione-sfondo: #172238;
     --teorema: #b69cff;
-    --teorema-sfondo: #241d36;
+    --teorema-sfondo: #221c36;
     --integrazione: #e6b04f;
-    --integrazione-sfondo: #2e2615;
-    --sintesi: #5fc797;
-    --sintesi-sfondo: #15291f;
+    --integrazione-sfondo: #2c2414;
+    --sintesi: #9ad46f;
+    --sintesi-sfondo: #1a2914;
     --attenzione: #f08a5d;
     --attenzione-sfondo: #2f1d14;
     --errore: #f97066;
@@ -51,22 +57,24 @@
 }
 
 :root[data-theme="dark"] {
-  --sfondo: #151514;
-  --superficie: #1e1e1c;
-  --superficie-2: #262624;
-  --testo: #ecebe7;
-  --testo-tenue: #a4a19a;
-  --bordo: #34332f;
-  --accento: #7aa2ff;
-  --accento-tenue: #1d2740;
+  --sfondo: #0f1514;
+  --superficie: #161e1d;
+  --superficie-2: #1e2827;
+  --testo: #e6eeec;
+  --testo-tenue: #9fb0ad;
+  --bordo: #2b3735;
+  --accento: #2dd4bf;
+  --accento-forte: #5eead4;
+  --su-accento: #04201d;
+  --accento-tenue: #11302c;
   --definizione: #7aa2ff;
-  --definizione-sfondo: #1a2336;
+  --definizione-sfondo: #172238;
   --teorema: #b69cff;
-  --teorema-sfondo: #241d36;
+  --teorema-sfondo: #221c36;
   --integrazione: #e6b04f;
-  --integrazione-sfondo: #2e2615;
-  --sintesi: #5fc797;
-  --sintesi-sfondo: #15291f;
+  --integrazione-sfondo: #2c2414;
+  --sintesi: #9ad46f;
+  --sintesi-sfondo: #1a2914;
   --attenzione: #f08a5d;
   --attenzione-sfondo: #2f1d14;
   --errore: #f97066;

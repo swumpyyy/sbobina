@@ -1,8 +1,13 @@
 /* Interfaccia dell'app (i colori sono definiti in appunti.css). */
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { font-size: 15px; }
+body { font-size: 1rem; -webkit-font-smoothing: antialiased; }
 button, input, textarea, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accento); outline-offset: 2px; }
+::selection { background: var(--accento-tenue); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+}
 
 .barra {
   position: sticky;
@@ -12,6 +17,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-height: 60px;
   padding: 10px 20px;
   background: color-mix(in srgb, var(--sfondo) 88%, transparent);
   backdrop-filter: blur(8px);
@@ -30,20 +36,26 @@ button, input, textarea, select { font: inherit; color: inherit; }
 button.primario, button.secondario, button.pericolo, a.bottone, summary.bottone {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 14px;
-  border-radius: 9px;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: var(--raggio);
   border: 1px solid var(--bordo);
   background: var(--superficie);
   cursor: pointer;
   text-decoration: none;
   font-size: 0.92rem;
+  font-weight: 500;
   white-space: nowrap;
+  transition: background-color var(--durata) ease, border-color var(--durata) ease, color var(--durata) ease;
 }
-button.primario { background: var(--accento); border-color: var(--accento); color: #fff; font-weight: 600; }
-button.primario:disabled { opacity: 0.6; cursor: default; }
+button.primario { background: var(--accento); border-color: var(--accento); color: var(--su-accento); font-weight: 600; }
+button.primario:hover:not(:disabled) { background: var(--accento-forte); border-color: var(--accento-forte); }
+button.primario:disabled { opacity: 0.5; cursor: not-allowed; }
 button.pericolo { color: var(--errore); }
-button.secondario:hover, a.bottone:hover, summary.bottone:hover, button.pericolo:hover { background: var(--superficie-2); }
+button.secondario:hover, a.bottone:hover, summary.bottone:hover { background: var(--superficie-2); border-color: color-mix(in srgb, var(--testo) 18%, var(--bordo)); }
+button.pericolo:hover { background: var(--attenzione-sfondo); border-color: var(--errore); }
 
 #avvisi-configurazione:empty { display: none; }
 #avvisi-configurazione { padding: 12px 20px 0; display: grid; gap: 8px; }
@@ -74,12 +86,15 @@ button.secondario:hover, a.bottone:hover, summary.bottone:hover, button.pericolo
 }
 #cerca {
   width: 100%;
+  min-height: 40px;
   padding: 8px 12px;
   border: 1px solid var(--bordo);
-  border-radius: 9px;
+  border-radius: var(--raggio);
   background: var(--superficie);
   margin-bottom: 12px;
+  transition: border-color var(--durata) ease;
 }
+#cerca:focus, dialog input:not([type="file"]):focus, dialog textarea:focus { border-color: var(--accento); outline: 2px solid var(--accento-tenue); outline-offset: 0; }
 .gruppo-corso h3 {
   font-size: 0.75rem;
   text-transform: uppercase;
@@ -91,14 +106,17 @@ button.secondario:hover, a.bottone:hover, summary.bottone:hover, button.pericolo
   display: block;
   width: 100%;
   text-align: left;
-  padding: 9px 10px;
+  padding: 10px 12px;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--raggio);
   background: none;
   cursor: pointer;
+  transition: background-color var(--durata) ease;
 }
+.voce + .voce { margin-top: 2px; }
 .voce:hover { background: var(--superficie-2); }
-.voce.attiva { background: var(--accento-tenue); }
+.voce.attiva { background: var(--accento-tenue); box-shadow: inset 3px 0 0 var(--accento); }
+.voce.attiva .titolo { color: var(--accento-forte); font-weight: 600; }
 .voce .titolo { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .voce .sotto { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 0.8rem; color: var(--testo-tenue); }
 .voce .mini-progresso { flex: 1; height: 4px; border-radius: 4px; background: var(--bordo); overflow: hidden; }
@@ -123,8 +141,8 @@ button.secondario:hover, a.bottone:hover, summary.bottone:hover, button.pericolo
 .benvenuto h1 { font-size: 1.8rem; letter-spacing: -0.02em; margin-bottom: 8px; }
 .benvenuto p { color: var(--testo-tenue); line-height: 1.6; }
 .passi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 28px 0; text-align: left; }
-.passo { background: var(--superficie); border: 1px solid var(--bordo); border-radius: 12px; padding: 14px; font-size: 0.88rem; line-height: 1.5; }
-.passo b { display: block; margin-bottom: 4px; font-size: 0.95rem; }
+.passo { background: var(--superficie); border: 1px solid var(--bordo); border-radius: 12px; padding: 16px; font-size: 0.9rem; line-height: 1.55; color: var(--testo-tenue); }
+.passo b { display: block; margin-bottom: 6px; font-size: 0.95rem; color: var(--accento); }
 
 .intestazione-lezione h1 { font-size: 1.6rem; letter-spacing: -0.02em; margin: 0 0 6px; }
 .meta-lezione { color: var(--testo-tenue); font-size: 0.9rem; display: flex; flex-wrap: wrap; gap: 6px 14px; }
@@ -165,7 +183,9 @@ button.secondario:hover, a.bottone:hover, summary.bottone:hover, button.pericolo
   color: var(--testo-tenue);
   font-weight: 500;
   white-space: nowrap;
+  transition: color var(--durata) ease, border-color var(--durata) ease;
 }
+.schede button:hover { color: var(--testo); }
 .schede button.attiva { color: var(--testo); border-bottom-color: var(--accento); }
 .schede .conteggio { font-size: 0.75rem; padding: 0 6px; border-radius: 999px; background: var(--superficie-2); margin-left: 4px; }
 
@@ -183,7 +203,7 @@ details.menu .voci-menu {
   background: var(--superficie);
   border: 1px solid var(--bordo);
   border-radius: 10px;
-  box-shadow: 0 10px 30px rgb(0 0 0 / 0.12);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.14);
 }
 details.menu .voci-menu button {
   display: block;
@@ -195,7 +215,7 @@ details.menu .voci-menu button {
   border-radius: 7px;
   cursor: pointer;
 }
-details.menu .voci-menu button:hover { background: var(--superficie-2); }
+details.menu .voci-menu button:hover, details.menu .voci-menu button:focus-visible { background: var(--superficie-2); }
 details.menu .voci-menu small { display: block; color: var(--testo-tenue); font-size: 0.8rem; }
 
 .nota-bozza { font-size: 0.88rem; color: var(--testo-tenue); background: var(--superficie-2); padding: 8px 12px; border-radius: 8px; }
@@ -234,7 +254,7 @@ dialog {
   box-shadow: 0 20px 60px rgb(0 0 0 / 0.25);
 }
 dialog::backdrop { background: rgb(0 0 0 / 0.35); }
-dialog form { padding: 20px 22px; display: grid; gap: 14px; }
+dialog form { padding: 24px; display: grid; gap: 16px; }
 dialog h2 { margin: 0; font-size: 1.2rem; }
 dialog label { display: grid; gap: 5px; font-size: 0.9rem; }
 dialog label > span { font-weight: 500; }
@@ -242,10 +262,12 @@ dialog label em { color: var(--errore); font-style: normal; }
 dialog label small, dialog .spiegazione { color: var(--testo-tenue); font-size: 0.8rem; font-weight: 400; line-height: 1.45; margin: 0; }
 dialog input:not([type="file"]), dialog textarea {
   width: 100%;
+  min-height: 40px;
   padding: 8px 10px;
   border: 1px solid var(--bordo);
   border-radius: 8px;
   background: var(--sfondo);
+  transition: border-color var(--durata) ease;
 }
 dialog textarea { resize: vertical; }
 .due-colonne { display: grid; grid-template-columns: 1fr 160px; gap: 12px; }
@@ -269,3 +291,18 @@ dialog textarea { resize: vertical; }
   .layout { display: block; }
   .contenuto { padding: 0; }
 }
+
+input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--bordo);
+  border-radius: 8px;
+  background: var(--superficie-2);
+  color: var(--testo);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color var(--durata) ease;
+}
+input[type="file"]::file-selector-button:hover { border-color: var(--accento); }
