@@ -177,12 +177,17 @@
         h("span", {}, "Installalo e riavvia Sbobina.")));
     }
     if (!info.llm && info.locale) {
+      const p = info.preparazione || {};
+      const corpo = p.attiva
+        ? h("div", { class: "preparazione" },
+            h("span", {}, p.messaggio),
+            h("span", { class: "mini-meter", role: "progressbar", "aria-valuenow": Math.round((p.progresso || 0) * 100),
+              "aria-valuemin": 0, "aria-valuemax": 100 }, h("div", { style: `width:${percentuale(p.progresso || 0)}` })))
+        : h("div", { class: "preparazione" },
+            p.errore ? h("span", { role: "alert" }, p.errore) : h("span", {}, "Una volta sola: Sbobina avvia Ollama e scarica il modello (circa 8 GB)."),
+            h("button", { class: "tasto", type: "button", onclick: preparaAI }, p.errore ? "Riprova" : "Prepara l'AI"));
       avvisi.push(h("div", { class: "avviso", role: "status" }, icona("info"),
-        h("strong", {}, "L'AI che scrive gli appunti non è ancora pronta."),
-        h("ol", {},
-          h("li", {}, "Apri l'app Ollama (resta attiva nella barra dei menu)."),
-          h("li", {}, "Nel Terminale esegui ", h("code", {}, `ollama pull ${info.modello}`), " (una volta sola, circa 8 GB)."),
-          h("li", {}, "Questa spia si accende da sola quando il modello è pronto."))));
+        h("strong", {}, "L'AI che scrive gli appunti non è ancora pronta."), corpo));
     } else if (!info.llm) {
       avvisi.push(h("div", { class: "avviso", role: "status" }, icona("info"),
         h("strong", {}, "Manca la chiave di Claude."),
@@ -191,15 +196,23 @@
     return avvisi;
   }
 
+  async function preparaAI() {
+    await api("/api/ai/prepara", { method: "POST" });
+    aggiornaInfo();
+  }
+
   async function aggiornaInfo() {
     try {
       const prima = stato.info && stato.info.llm;
+      const preparava = stato.info && stato.info.preparazione && stato.info.preparazione.attiva;
       stato.info = await api("/api/stato");
       mostraStatoAI();
-      if (prima === false && stato.info.llm && stato.vista === "benvenuto") mostraBenvenuto();
+      const prepara = stato.info.preparazione && stato.info.preparazione.attiva;
+      if (stato.vista === "benvenuto" && ((prima === false && stato.info.llm) || prepara || preparava)) mostraBenvenuto();
     } catch (e) { /* server momentaneamente irraggiungibile */ }
     clearTimeout(stato.timerInfo);
-    if (stato.info && !stato.info.llm) stato.timerInfo = setTimeout(aggiornaInfo, 10000);
+    const attiva = stato.info && stato.info.preparazione && stato.info.preparazione.attiva;
+    if (stato.info && !stato.info.llm) stato.timerInfo = setTimeout(aggiornaInfo, attiva ? 1000 : 10000);
   }
 
   // --- rastrelliera: un modulo per corso, una preselezione per lezione -------
@@ -579,6 +592,11 @@
     tasto.disabled = true;
     tasto.replaceChildren(icona("orologio"), "Preparo il PDF…");
     try {
+      if (window.pywebview) {  // app nativa: finestra Salva di macOS
+        const esito = await window.pywebview.api.salva(`/api/lezioni/${l.id}/scarica/pdf`, `${l.corso} - ${l.titolo}.pdf`);
+        if (esito && !esito.startsWith("/")) throw new Error(esito);
+        return;
+      }
       const risposta = await fetch(`/api/lezioni/${l.id}/scarica/pdf`);
       if (!risposta.ok) {
         let messaggio = `Errore ${risposta.status}`;
@@ -944,6 +962,15 @@
     if (daHash && stato.lezioni.some((l) => l.id === daHash)) await apriLezione(daHash);
     else mostraBenvenuto();
   }
+
+  // App nativa: i collegamenti di download passano dalla finestra Salva di macOS.
+  document.addEventListener("click", async (evento) => {
+    const a = evento.target.closest("a[href^='/api/']");
+    if (!a || !window.pywebview || a.target === "_blank") return;
+    evento.preventDefault();
+    const esito = await window.pywebview.api.salva(a.getAttribute("href"), "");
+    if (esito && !esito.startsWith("/")) alert(esito);
+  });
 
   avvia();
 })();

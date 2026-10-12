@@ -5,6 +5,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import tempfile
+import threading
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
@@ -30,7 +31,7 @@ from sbobina.audio import ffmpeg_disponibile
 from sbobina.coda import ATTIVI, Coda
 from sbobina.config import Config
 from sbobina.esporta import LIBRERIE, crea_pdf, esporta_pdf_html
-from sbobina.llm import costo_stimato
+from sbobina.llm import PREPARAZIONE, costo_stimato, prepara_locale
 from sbobina.pipeline import RIPARTENZE, Elaborazione, File, prepara_rielaborazione
 
 STATIC = Path(__file__).parent / "static"
@@ -127,10 +128,17 @@ def crea_app(
             "motori": list(config.motori),
             "locale": config.locale,
             "llm": config.llm_pronto,
+            "preparazione": PREPARAZIONE,
             "ffmpeg": ffmpeg_disponibile(),
             "verifica": config.verifica,
             "corsi": [{"nome": c.nome, "termini": len(c.glossario)} for c in archivio.corsi()],
         }
+
+    @app.post("/api/ai/prepara")
+    def prepara_ai() -> dict:
+        if config.locale:
+            threading.Thread(target=prepara_locale, args=(config.modello,), daemon=True).start()
+        return PREPARAZIONE
 
     @app.get("/api/lezioni")
     def elenco() -> list[dict]:

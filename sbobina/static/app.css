@@ -2,14 +2,14 @@
    Superfici estruse quando sono a riposo, incassate quando sono premute o selezionate. */
 
 @font-face {
-  font-family: "Geist";
-  src: url("/static/fonts/Geist-Variable.woff2") format("woff2");
+  font-family: "Saira";
+  src: url("/static/fonts/Saira-Variable.woff2") format("woff2");
   font-weight: 100 900;
   font-display: swap;
 }
 @font-face {
-  font-family: "Geist Mono";
-  src: url("/static/fonts/GeistMono-Variable.woff2") format("woff2");
+  font-family: "Martian Mono";
+  src: url("/static/fonts/MartianMono-Variable.woff2") format("woff2");
   font-weight: 100 900;
   font-display: swap;
 }
@@ -34,8 +34,8 @@
   --incassato-lieve: inset 2px 2px 5px var(--ombra), inset -2px -2px 5px var(--luce);
   --bordo-luce: 1px solid rgb(255 255 255 / 0.55);
 
-  --font-ui: "Geist", system-ui, -apple-system, sans-serif;
-  --font-dati: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-ui: "Saira", system-ui, -apple-system, sans-serif;
+  --font-dati: "Martian Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --t-legenda: 0.8125rem;
   --t-ui: 0.9375rem;
   --t-sezione: 1.25rem;
@@ -608,3 +608,6 @@ code { font-family: var(--font-dati); font-size: 0.9em; padding: 2px 7px; border
 .spunti { display: flex; flex-wrap: wrap; gap: 12px; }
 .spunti .tasto { white-space: normal; text-align: left; min-height: 44px; padding: 10px 18px; }
 .segnaposto .tasto { margin-top: 8px; }
+
+.avviso .preparazione { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.avviso .preparazione .mini-meter { flex: 1 1 160px; }

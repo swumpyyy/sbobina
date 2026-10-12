@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- Icona dell'app: la manopola di sintonia del pannello hi-fi, con la spia ambra accesa. Resa a 1024×1024 da crea_app_macos.sh. -->
+<html><head><meta charset="utf-8"><style>
+  html, body { margin: 0; width: 1024px; height: 1024px; background: transparent; }
+  .placca {
+    position: absolute; left: 100px; top: 100px; width: 824px; height: 824px; border-radius: 185px;
+    background: linear-gradient(145deg, #eef1f6, #d6dbe4);
+    box-shadow: inset 6px 6px 10px rgba(255,255,255,.9), inset -8px -8px 14px rgba(140,152,175,.35), 0 18px 40px rgba(60,70,90,.28);
+  }
+  .scala { position: absolute; inset: 0; }
+  .manopola {
+    position: absolute; left: 232px; top: 232px; width: 360px; height: 360px; border-radius: 50%;
+    background: linear-gradient(145deg, #f1f4f8, #d3d9e2);
+    box-shadow: 26px 26px 52px rgba(140,152,175,.55), -26px -26px 52px rgba(255,255,255,.95);
+  }
+  .manopola::after {
+    content: ""; position: absolute; inset: 46px; border-radius: 50%;
+    background: linear-gradient(325deg, #eef1f6, #d8dde6);
+    box-shadow: inset 8px 8px 16px rgba(140,152,175,.45), inset -8px -8px 16px rgba(255,255,255,.9);
+  }
+  .indice {
+    position: absolute; left: 50%; top: 22px; width: 22px; height: 92px; margin-left: -11px; border-radius: 11px;
+    background: #1d2330; transform-origin: 11px 158px; transform: rotate(38deg); z-index: 1;
+  }
+  .spia {
+    position: absolute; left: 640px; top: 190px; width: 62px; height: 62px; border-radius: 50%;
+    background: radial-gradient(circle at 38% 35%, #ffd2a8, #ff6a13 55%, #c94a00);
+    box-shadow: 0 0 34px 10px rgba(255,106,19,.45), inset 0 -4px 8px rgba(120,40,0,.35);
+  }
+</style></head><body>
+  <div class="placca">
+    <svg class="scala" viewBox="0 0 824 824" aria-hidden="true">
+      <g stroke="#7b8598" stroke-width="7" stroke-linecap="round">
+        <!-- tacche della scala attorno alla manopola, da -135° a +135° -->
+        <line x1="412" y1="118" x2="412" y2="150" transform="rotate(-135 412 412)"/>
+        <line x1="412" y1="118" x2="412" y2="150" transform="rotate(-90 412 412)"/>
+        <line x1="412" y1="118" x2="412" y2="150" transform="rotate(-45 412 412)"/>
+        <line x1="412" y1="118" x2="412" y2="150"/>
+        <line x1="412" y1="118" x2="412" y2="150" transform="rotate(45 412 412)"/>
+        <line x1="412" y1="118" x2="412" y2="150" transform="rotate(90 412 412)"/>
+        <line x1="412" y1="118" x2="412" y2="150" transform="rotate(135 412 412)"/>
+      </g>
+    </svg>
+    <div class="manopola"><div class="indice"></div></div>
+    <div class="spia"></div>
+  </div>
+</body></html>

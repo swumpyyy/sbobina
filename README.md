@@ -60,14 +60,14 @@ brew install ffmpeg            # macOS
 sudo apt install ffmpeg        # Ubuntu/Debian
 winget install ffmpeg          # Windows
 
-# Ollama: scarica l'app da https://ollama.com, aprila, poi una volta sola:
-ollama pull gemma4:12b         # circa 8 GB; con meno di 16 GB di RAM usa gemma4:latest
+# Ollama: scarica l'app da https://ollama.com. Il modello (circa 8 GB) lo scarica Sbobina
+# con il tasto "Prepara l'AI"; da terminale: ollama pull gemma4:12b
 
 # Sbobina
 git clone <questo repository> sbobina && cd sbobina
 python -m venv .venv
 source .venv/bin/activate      # su Windows: .venv\Scripts\activate
-pip install -e ".[locale]"     # [locale] = Whisper per la trascrizione gratuita
+pip install -e ".[locale,app]" # [locale] = Whisper gratuito, [app] = app nativa per macOS
 cp .env.example .env
 ```
 
@@ -81,8 +81,8 @@ aggiungere, se vuoi, servizi a pagamento:
 | `ELEVENLABS_API_KEY` | seconda trascrizione cloud (massima accuratezza) | elevenlabs.io |
 
 Senza chiavi di trascrizione Sbobina usa **Whisper in locale**. È gratuito e l'audio non lascia il tuo computer, ma senza una
-scheda video NVIDIA una lezione di 90 minuti può richiedere più di un'ora. Per andare più veloce
-puoi impostare `SBOBINA_WHISPER_MODELLO=large-v3-turbo`, un po' meno accurato.
+scheda video NVIDIA una lezione di 90 minuti può richiedere più di un'ora. Sui Mac con chip Apple
+(M1 e successivi) Sbobina usa invece **MLX Whisper** sulla GPU con il modello large-v3-turbo: molto più veloce.
 
 Controlla la configurazione con:
 
@@ -91,6 +91,18 @@ sbobina stato
 ```
 
 ## Uso
+
+### App per Mac
+
+```bash
+./scripts/crea_app_macos.sh
+```
+
+Crea **Sbobina.app** in `~/Applications` con la sua icona: aprila dal Launchpad o tienila nel Dock.
+Avvia da sola Ollama; se il modello non è ancora scaricato, il tasto **Prepara l'AI** lo scarica
+mostrando l'avanzamento. PDF, Markdown e trascrizioni si salvano con la normale finestra *Salva* di macOS.
+L'app usa il `.venv` di questa cartella: se sposti la cartella, rilancia lo script.
+Il registro degli errori è in `~/Library/Logs/Sbobina.log`.
 
 ### App web
 

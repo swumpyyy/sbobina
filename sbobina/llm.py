@@ -257,5 +257,61 @@ def locale_pronto(modello: str, url: str = OLLAMA_URL) -> bool:
     return modello in nomi or f"{modello}:latest" in nomi
 
 
+# Stato della preparazione dell'AI locale, letto da /api/stato: avvio di Ollama e download del modello.
+PREPARAZIONE: dict[str, Any] = {"attiva": False, "messaggio": "", "progresso": 0.0, "errore": ""}
+
+
+def avvia_ollama(url: str = OLLAMA_URL, attesa: float = 20.0) -> bool:
+    """Avvia Ollama se non risponde (app per macOS, altrimenti `ollama serve`). True se ora risponde."""
+    import shutil
+    import subprocess
+    import sys
+
+    def risponde() -> bool:
+        try:
+            return httpx2.get(f"{url}/api/version", timeout=1.0).status_code == 200
+        except httpx2.HTTPError:
+            return False
+
+    if risponde():
+        return True
+    if sys.platform == "darwin" and subprocess.run(["open", "-ga", "Ollama"], capture_output=True).returncode == 0:
+        pass
+    elif shutil.which("ollama"):
+        subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        return False
+    fine = time.monotonic() + attesa
+    while time.monotonic() < fine:
+        if risponde():
+            return True
+        time.sleep(0.5)
+    return False
+
+
+def prepara_locale(modello: str, url: str = OLLAMA_URL) -> None:
+    """Avvia Ollama e scarica il modello mostrando l'avanzamento in PREPARAZIONE. Da eseguire in un thread."""
+    if PREPARAZIONE["attiva"]:
+        return
+    PREPARAZIONE.update(attiva=True, messaggio="Avvio Ollama…", progresso=0.0, errore="")
+    try:
+        if not avvia_ollama(url):
+            raise ErroreClaude("Ollama non è installato: scaricalo da ollama.com e riapri Sbobina.")
+        if not locale_pronto(modello, url):
+            with httpx2.stream("POST", f"{url}/api/pull", json={"model": modello}, timeout=None) as risposta:
+                for riga in risposta.iter_lines():
+                    dati = json.loads(riga) if riga.strip() else {}
+                    if dati.get("error"):
+                        raise ErroreClaude(dati["error"])
+                    if dati.get("total"):
+                        PREPARAZIONE["progresso"] = dati.get("completed", 0) / dati["total"]
+                        PREPARAZIONE["messaggio"] = f"Scarico {modello}: {dati.get('completed', 0) / 1e9:.1f} di {dati['total'] / 1e9:.1f} GB"
+        PREPARAZIONE.update(messaggio="Pronta", progresso=1.0)
+    except (ErroreClaude, httpx2.HTTPError, ValueError) as e:
+        PREPARAZIONE["errore"] = str(e)
+    finally:
+        PREPARAZIONE["attiva"] = False
+
+
 def crea_modello(modello: str) -> ModelloLinguistico:
     return Claude(modello) if modello.startswith("claude") else Locale(modello)

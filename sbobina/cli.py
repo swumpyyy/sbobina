@@ -174,6 +174,7 @@ def main(argv: list[str] | None = None) -> None:
 
     comandi.add_parser("elenco", help="elenca le lezioni")
     comandi.add_parser("stato", help="mostra la configurazione")
+    comandi.add_parser("app", help="apre Sbobina come app nativa (finestra propria)")
 
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
@@ -182,7 +183,12 @@ def main(argv: list[str] | None = None) -> None:
     except ValueError as e:
         raise SystemExit(f"Configurazione non valida: {e}") from None
 
-    if args.comando == "server":
+    if args.comando == "app":
+        from sbobina.app import main as app
+
+        app()
+        codice = 0
+    elif args.comando == "server":
         codice = _comando_server(args, config)
     elif args.comando == "elabora":
         codice = _comando_elabora(args, config)
