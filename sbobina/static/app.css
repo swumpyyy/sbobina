@@ -1,0 +1,271 @@
+/* Interfaccia dell'app (i colori sono definiti in appunti.css). */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { font-size: 15px; }
+button, input, textarea, select { font: inherit; color: inherit; }
+
+.barra {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 20px;
+  background: color-mix(in srgb, var(--sfondo) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--bordo);
+}
+.marchio { display: flex; align-items: center; gap: 10px; }
+.marchio strong { display: block; font-size: 1.05rem; letter-spacing: -0.01em; }
+.marchio small { display: block; color: var(--testo-tenue); font-size: 0.8rem; }
+.logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--accento) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M9 11h14M9 16h14M9 21h9' stroke='white' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E") center/100% no-repeat;
+}
+
+button.primario, button.secondario, button.pericolo, a.bottone, summary.bottone {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  border: 1px solid var(--bordo);
+  background: var(--superficie);
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+button.primario { background: var(--accento); border-color: var(--accento); color: #fff; font-weight: 600; }
+button.primario:disabled { opacity: 0.6; cursor: default; }
+button.pericolo { color: var(--errore); }
+button.secondario:hover, a.bottone:hover, summary.bottone:hover, button.pericolo:hover { background: var(--superficie-2); }
+
+#avvisi-configurazione:empty { display: none; }
+#avvisi-configurazione { padding: 12px 20px 0; display: grid; gap: 8px; }
+.avviso {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--attenzione);
+  background: var(--attenzione-sfondo);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.avviso code { font-family: var(--font-codice); font-size: 0.85em; }
+.avviso.errore { border-color: var(--errore); }
+
+.layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 0;
+  min-height: calc(100vh - 60px);
+}
+.colonna-elenco {
+  border-right: 1px solid var(--bordo);
+  padding: 16px;
+  position: sticky;
+  top: 60px;
+  height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+#cerca {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--bordo);
+  border-radius: 9px;
+  background: var(--superficie);
+  margin-bottom: 12px;
+}
+.gruppo-corso h3 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--testo-tenue);
+  margin: 16px 6px 6px;
+}
+.voce {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  cursor: pointer;
+}
+.voce:hover { background: var(--superficie-2); }
+.voce.attiva { background: var(--accento-tenue); }
+.voce .titolo { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voce .sotto { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 0.8rem; color: var(--testo-tenue); }
+.voce .mini-progresso { flex: 1; height: 4px; border-radius: 4px; background: var(--bordo); overflow: hidden; }
+.voce .mini-progresso div { height: 100%; background: var(--accento); }
+.stato {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--superficie-2);
+}
+.stato.completata { color: var(--sintesi); background: var(--sintesi-sfondo); }
+.stato.errore { color: var(--errore); background: var(--attenzione-sfondo); }
+.stato.in_elaborazione, .stato.in_coda { color: var(--accento); background: var(--accento-tenue); }
+.vuoto-elenco { color: var(--testo-tenue); font-size: 0.9rem; padding: 8px 6px; }
+
+.contenuto { padding: 24px 32px 80px; min-width: 0; }
+.centrale { max-width: 860px; margin: 0 auto; }
+
+.benvenuto { max-width: 620px; margin: 8vh auto; text-align: center; }
+.benvenuto h1 { font-size: 1.8rem; letter-spacing: -0.02em; margin-bottom: 8px; }
+.benvenuto p { color: var(--testo-tenue); line-height: 1.6; }
+.passi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 28px 0; text-align: left; }
+.passo { background: var(--superficie); border: 1px solid var(--bordo); border-radius: 12px; padding: 14px; font-size: 0.88rem; line-height: 1.5; }
+.passo b { display: block; margin-bottom: 4px; font-size: 0.95rem; }
+
+.intestazione-lezione h1 { font-size: 1.6rem; letter-spacing: -0.02em; margin: 0 0 6px; }
+.meta-lezione { color: var(--testo-tenue); font-size: 0.9rem; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+
+.scheda-stato {
+  margin: 18px 0;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: var(--superficie);
+  border: 1px solid var(--bordo);
+}
+.scheda-stato .riga { display: flex; justify-content: space-between; gap: 12px; font-size: 0.92rem; }
+.scheda-stato .fase { font-weight: 600; }
+.scheda-stato .messaggio { color: var(--testo-tenue); font-size: 0.85rem; margin-top: 6px; }
+.progresso { height: 8px; border-radius: 8px; background: var(--superficie-2); overflow: hidden; margin-top: 10px; }
+.progresso div { height: 100%; width: 0; background: var(--accento); transition: width 0.6s ease; }
+.scheda-stato.errore { border-color: var(--errore); }
+.scheda-stato.errore .fase { color: var(--errore); }
+.scheda-stato .azioni { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+.lettore {
+  position: sticky;
+  top: 60px;
+  z-index: 5;
+  margin: 16px 0 0;
+  padding: 8px 0;
+  background: var(--sfondo);
+}
+.lettore audio { width: 100%; height: 40px; }
+
+.schede { display: flex; gap: 4px; border-bottom: 1px solid var(--bordo); margin: 8px 0 20px; overflow-x: auto; }
+.schede button {
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  color: var(--testo-tenue);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.schede button.attiva { color: var(--testo); border-bottom-color: var(--accento); }
+.schede .conteggio { font-size: 0.75rem; padding: 0 6px; border-radius: 999px; background: var(--superficie-2); margin-left: 4px; }
+
+.azioni-lezione { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 4px; }
+details.menu { position: relative; }
+details.menu > summary { list-style: none; }
+details.menu > summary::-webkit-details-marker { display: none; }
+details.menu .voci-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 300px;
+  padding: 6px;
+  background: var(--superficie);
+  border: 1px solid var(--bordo);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.12);
+}
+details.menu .voci-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 0;
+  background: none;
+  border-radius: 7px;
+  cursor: pointer;
+}
+details.menu .voci-menu button:hover { background: var(--superficie-2); }
+details.menu .voci-menu small { display: block; color: var(--testo-tenue); font-size: 0.8rem; }
+
+.nota-bozza { font-size: 0.88rem; color: var(--testo-tenue); background: var(--superficie-2); padding: 8px 12px; border-radius: 8px; }
+.segnaposto { color: var(--testo-tenue); padding: 32px 0; text-align: center; }
+.piede { margin-top: 40px; font-size: 0.82rem; color: var(--testo-tenue); }
+
+.verifica .giudizio { line-height: 1.6; }
+.problema {
+  border: 1px solid var(--bordo);
+  border-left-width: 4px;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 10px 0;
+  background: var(--superficie);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+.problema.alta { border-left-color: var(--errore); }
+.problema.media { border-left-color: var(--integrazione); }
+.problema.bassa { border-left-color: var(--bordo); }
+.problema .etichette { display: flex; gap: 6px; margin-bottom: 4px; }
+.problema dl { margin: 6px 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 3px 10px; }
+.problema dt { color: var(--testo-tenue); }
+.problema dd { margin: 0; }
+.termini { display: flex; flex-wrap: wrap; gap: 6px; }
+.termini span { font-size: 0.82rem; padding: 2px 8px; border-radius: 999px; background: var(--superficie-2); }
+
+dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  border: 1px solid var(--bordo);
+  border-radius: 14px;
+  background: var(--superficie);
+  color: var(--testo);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.25);
+}
+dialog::backdrop { background: rgb(0 0 0 / 0.35); }
+dialog form { padding: 20px 22px; display: grid; gap: 14px; }
+dialog h2 { margin: 0; font-size: 1.2rem; }
+dialog label { display: grid; gap: 5px; font-size: 0.9rem; }
+dialog label > span { font-weight: 500; }
+dialog label em { color: var(--errore); font-style: normal; }
+dialog label small, dialog .spiegazione { color: var(--testo-tenue); font-size: 0.8rem; font-weight: 400; line-height: 1.45; margin: 0; }
+dialog input:not([type="file"]), dialog textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--bordo);
+  border-radius: 8px;
+  background: var(--sfondo);
+}
+dialog textarea { resize: vertical; }
+.due-colonne { display: grid; grid-template-columns: 1fr 160px; gap: 12px; }
+.azioni-dialogo { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.caricamento span { font-size: 0.82rem; color: var(--testo-tenue); }
+.errore-modulo { color: var(--errore); font-size: 0.88rem; margin: 0; }
+
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+  .colonna-elenco { position: static; height: auto; max-height: 40vh; border-right: 0; border-bottom: 1px solid var(--bordo); }
+  .contenuto { padding: 16px 16px 64px; }
+  .passi { grid-template-columns: 1fr; }
+  .barra { padding: 10px 16px; }
+  .marchio small { display: none; }
+  .due-colonne { grid-template-columns: 1fr; }
+  details.menu .voci-menu { min-width: 260px; }
+}
+
+@media print {
+  .barra, .colonna-elenco, .lettore, .schede, .azioni-lezione, #avvisi-configurazione, .scheda-stato, .piede { display: none !important; }
+  .layout { display: block; }
+  .contenuto { padding: 0; }
+}

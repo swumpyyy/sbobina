@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sbobina</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232f5fd0'/%3E%3Cpath d='M9 11h14M9 16h14M9 21h9' stroke='white' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/appunti.css">
+<link rel="stylesheet" href="/static/app.css">
+<!-- LIBRERIE -->
+<script src="/static/render.js"></script>
+</head>
+<body>
+<header class="barra">
+  <div class="marchio">
+    <span class="logo" aria-hidden="true"></span>
+    <div>
+      <strong>Sbobina</strong>
+      <small>dalle registrazioni agli appunti</small>
+    </div>
+  </div>
+  <button class="primario" id="btn-nuova" type="button">+ Nuova lezione</button>
+</header>
+
+<div id="avvisi-configurazione"></div>
+
+<main class="layout">
+  <aside class="colonna-elenco">
+    <input type="search" id="cerca" placeholder="Cerca per titolo o corso…" aria-label="Cerca lezioni">
+    <nav id="elenco" aria-label="Lezioni"></nav>
+  </aside>
+  <section id="contenuto" class="contenuto" aria-live="polite"></section>
+</main>
+
+<dialog id="dialogo-nuova">
+  <form id="form-nuova">
+    <h2>Nuova lezione</h2>
+    <label>
+      <span>Registrazione audio <em>*</em></span>
+      <input type="file" name="audio" multiple required
+             accept="audio/*,video/*,.m4a,.mp3,.wav,.ogg,.opus,.flac,.aac,.amr,.3gp,.caf,.webm,.mp4,.wma">
+      <small>Puoi selezionarne più di una: ogni file diventa una lezione.</small>
+    </label>
+    <label>
+      <span>Corso <em>*</em></span>
+      <input name="corso" list="elenco-corsi" required placeholder="es. Analisi Matematica 1" autocomplete="off">
+      <datalist id="elenco-corsi"></datalist>
+    </label>
+    <div class="due-colonne">
+      <label>
+        <span>Titolo</span>
+        <input name="titolo" placeholder="es. Lezione 5 – Derivate">
+      </label>
+      <label>
+        <span>Data</span>
+        <input type="date" name="data">
+      </label>
+    </div>
+    <label>
+      <span>Materiali del corso <small>(facoltativi, migliorano molto l'accuratezza)</small></span>
+      <input type="file" name="materiali" multiple accept=".pdf,.txt,.md,.jpg,.jpeg,.png,.webp">
+      <small>Slide o dispense in PDF, foto della lavagna, testi.</small>
+    </label>
+    <label>
+      <span>Nomi e termini difficili <small>(facoltativi)</small></span>
+      <textarea name="termini" rows="2" placeholder="Nome del docente, autori, sigle, termini tecnici… separati da virgola"></textarea>
+    </label>
+    <label>
+      <span>Indicazioni <small>(facoltative)</small></span>
+      <textarea name="note" rows="2" placeholder="es. argomento della lezione, cose su cui insistere…"></textarea>
+    </label>
+    <div class="caricamento" hidden>
+      <div class="progresso"><div></div></div>
+      <span></span>
+    </div>
+    <p class="errore-modulo" hidden></p>
+    <div class="azioni-dialogo">
+      <button type="button" class="secondario" data-chiudi>Annulla</button>
+      <button type="submit" class="primario">Carica ed elabora</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dialogo-glossario">
+  <form id="form-glossario">
+    <h2>Glossario del corso</h2>
+    <p class="spiegazione">
+      Questi termini vengono suggeriti al riconoscimento vocale e a Claude per scriverli correttamente.
+      Il glossario cresce da solo dopo ogni lezione; puoi aggiungere nomi (es. del docente) o correggere grafie.
+      Un termine per riga.
+    </p>
+    <textarea name="termini" rows="14"></textarea>
+    <div class="azioni-dialogo">
+      <button type="button" class="secondario" data-chiudi>Annulla</button>
+      <button type="submit" class="primario">Salva</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
