@@ -59,16 +59,14 @@ aggiungendo il nome del docente).
 ## Installazione
 
 Ti servono **Python 3.10 o più recente** e **ffmpeg**. L'AI gratuita che scrive gli appunti gira sul tuo
-computer: sui Mac con Apple Silicon direttamente dentro Sbobina (motore **Integrato**, MLX), altrimenti con
-**Ollama**. Per creare i PDF serve anche Google Chrome (o Chromium o Edge).
+computer, direttamente dentro Sbobina (motore **Integrato**, MLX): serve un **Mac con Apple Silicon** (M1 o più
+recente). Su altri computer resta solo Claude, a pagamento. Per creare i PDF serve anche Google Chrome (o Chromium o Edge).
 
 ```bash
 # ffmpeg
 brew install ffmpeg            # macOS
 sudo apt install ffmpeg        # Ubuntu/Debian
 winget install ffmpeg          # Windows
-
-# Solo se non usi il motore Integrato: Ollama da https://ollama.com (il modello lo scarica Sbobina)
 
 # Sbobina
 git clone <questo repository> sbobina && cd sbobina
@@ -106,7 +104,7 @@ sbobina stato
 ```
 
 Crea **Sbobina.app** in `~/Applications` con la sua icona: aprila dal Launchpad o tienila nel Dock.
-Con `--dmg` crea invece `dist/Sbobina.dmg`, un'app autonoma (Python, ffmpeg e Ollama inclusi) da dare
+Con `--dmg` crea invece `dist/Sbobina.dmg`, un'app autonoma (Python, ffmpeg e i motori MLX inclusi) da dare
 a chiunque.
 
 Al primo avvio una procedura guidata chiede università, corso e area di studio, propone il modello
@@ -117,6 +115,25 @@ notifica e suono a fine lezione. Durante l'elaborazione puoi **fermare** e poi *
 salvato; il Dock mostra quante lezioni sono in lavorazione. PDF, Markdown e trascrizioni si salvano con la normale finestra *Salva* di macOS.
 L'app usa il `.venv` di questa cartella: se sposti la cartella, rilancia lo script.
 Il registro degli errori è in `~/Library/Logs/Sbobina.log`.
+
+### App per Windows
+
+Windows 10/11 con una scheda NVIDIA (pensato per una RTX serie 50 con 8 GB; non ancora provato su un PC vero). Una volta sola, dalla cartella del progetto:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\installa_windows.ps1
+```
+
+Installa Python 3.12 (se manca), i pacchetti e ffmpeg, e mette **Sbobina** sul Desktop. Al primo avvio l'app scarica:
+
+- **llama.cpp** (`llama-server.exe`, versione CUDA 13: serve un driver NVIDIA recente) e il modello **Gemma 4 in GGUF**
+  al posto di MLX. Con 8 GB di VRAM il consigliato è *Equilibrato* (E4B, 5 GB); i modelli più grandi partono lo stesso
+  ma mettono una parte in RAM e vanno più lenti.
+- **Whisper** con faster-whisper sulla GPU (DLL CUDA via pip); se CUDA non va, trascrive sul processore, più lento.
+
+Su Windows le foto delle slide passano dall'OCR di Windows (serve il pacchetto lingua italiano), le notifiche sono
+toast di sistema, il microfono è il primo dispositivo audio di DirectShow. Dati e modelli in `%LOCALAPPDATA%\Sbobina`,
+registro in `%LOCALAPPDATA%\Sbobina\sbobina.log` (e `llama-server.log` per il motore AI).
 
 ### App web
 
@@ -153,7 +170,7 @@ Gli appunti finiscono in `dati/lezioni/<id>/appunti.md` e `appunti.html` (aprila
 
 ## Costi
 
-- **Con le impostazioni predefinite Sbobina è gratuito**: Whisper e Gemma (via Ollama) girano sul tuo
+- **Con le impostazioni predefinite Sbobina è gratuito**: Whisper e Gemma (in MLX, dentro Sbobina) girano sul tuo
   computer. Il prezzo è il tempo: su un Mac con chip M una lezione di un'ora richiede indicativamente
   da mezz'ora a un'ora tra trascrizione e scrittura.
 - **Claude** (facoltativo): con Claude Opus 5.5 una lezione di 90 minuti costa indicativamente **2-4 $**.
@@ -184,7 +201,7 @@ sbobina/
   trascrizione/         motori: AssemblyAI, ElevenLabs, Whisper locale
   materiali.py          slide PDF, immagini, testi → contenuti per l'AI
   prompt.py             istruzioni per l'AI (revisione, appunti, verifica, correzione, approfondimento)
-  llm.py                modello che scrive: Integrato (MLX), Ollama o Claude
+  llm.py                modello che scrive: Integrato (MLX) o Claude; vista in diretta e download
   impostazioni.py       le scelte dello studente (impostazioni.json)
   sistema.py            il Mac (chip, memoria) e i modelli adatti
   studio.py             ricerca, quiz, flashcard e ripasso Leitner, domande alla lezione, Anki/Obsidian

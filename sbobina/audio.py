@@ -12,13 +12,20 @@ class ErroreAudio(RuntimeError):
 
 
 def ffmpeg_disponibile() -> bool:
+    if not (shutil.which("ffmpeg") and shutil.which("ffprobe")):
+        try:  # il pacchetto pip static-ffmpeg (usato su Windows) scarica ffmpeg e lo mette nel PATH
+            import static_ffmpeg
+
+            static_ffmpeg.add_paths()
+        except Exception:  # noqa: BLE001 - non installato o senza rete: resta il messaggio sotto
+            pass
     return bool(shutil.which("ffmpeg") and shutil.which("ffprobe"))
 
 
 def _esegui(comando: list[str]) -> str:
     if not ffmpeg_disponibile():
         raise ErroreAudio(
-            "ffmpeg non è installato: installalo (es. 'brew install ffmpeg' o 'sudo apt install ffmpeg')."
+            "ffmpeg non è installato: installalo (es. 'pip install static-ffmpeg', 'brew install ffmpeg' o 'sudo apt install ffmpeg')."
         )
     risultato = subprocess.run(comando, capture_output=True, text=True)
     if risultato.returncode != 0:

@@ -121,7 +121,7 @@ def _comando_stato(config: Config) -> int:
     print(f"Cartella dati:  {config.cartella_dati.resolve()}")
     print(f"Modello AI:     {config.modello} ({'locale, gratuito' if config.locale else 'Claude, a pagamento'})")
     if config.locale:
-        pronto = "pronto" if config.llm_pronto else f"NON PRONTO: apri Ollama ed esegui `ollama pull {config.modello}`"
+        pronto = "pronto" if config.llm_pronto else "NON PRONTO: apri l'app e premi «Prepara l'AI» per scaricare il modello"
     else:
         pronto = "chiave presente" if config.llm_pronto else "NON TROVATA (ANTHROPIC_API_KEY)"
     print(f"Stato AI:       {pronto}")

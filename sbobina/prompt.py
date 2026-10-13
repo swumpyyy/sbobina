@@ -192,14 +192,34 @@ Struttura (titoli esattamente così, in quest'ordine)
 > **In sintesi:** 3-6 righe sugli argomenti principali.
 
 ## Mappa concettuale
-Un blocco di codice con linguaggio `mappa` che contiene un elenco puntato annidato in Markdown: \
-radice = argomento della lezione, 2-4 livelli, etichette brevi (massimo 6 parole), niente formule. \
+Uno schema ad albero che lo studente ricopia a mano sul quaderno: deve far capire la lezione a colpo \
+d'occhio. Regole:
+- Apri il blocco con esattamente ```mappa e chiudilo con ```. Dentro solo un elenco puntato annidato \
+(due spazi per livello), niente altro testo.
+- Una sola radice: l'argomento della lezione. Se la lezione tratta più argomenti, la radice è il \
+titolo della lezione e gli argomenti sono i suoi figli.
+- Primo livello: 3-6 temi principali, nell'ordine della lezione. Sotto, al massimo 2 livelli. In tutto \
+15-25 nodi.
+- Ogni nodo è un concetto concreto che insegna qualcosa, non un'etichetta generica. Sbagliato: \
+"Definizione formale", "Proprietà", "Esempi". Giusto: "Immagine = valori assunti da f", \
+"Iniettiva: x diversi, y diverse".
+- Classificazioni: il padre dice cosa si divide ("Soggetto giuridico: 2 tipi"), ogni figlio è un tipo \
+con la sua differenza tra parentesi o dopo →, es. "Persona fisica → ditta individuale".
+- Contrapposizioni (A vs B): due figli separati, uno per lato, ciascuno con il tratto distintivo.
+- Articoli di legge e numeri esattamente come negli appunti (es. "Art. 2555 c.c."), mai inventati.
+- ⭐ davanti ai nodi che il docente ha indicato come importanti o da esame.
+- Etichette di massimo 6 parole, termini chiave in MAIUSCOLO come negli schemi da copiare; niente \
+formule, grassetto o altri simboli Markdown.
 Esempio:
 ```mappa
-- Argomento della lezione
-  - Primo concetto
-    - Dettaglio
-  - Secondo concetto
+- L'IMPRESA E IL SOGGETTO GIURIDICO
+  - ⭐ SOGGETTO GIURIDICO: 2 tipi
+    - PERSONA FISICA → ditta individuale
+    - PERSONA GIURIDICA → società
+  - Registro delle imprese = anagrafe imprese
+    - Iscrizione alla nascita
+    - Cancellazione alla cessazione
+  - Norme: Libro V Codice civile
 ```
 
 ## Appunti
@@ -350,8 +370,9 @@ def istruzioni_verifica(bozza: str, imp=None) -> str:
 
 def istruzioni_correzione(bozza: str, problemi: list[dict], imp=None) -> str:
     elenco = "\n".join(
-        f"{i}. [{p['tipo']}, gravità {p['gravita']}] {p['posizione']}\n"
-        f"   Evidenza: {p['evidenza']}\n   Correzione: {p['correzione']}"
+        # I modelli locali non rispettano sempre lo schema (es. "correzzione"): niente chiavi obbligatorie.
+        f"{i}. [{p.get('tipo', '')}, gravità {p.get('gravita', '')}] {p.get('posizione', '')}\n"
+        f"   Evidenza: {p.get('evidenza', '')}\n   Correzione: {p.get('correzione') or p.get('correzzione', '')}"
         for i, p in enumerate(problemi, 1)
     )
     return (

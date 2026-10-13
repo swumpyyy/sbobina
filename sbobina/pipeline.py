@@ -22,7 +22,7 @@ from sbobina.archivio import Archivio, Lezione, leggi_json, scrivi_atomico, scri
 from sbobina.config import Config
 from sbobina.esporta import esporta_html
 from sbobina import impostazioni
-from sbobina.llm import FERMA, ErroreClaude, Fermata, ModelloLinguistico, Utilizzo
+from sbobina.llm import FERMA, ErroreClaude, ErroreRipetizione, Fermata, ModelloLinguistico, Utilizzo
 from sbobina.materiali import Materiali, carica_materiali
 from sbobina.trascrizione.base import (
     Blocco,
@@ -292,6 +292,8 @@ class Elaborazione:
                 for nome, futuro in futuri.items():
                     try:
                         risultati[nome] = futuro.result()
+                    except Fermata:
+                        raise  # pausa dello studente, non un errore del motore
                     except Exception as e:  # noqa: BLE001 - con più motori, uno può fallire
                         log.exception("Motore %s non riuscito", nome)
                         errori[nome] = str(e) or type(e).__name__
@@ -363,12 +365,23 @@ class Elaborazione:
         migliore = ""
         for insisti in (False, True):
             messaggio = prompt.messaggio_revisione(blocco, totale, contesto, alternative, insisti=insisti)
-            testo, uso = self.llm.testo(
-                system=system,
-                contenuto=[{"type": "text", "text": messaggio}],
-                sforzo=self.config.sforzo_revisione,
-                max_tokens=32000,
-            )
+            try:
+                testo, uso = self.llm.testo(
+                    system=system,
+                    contenuto=[{"type": "text", "text": messaggio}],
+                    sforzo=self.config.sforzo_revisione,
+                    # La revisione è lunga quanto il blocco (~2 token a parola): un tetto basso ferma
+                    # in pochi minuti un modello entrato in loop invece di lasciarlo girare per mezz'ora.
+                    max_tokens=max(2048, blocco.numero_parole * 4),
+                )
+            except ErroreRipetizione:
+                if not insisti:
+                    continue
+                self._avviso(
+                    id_lezione,
+                    f"Il blocco {tempo(blocco.inizio)} non è stato rivisto (il modello si ripeteva): resta la trascrizione originale.",
+                )
+                return migliore or blocco.testo
             self._registra(id_lezione, "revisione", uso)
             testo = pulisci_markdown(testo)
             if not re.match(r"\[\d{1,2}:\d{2}", testo):

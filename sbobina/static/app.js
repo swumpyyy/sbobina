@@ -1,9 +1,11 @@
-/* Sbobina: interfaccia web (vetro, accenti blu). */
+/* Sbobina: interfaccia web (stile Lectio: carta, inchiostro, un accento, vetro su ciò che galleggia). */
 (function () {
   "use strict";
 
   const $ = (selettore, radice = document) => radice.querySelector(selettore);
   const ATTIVI = new Set(["in_coda", "in_elaborazione"]);
+  const MAC = /Mac/.test(navigator.userAgent);
+  const PC = MAC ? "Mac" : "PC";  // nei testi: "sul tuo Mac" / "sul tuo PC"
   const TIPI_PROBLEMA = {
     non_supportato: "Non detto a lezione",
     errato: "Errato",
@@ -173,7 +175,7 @@
     const pronta = info.llm;
     pillola.classList.toggle("spenta", !pronta);
     let testo;
-    if (info.locale) testo = pronta ? [info.motore === "mlx" ? "AI integrata" : "AI locale", h("span", { class: "testo-lungo" }, " · gratuita")] : ["AI non pronta"];
+    if (info.locale) testo = pronta ? ["AI integrata", h("span", { class: "testo-lungo" }, " · gratuita")] : ["AI non pronta"];
     else testo = pronta ? ["Claude", h("span", { class: "testo-lungo" }, " · a pagamento")] : ["Manca la chiave di Claude"];
     pillola.append(h("span", { class: "lampadina", "aria-hidden": "true" }), h("span", {}, ...testo));
     pillola.title = info.modello;
@@ -188,19 +190,15 @@
         h("strong", {}, "Manca ffmpeg, che serve per leggere l'audio."),
         h("span", {}, "Installalo e riavvia Sbobina.")));
     }
-    if (!info.llm && info.locale) {
+    if (!info.llm && info.locale && !(info.preparazione && info.preparazione.attiva)) {
+      // mentre scarica basta la barra sotto la testata
       const p = info.preparazione || {};
-      const corpo = p.attiva
-        ? h("div", { class: "preparazione" },
-            h("span", {}, p.messaggio),
-            h("span", { class: "mini-meter", role: "progressbar", "aria-valuenow": Math.round((p.progresso || 0) * 100),
-              "aria-valuemin": 0, "aria-valuemax": 100 }, h("div", { style: `--p:${p.progresso || 0}` })))
-        : h("div", { class: "preparazione" },
-            p.errore ? h("span", { role: "alert" }, p.errore) : h("span", {}, info.motore === "mlx" ? "Una volta sola: Sbobina scarica il modello sul tuo Mac." : "Una volta sola: Sbobina avvia Ollama e scarica il modello."),
+      const corpo = h("div", { class: "preparazione" },
+            p.errore ? h("span", { role: "alert" }, p.errore) : h("span", {}, `Una volta sola: Sbobina scarica il modello sul tuo ${PC}.`),
             h("button", { class: "tasto", type: "button", onclick: preparaAI }, p.errore ? "Riprova" : "Prepara l'AI"));
       avvisi.push(h("div", { class: "avviso", role: "status" }, icona("info"),
         h("strong", {}, "L'AI che scrive gli appunti non è ancora pronta."), corpo));
-    } else if (!info.llm) {
+    } else if (!info.llm && !info.locale) {
       avvisi.push(h("div", { class: "avviso", role: "status" }, icona("info"),
         h("strong", {}, "Manca la chiave di Claude."),
         h("span", {}, "Aggiungi ANTHROPIC_API_KEY al file .env, oppure torna al modello locale gratuito.")));
@@ -213,6 +211,42 @@
     aggiornaInfo();
   }
 
+  function formattaGB(byte) {
+    return (byte / 1e9).toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  }
+
+  /** La barra dei download dei modelli, sotto la testata: GB, velocità e tempo che manca. */
+  function mostraScarico() {
+    let barra = $("#scarico");
+    const p = (stato.info && stato.info.preparazione) || {};
+    const attiva = !!p.attiva && p.totale > 0;
+    if (!barra) {
+      if (!attiva) return;
+      barra = h("div", { class: "scarico", id: "scarico", role: "status" },
+        h("span", { class: "pozzetto" }, icona("scarica")),
+        h("div", { class: "testi" }, h("strong", { class: "cosa" }), h("span", { class: "quanto" })),
+        h("div", { class: "liquido", role: "progressbar", "aria-valuemin": 0, "aria-valuemax": 100 }, h("div", { class: "riempimento" })),
+        h("span", { class: "percentuale dati" }));
+      $(".testata").after(barra);
+    }
+    barra.classList.toggle("visibile", attiva);
+    if (!attiva) return;
+    const fatto = p.fatto || 0, totale = p.totale || 1, velocita = p.velocita || 0;
+    const quota = Math.min(1, fatto / totale);
+    const cosa = (p.messaggio || "Scarico i modelli").split(":")[0];
+    $(".cosa", barra).textContent = cosa;
+    let resto = "";
+    if (velocita > 50e3) {
+      const minuti = Math.ceil((totale - fatto) / velocita / 60);
+      resto = minuti <= 1 ? " · meno di un minuto" : minuti < 60 ? ` · circa ${minuti} min` : ` · circa ${Math.floor(minuti / 60)} h ${minuti % 60} min`;
+    } else if (/ferma/.test(p.messaggio || "")) resto = " · connessione ferma, riprovo";
+    $(".quanto", barra).textContent = `${formattaGB(fatto)} di ${formattaGB(totale)} GB` +
+      (velocita > 50e3 ? ` · ${(velocita / 1e6).toLocaleString("it-IT", { maximumFractionDigits: 1 })} MB/s` : "") + resto;
+    $(".riempimento", barra).style.setProperty("--p", String(quota));
+    $(".liquido", barra).setAttribute("aria-valuenow", String(Math.round(quota * 100)));
+    $(".percentuale", barra).textContent = `${Math.floor(quota * 100)}%`;
+  }
+
   async function aggiornaInfo() {
     try {
       const prima = stato.info && stato.info.llm;
@@ -220,12 +254,14 @@
       stato.info = await api("/api/stato");
       applicaAspetto();
       mostraStatoAI();
+      mostraScarico();
       const prepara = stato.info.preparazione && stato.info.preparazione.attiva;
-      if (stato.vista === "benvenuto" && ((prima === false && stato.info.llm) || prepara || preparava)) mostraBenvenuto();
+      if (stato.vista === "benvenuto" && ((prima === false && stato.info.llm) || !!prepara !== !!preparava)) mostraBenvenuto();
     } catch (e) { /* server momentaneamente irraggiungibile */ }
     clearTimeout(stato.timerInfo);
     const attiva = stato.info && stato.info.preparazione && stato.info.preparazione.attiva;
-    if (stato.info && !stato.info.llm) stato.timerInfo = setTimeout(aggiornaInfo, attiva ? 1000 : 10000);
+    // Ogni secondo mentre scarica (la barra si muove), altrimenti ogni 10 s: un download può partire da una lezione.
+    stato.timerInfo = setTimeout(aggiornaInfo, attiva ? 1000 : 10000);
   }
 
   // --- rastrelliera: un modulo per corso, una preselezione per lezione -------
@@ -328,7 +364,7 @@
         h("h1", {}, ciSonoLezioni
           ? ["Riprendi da dove eri, ", h("em", {}, "o aggiungi una lezione.")]
           : ["Dalla registrazione agli appunti, ", h("em", {}, "sul tuo computer.")]),
-        h("p", { class: "sottotitolo" }, "Sbobina trascrive la lezione, corregge i termini con le tue slide, scrive appunti con schemi e domande di ripasso e li ricontrolla con l'audio. Niente account, niente costi, l'audio non esce dal Mac."),
+        h("p", { class: "sottotitolo" }, `Sbobina trascrive la lezione, corregge i termini con le tue slide, scrive appunti con schemi e domande di ripasso e li ricontrolla con l'audio. Niente account, niente costi, l'audio non esce dal ${PC}.`),
         vassoio,
         ciSonoLezioni
           ? h("ul", { class: "contatori" },
@@ -386,7 +422,7 @@
   function consoleElaborazione(l) {
     const tappe = h("ol", { class: "tappe" }, TACCHE.map((t) =>
       h("li", { class: "tappa" }, h("span", { class: "punto", "aria-hidden": "true" }, icona("spunta")), t.etichetta)));
-    const console = h("section", { class: "pannello avanzamento", id: "console", "aria-label": "Elaborazione" },
+    const console = h("section", { "data-titolo": "Elaborazione 1.1", class: "pannello avanzamento", id: "console", "aria-label": "Elaborazione" },
       h("div", { class: "avanz-testa" },
         h("div", { class: "percento", "aria-hidden": "true" }, h("span", { class: "valore" }, "0"), h("span", { class: "unita" }, "%")),
         h("div", { class: "fase-blocco" },
@@ -395,9 +431,119 @@
         h("div", { class: "azioni" })),
       h("div", { class: "liquido", role: "progressbar", "aria-valuemin": 0, "aria-valuemax": 100 },
         h("div", { class: "riempimento" })),
-      tappe);
+      tappe,
+      quinte(l));
     aggiornaConsole(console, l);
     return console;
+  }
+
+  // --- dietro le quinte: cosa sta facendo l'AI, in diretta ----------------------
+
+  // Le parole che girano mentre l'AI lavora, come in Claude Code: metà in italiano, metà in inglese.
+  // Ogni tappa ha le sue (Whisper ascolta, la revisione lima, gli appunti si scarabocchiano) più quelle comuni.
+  const VERBI = {
+    comuni: ["Rimuginando", "Arzigogolando", "Almanaccando", "Elucubrando", "Ghiribizzando", "Macinando",
+      "Lambiccandosi", "Fantasticando", "Armeggiando", "Spignattando", "Frullando", "Sobbollendo", "Cogitando",
+      "Improvising", "Doodling", "Pondering", "Noodling", "Percolating", "Cogitating", "Mulling", "Musing",
+      "Ruminating", "Simmering", "Brewing", "Marinating", "Moseying", "Puttering", "Tinkering", "Combobulating",
+      "Flibbertigibbeting", "Reticulating", "Finagling", "Wrangling", "Conjuring", "Whirring"],
+    0: ["Preparando il terreno", "Accordando gli strumenti", "Warming up", "Tuning in"],
+    1: ["Origliando", "Sbobinando", "Tendendo l'orecchio", "Decifrando", "Eavesdropping", "Listening in", "Deciphering", "Transcribing"],
+    2: ["Rileggendo", "Limando", "Ripulendo", "Sgrovigliando", "Polishing", "Tidying up", "Untangling", "Proofreading"],
+    3: ["Scarabocchiando", "Abbozzando", "Impaginando", "Sferruzzando", "Scribbling", "Drafting", "Inking", "Weaving"],
+    4: ["Spulciando", "Scrutinando", "Setacciando", "Fact-checking", "Sussing", "Double-checking", "Scrutinizing"],
+    5: ["Approfondendo", "Scavando", "Rovistando", "Spelunking", "Digging deeper", "Unravelling"],
+  };
+
+  function verboACaso(tappa, precedente) {
+    const propri = VERBI[tappa] || [];
+    let scelto = precedente;
+    while (scelto === precedente) {
+      const lista = propri.length && Math.random() < 0.6 ? propri : VERBI.comuni;
+      scelto = lista[Math.floor(Math.random() * lista.length)];
+    }
+    return scelto;
+  }
+
+  const RIGA_WHISPER = /^\[([\d:]+)\.\d+ --> [\d:.]+\]\s*(.*)$/;
+
+  /** Il testo in diretta: le frasi di Whisper con il loro minuto, oppure gli appunti mentre il modello li scrive. */
+  function disegnaFlusso(flusso, testo, nuovi) {
+    const vecchio = testo.slice(0, testo.length - nuovi);
+    const righe = testo.split("\n");
+    if (RIGA_WHISPER.test(righe[0]) || RIGA_WHISPER.test(righe[1] || "")) { // la prima riga può essere tagliata
+      const quante = vecchio.split("\n").length - 1;
+      flusso.replaceChildren(...righe.filter((r) => r.trim()).map((riga, i) => {
+        const m = riga.match(RIGA_WHISPER);
+        return h("p", { class: i >= quante ? "frase fresca" : "frase" },
+          m ? h("span", { class: "minuto" }, m[1]) : null, m ? m[2] : riga);
+      }));
+    } else {
+      flusso.replaceChildren(h("p", { class: "scritto" }, vecchio,
+        nuovi ? h("span", { class: "fresca" }, testo.slice(-nuovi)) : null, h("span", { class: "cursore", "aria-hidden": "true" })));
+    }
+  }
+
+  function quinte(l) {
+    const verbo = h("span", { class: "verbo" }, "Rimuginando…");
+    const tempo = h("span", { class: "tempo dati" });
+    const chi = h("span", { class: "chi" });
+    const flusso = h("div", { class: "flusso", role: "log", "aria-live": "off", tabindex: "0", "aria-label": "Testo in diretta" },
+      h("p", { class: "attesa" }, "Tra poco qui compaiono le parole, man mano che l'AI le scrive."));
+    const girandola = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    girandola.setAttribute("class", "girandola");
+    girandola.setAttribute("viewBox", "0 0 24 24");
+    girandola.setAttribute("aria-hidden", "true");
+    girandola.innerHTML = '<g><path d="M12 3.5v17M4.6 7.75l14.8 8.5M4.6 16.25l14.8-8.5"/></g>'; // solo costanti
+    const sezione = h("details", { class: "quinte", open: localStorage.getItem("sbobina-quinte") !== "chiuse" },
+      h("summary", {}, girandola, h("span", { class: "riga-verbo" }, verbo, tempo), chi,
+        h("span", { class: "apri" }, icona("freccia"))),
+      flusso);
+    sezione.addEventListener("toggle", () => localStorage.setItem("sbobina-quinte", sezione.open ? "aperte" : "chiuse"));
+
+    // Si segue il fondo del testo, a meno che lo studente non stia rileggendo più su.
+    let segui = true;
+    flusso.addEventListener("scroll", () => { segui = flusso.scrollHeight - flusso.scrollTop - flusso.clientHeight < 40; });
+
+    let ultimoTesto = "";
+    let ultimoVerbo = "";
+    let cambioVerbo = 0;
+    const giro = async () => {
+      if (!sezione.isConnected) return; // la console è stata ridisegnata: questo giro finisce qui
+      const lezione = stato.lezioni.find((x) => x.id === l.id) || l;
+      const attiva = lezione.stato === "in_elaborazione";
+      sezione.classList.toggle("ferma", !attiva);
+      const tappa = indiceTacca(lezione.fase);
+      const scarica = stato.info && stato.info.preparazione && stato.info.preparazione.attiva;
+      chi.textContent = !attiva ? (lezione.stato === "in_coda" ? "In coda" : "In pausa")
+        : scarica ? "Aspetto il modello: lo sto scaricando"
+        : tappa === 1 ? "Whisper sta ascoltando la registrazione" : "Gemma sta scrivendo";
+      if (attiva && Date.now() > cambioVerbo) {
+        ultimoVerbo = verboACaso(tappa, ultimoVerbo);
+        verbo.textContent = `${ultimoVerbo}…`;
+        verbo.classList.remove("cambia");
+        void verbo.offsetWidth; // riavvia la transizione
+        verbo.classList.add("cambia");
+        cambioVerbo = Date.now() + 3800;
+      }
+      if (attiva && sezione.open && document.visibilityState === "visible") {
+        try {
+          const d = await api("/api/diretta");
+          if (!stato.diretta || stato.diretta.turno !== d.turno) stato.diretta = { turno: d.turno, inizio: Date.now() };
+          if (d.testo !== ultimoTesto) {
+            const nuovi = d.testo.startsWith(ultimoTesto) ? d.testo.length - ultimoTesto.length : 0;
+            if (d.testo) disegnaFlusso(flusso, d.testo, Math.min(nuovi, 400));
+            ultimoTesto = d.testo;
+            if (segui) flusso.scrollTop = flusso.scrollHeight;
+          }
+        } catch (e) { /* server occupato: si riprova al prossimo giro */ }
+      }
+      const secondi = stato.diretta ? Math.round((Date.now() - stato.diretta.inizio) / 1000) : 0;
+      tempo.textContent = attiva && secondi ? (secondi < 60 ? `${secondi} s` : `${Math.floor(secondi / 60)} min ${secondi % 60} s`) : "";
+      setTimeout(giro, attiva ? 700 : 2000);
+    };
+    setTimeout(giro, 0);
+    return sezione;
   }
 
   function aggiornaConsole(console, l) {
@@ -582,7 +728,7 @@
 
   function riempiScheda(area, d) {
     const l = d.lezione;
-    const foglio = h("section", { class: "foglio", id: "corpo-scheda", role: "tabpanel", "aria-labelledby": `scheda-${stato.scheda}` });
+    const foglio = h("section", { "data-titolo": `${stato.scheda[0].toUpperCase()}${stato.scheda.slice(1)} 1.1`, class: "foglio", id: "corpo-scheda", role: "tabpanel", "aria-labelledby": `scheda-${stato.scheda}` });
     if (stato.scheda === "appunti") mostraAppunti(foglio, d);
     else if (stato.scheda === "approfondimento") mostraApprofondimento(foglio, d);
     else if (stato.scheda === "trascrizione") mostraTrascrizione(foglio, d);
@@ -703,7 +849,7 @@
       evento.preventDefault();
       approfondisci(campo.value.trim(), errore);
     });
-    return h("section", { class: "pannello", "aria-labelledby": "titolo-espansione" },
+    return h("section", { "data-titolo": "Approfondimento 1.1", class: "pannello", "aria-labelledby": "titolo-espansione" },
       h("h2", { id: "titolo-espansione" }, "Approfondisci ancora"),
       h("p", {}, "Scegli un punto: l'AI aggiunge una nuova sezione all'approfondimento e al PDF. Ci vuole qualche minuto."),
       form);
@@ -998,7 +1144,7 @@
 
     riempiPiastra([
       ...avvisiConfigurazione(),
-      h("section", { class: "pannello", "aria-labelledby": "titolo-nuova" },
+      h("section", { "data-titolo": "Nuova lezione 1.1", class: "pannello", "aria-labelledby": "titolo-nuova" },
         h("h2", { id: "titolo-nuova" }, "Nuova lezione"),
         h("p", {}, "Scegli l'audio e il corso. Al resto pensa Sbobina, sul tuo computer."),
         form)]);
@@ -1089,7 +1235,7 @@
         errore.hidden = false;
       }
     });
-    riempiPiastra([h("section", { class: "pannello", "aria-labelledby": "titolo-glossario" },
+    riempiPiastra([h("section", { "data-titolo": "Glossario 1.1", class: "pannello", "aria-labelledby": "titolo-glossario" },
       h("h2", { id: "titolo-glossario" }, `Glossario di ${corso}`),
       h("p", { id: "spiega-glossario" },
         "Questi termini aiutano il riconoscimento vocale e l'AI a scriverli giusti. Il glossario cresce da solo dopo ogni lezione: aggiungi il nome del docente o correggi una grafia sbagliata."),
@@ -1321,7 +1467,7 @@
     riempiPiastra([
       h("header", { class: "intestazione" }, h("h1", {}, "Ripasso di oggi"),
         h("p", { class: "sottotitolo" }, "Le flashcard di tutte le lezioni che oggi tocca rivedere.")),
-      h("section", { class: "foglio" }, sessioneRipasso(carte, "Hai ripassato tutto")),
+      h("section", { "data-titolo": "Ripasso 1.1", class: "foglio" }, sessioneRipasso(carte, "Hai ripassato tutto")),
     ]);
   }
 
@@ -1382,9 +1528,9 @@
       inCorso(false);
       tempo.textContent = "0:00";
     });
-    const pannello = h("section", { class: "pannello registrazione", "aria-labelledby": "titolo-reg" },
+    const pannello = h("section", { "data-titolo": "Registratore 1.1 · REC", class: "pannello registrazione", "aria-labelledby": "titolo-reg" },
       h("h2", { id: "titolo-reg" }, "Registra la lezione"),
-      h("p", {}, "Tieni il Mac vicino al docente. Puoi usare altre app mentre registri; alla fine Sbobina crea gli appunti da sola."),
+      h("p", {}, `Tieni il ${PC} vicino al docente. Puoi usare altre app mentre registri; alla fine Sbobina crea gli appunti da sola.`),
       h("div", { class: "quadrante-reg" }, vu, tempo),
       h("div", { class: "due" },
         h("label", { class: "campo" }, h("span", {}, "Corso"), corso, corsi),
@@ -1433,7 +1579,11 @@
   function applicaAspetto(i = imp()) {
     const radice = document.documentElement;
     if (i.tema && i.tema !== "sistema") radice.dataset.tema = i.tema; else delete radice.dataset.tema;
-    if (i.accento && i.accento !== "blu") radice.dataset.accento = i.accento; else delete radice.dataset.accento;
+    if (i.accento && i.accento !== "rosa") radice.dataset.accento = i.accento; else delete radice.dataset.accento;
+    // Tema personalizzato: l'accento scelto, e il desktop di registrazione è lo stesso colore schiarito.
+    radice.style.setProperty("--colore-tuo", i.colore || "#d45bb6");
+    if (i.griglia === false) radice.dataset.griglia = "no"; else delete radice.dataset.griglia;
+    if (i.vetro === false) radice.dataset.vetro = "no"; else delete radice.dataset.vetro;
     if (i.animazioni_ridotte) radice.dataset.movimento = "ridotto"; else delete radice.dataset.movimento;
     radice.style.fontSize = i.scala_testo && i.scala_testo !== 100 ? `${i.scala_testo}%` : "";
     if (window.pywebview && window.pywebview.api.tema) {
@@ -1524,7 +1674,7 @@
           m.consigliato ? h("span", { class: "distintivo" }, "Consigliato") : null,
           m.installato ? h("span", { class: "distintivo pieno" }, "Scaricato") : null),
         h("span", { class: "modello-dati" }, `${m.gb.toLocaleString("it-IT")} GB · da ${m.ram} GB di memoria`),
-        h("small", {}, m.adatto ? m.descrizione : `Serve un Mac con almeno ${m.ram} GB di memoria.`)));
+        h("small", {}, m.adatto ? m.descrizione : MAC ? `Serve un Mac con almeno ${m.ram} GB di memoria.` : "Troppo grande per la scheda video di questo PC: sarebbe molto lento.")));
     }
     return gruppo;
   }
@@ -1552,12 +1702,12 @@
         tasto.disabled = false;
         tasto.replaceChildren(icona("ricarica"), "Riprova");
       } else if (stato.info.llm) {
-        testo.textContent = "Tutto pronto: i modelli sono sul tuo Mac.";
+        testo.textContent = `Tutto pronto: i modelli sono sul tuo ${PC}.`;
         tasto.hidden = true;
         mostraStatoAI();
         if (onPronta) onPronta();
       } else {
-        testo.textContent = "Una volta sola: scarico i modelli sul tuo Mac. Puoi continuare a usare il computer.";
+        testo.textContent = `Una volta sola: scarico i modelli sul tuo ${PC}. Puoi continuare a usare il computer.`;
         tasto.disabled = false;
         tasto.hidden = false;
       }
@@ -1581,7 +1731,7 @@
     }
     stato.vista = "impostazioni";
     const i = imp();
-    const sezione = (id, titolo, testo, ...figli) => h("section", { class: "pannello imp", "aria-labelledby": id },
+    const sezione = (id, titolo, testo, ...figli) => h("section", { "data-titolo": `${titolo} 1.1`, class: "pannello imp", "aria-labelledby": id },
       h("h2", { id }, titolo), testo ? h("p", {}, testo) : null, ...figli);
 
     // AI: motore, modello, chiave, Whisper
@@ -1590,10 +1740,9 @@
       const c = imp();
       const mac = sistema.mac;
       const pezzi = [
-        riga("Chi scrive gli appunti", "Integrato e Ollama sono gratuiti e restano sul Mac; Claude è a pagamento.",
+        riga("Chi scrive gli appunti", `Integrato è gratuito e resta sul ${PC}; Claude è a pagamento.`,
           scelte("motore", [
             ["mlx", "Integrato", "Il modello gira dentro Sbobina, senza altri programmi"],
-            ["ollama", "Ollama", "Usa l'app Ollama installata sul Mac"],
             ["claude", "Claude", "API di Anthropic, a pagamento"]], c.motore_llm,
             (v) => cambia({ motore_llm: v }, disegnaAI))),
       ];
@@ -1601,7 +1750,7 @@
         const chiave = h("input", { type: "password", value: c.chiave_claude || "", placeholder: "sk-ant-…", autocomplete: "off", spellcheck: "false" });
         chiave.addEventListener("change", () => cambia({ chiave_claude: chiave.value.trim() }));
         pezzi.push(h("label", { class: "campo" }, h("span", {}, "Chiave API di Claude"), chiave,
-          h("small", {}, "Resta solo su questo Mac, nel file impostazioni.json.")));
+          h("small", {}, `Resta solo su questo ${PC}, nel file impostazioni.json.`)));
       } else {
         pezzi.push(h("p", { class: "mac" }, icona("info"),
           `${mac.chip} · ${mac.ram_gb} GB di memoria · ${mac.disco_libero_gb.toLocaleString("it-IT")} GB liberi`),
@@ -1631,12 +1780,25 @@
     });
     scala.addEventListener("change", () => cambia({ scala_testo: Number(scala.value) }));
 
-    const accenti = h("div", { class: "accenti", role: "radiogroup", "aria-label": "Colore di accento" },
-      [["blu", "Blu"], ["indaco", "Indaco"], ["azzurro", "Azzurro"], ["verde", "Verde acqua"]].map(([chiave, nome]) => {
-        const input = h("input", { type: "radio", name: "accento", value: chiave, checked: (i.accento || "blu") === chiave, "aria-label": nome });
+    // Temi colore come in Lectio: ogni campione è una finestrella con la barra del titolo e il suo accento.
+    const TEMI_COLORE = [["rosa", "Jev rosa"], ["menta", "Menta"], ["arancio", "Arancio"], ["cobalto", "Cobalto"],
+      ["limone", "Limone"], ["seppia", "Seppia"], ["personalizzato", "Tuo colore"]];
+    const pozzetto = h("input", { type: "color", value: i.colore || "#d45bb6", "aria-label": "Scegli il colore" });
+    const codice = h("output", { class: "dati codice-colore" }, (i.colore || "#d45bb6").toUpperCase());
+    pozzetto.addEventListener("input", () => {
+      codice.textContent = pozzetto.value.toUpperCase();
+      applicaAspetto({ ...imp(), accento: "personalizzato", colore: pozzetto.value });
+    });
+    pozzetto.addEventListener("change", () => cambia({ accento: "personalizzato", colore: pozzetto.value }));
+    const accenti = h("div", { class: "temi-colore", role: "radiogroup", "aria-label": "Tema colore" },
+      TEMI_COLORE.map(([chiave, nome]) => {
+        const input = h("input", { type: "radio", name: "accento", value: chiave, checked: (i.accento || "rosa") === chiave });
         input.addEventListener("change", () => input.checked && cambia({ accento: chiave }));
-        return h("label", { class: `campione ${chiave}`, title: nome }, input);
+        const stile = chiave === "personalizzato" ? `--c:${i.colore || "#d45bb6"}` : null;
+        return h("label", { class: `tema-colore ${chiave}`, style: stile }, input,
+          h("span", { class: "anteprima", "aria-hidden": "true" }, h("i"), h("b")), h("span", { class: "nome" }, nome));
       }));
+    const personalizza = h("label", { class: "pozzetto-colore" }, pozzetto, codice);
 
     const campoProfilo = (nome, etichetta, segnaposto) => {
       const input = h("input", { value: i[nome] || "", placeholder: segnaposto, autocomplete: "off" });
@@ -1660,7 +1822,7 @@
           h("summary", {}, icona("freccia"), "Impostazioni avanzate"),
           h("div", { class: "campi" },
             riga("Creatività", "Bassa = più fedele alla lezione. Consigliato 0,3.", h("div", { class: "cursore-valore" }, temperatura, valoreTemp)),
-            riga("Memoria per lezione", "Quanta lezione il modello legge insieme. Automatica in base al tuo Mac.",
+            riga("Memoria per lezione", `Quanta lezione il modello legge insieme. Automatica in base al tuo ${PC}.`,
               scelte("contesto", [["0", "Auto"], ["32768", "32 mila"], ["65536", "64 mila"], ["131072", "128 mila"]],
                 String(i.contesto || 0), (v) => cambia({ contesto: Number(v) }))),
             h("label", { class: "campo" }, h("span", {}, "Istruzioni personali per gli appunti"), istruzioni,
@@ -1674,19 +1836,24 @@
         scelte("pdf", [["appunti", "Solo appunti"], ["approfondimento", "Appunti + approfondimento"], ["trascrizione", "Con la trascrizione"]],
           i.pdf, (v) => cambia({ pdf: v }))),
       sezione("imp-aspetto", "Aspetto", null,
-        riga("Tema", null, scelte("tema", [["sistema", "Come il Mac"], ["chiaro", "Chiaro"], ["scuro", "Scuro"]], i.tema, (v) => cambia({ tema: v }))),
-        riga("Colore", null, accenti),
+        riga("Tema", null, scelte("tema", [["sistema", `Come il ${PC}`], ["chiaro", "Chiaro"], ["scuro", "Scuro"]], i.tema, (v) => cambia({ tema: v }))),
+        riga("Colore", "L'accento e il rosa del desktop mentre registri.", accenti),
+        riga("Tuo colore", "Scegli un accento qualsiasi: vale per il tema «Tuo colore».", personalizza),
+        h("div", { class: "griglia-interruttori" },
+          interruttore("Griglia a puntini", i.griglia !== false, (v) => cambia({ griglia: v }), "Lo sfondo a quadretti di Lectio."),
+          interruttore("Vetro", i.vetro !== false, (v) => cambia({ vetro: v }), "Trasparenze sulla barra, i download e i comandi. Spento: carta piena."),
+          interruttore("Riduci le animazioni", i.animazioni_ridotte, (v) => cambia({ animazioni_ridotte: v }), "Utile se il movimento ti distrae.")),
         riga("Dimensione del testo", "Vale per appunti e trascrizioni.", h("div", { class: "cursore-valore" }, scala, valoreScala)),
-        interruttore("Riduci le animazioni", i.animazioni_ridotte, (v) => cambia({ animazioni_ridotte: v }), "Utile se il movimento ti distrae.")),
+      ),
       sezione("imp-fine", "Quando una lezione è pronta", null,
         h("div", { class: "griglia-interruttori" },
           interruttore("Notifica", i.notifiche, (v) => { cambia({ notifiche: v }); if (v) chiediPermessoNotifiche(); }, "Anche se Sbobina è in secondo piano."),
           interruttore("Suono", i.suono, (v) => { cambia({ suono: v }); if (v) suonoFine(); }, "Un breve accordo."))),
-      sezione("imp-dati", "I tuoi dati", "Audio, trascrizioni e appunti restano in questa cartella, sul tuo Mac.",
+      sezione("imp-dati", "I tuoi dati", `Audio, trascrizioni e appunti restano in questa cartella, sul tuo ${PC}.`,
         h("div", { class: "riga-dati" },
           h("code", {}, sistema.cartella_dati),
           h("button", { class: "tasto", type: "button", onclick: () => api("/api/cartella-dati", { method: "POST" }) },
-            icona("graffetta"), "Mostra nel Finder"))),
+            icona("graffetta"), MAC ? "Mostra nel Finder" : "Apri in Esplora file"))),
     ]);
   }
 
@@ -1750,7 +1917,7 @@
     if (passo === 0) {
       corpo = [
         h("h1", {}, "Ciao, sono ", h("em", {}, "Sbobina.")),
-        h("p", { class: "sottotitolo" }, "Trasformo le registrazioni delle lezioni in appunti chiari, con schemi, glossario e domande di ripasso. Lavoro tutto sul tuo Mac: gratis, senza account, e l'audio non esce dal computer."),
+        h("p", { class: "sottotitolo" }, `Trasformo le registrazioni delle lezioni in appunti chiari, con schemi, glossario e domande di ripasso. Lavoro tutto sul tuo ${PC}: gratis, senza account, e l'audio non esce dal computer.`),
         h("p", { class: "sottotitolo" }, "Ti faccio tre domande e preparo l'AI. Ci vogliono un paio di minuti più il download."),
         piede(h("button", { class: "tasto grande", type: "button", onclick: () => avanti(1) }, icona("freccia"), "Iniziamo")),
       ];
@@ -1776,15 +1943,14 @@
       ];
     } else if (passo === 2) {
       const mac = sistema.mac;
-      let motore = mac.apple_silicon ? "mlx" : "ollama";
+      const motore = mac.ai_locale ? "mlx" : "claude"; // AI integrata: chip Apple (MLX) o Windows (llama.cpp)
       let modello = sistema.consigliato;
       corpo = [
-        h("h1", {}, "Scegliamo l'AI per il tuo Mac"),
+        h("h1", {}, `Scegliamo l'AI per il tuo ${PC}`),
         h("p", { class: "mac" }, icona("info"), `${mac.chip} · ${mac.ram_gb} GB di memoria · ${mac.disco_libero_gb.toLocaleString("it-IT")} GB liberi`),
-        mac.apple_silicon
-          ? riga("Dove gira", "Integrato non richiede altri programmi. Ollama se lo usi già.",
-              scelte("motore", [["mlx", "Integrato (consigliato)"], ["ollama", "Ollama"]], motore, (v) => { motore = v; }))
-          : null,
+        mac.ai_locale ? null
+          : h("p", { class: "avviso", role: "status" }, icona("info"),
+              "L'AI gratuita gira sui Mac con chip Apple (M1 o più recenti) e sui PC Windows: su questo computer serve Claude, a pagamento."),
         schedeModelli(sistema, modello, (v) => { modello = v; }),
         piede(indietro, h("button", { class: "tasto grande", type: "button", onclick: async () => {
           await salvaImpostazioni({ motore_llm: motore, modello, whisper: "large-v3-turbo" });
@@ -1808,7 +1974,7 @@
       // Parte da solo: lo studente ha già scelto tutto.
       setTimeout(() => { const t = prep.querySelector(".tasto.grande"); if (t && !t.hidden && !t.disabled) t.click(); }, 400);
     }
-    riempiPiastra([h("section", { class: "pannello primo-avvio" }, punti, ...corpo)]);
+    riempiPiastra([h("section", { "data-titolo": "Benvenuto 1.1", class: "pannello primo-avvio" }, punti, ...corpo)]);
   }
 
   // --- avvio --------------------------------------------------------------

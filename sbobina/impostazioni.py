@@ -4,17 +4,21 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import asdict, dataclass, field, fields, replace
 from pathlib import Path
 
 from sbobina.config import Config
-from sbobina.sistema import MODELLI, contesto_massimo, info_mac
+from sbobina.llm import repo_mlx
+from sbobina.sistema import contesto_massimo, info_mac
 
-MOTORI_LLM = ("ollama", "mlx", "claude")
+MOTORI_LLM = ("mlx", "claude")
 LUNGHEZZE = ("essenziale", "normale", "dettagliata")
 STILI = ("discorsivo", "schematico")
 TEMI = ("sistema", "chiaro", "scuro")
-ACCENTI = ("blu", "indaco", "azzurro", "verde")
+# Temi colore (stile Lectio): l'accento e il rosa del desktop mentre si registra. "personalizzato" usa `colore`.
+ACCENTI = ("rosa", "menta", "arancio", "cobalto", "limone", "seppia", "personalizzato")
+_ACCENTI_VECCHI = {"blu": "cobalto", "indaco": "cobalto", "azzurro": "cobalto", "verde": "menta"}
 PDF = ("appunti", "approfondimento", "trascrizione")
 SEZIONI = ("mappa", "schemi", "domande", "glossario", "indicazioni", "approfondimento", "verifica")
 
@@ -41,7 +45,7 @@ class Impostazioni:
     area: str = "economia"
     anno: str = ""
     # AI
-    motore_llm: str = "ollama"
+    motore_llm: str = "mlx"
     modello: str = ""  # vuoto: quello della configurazione
     chiave_claude: str = ""
     whisper: str = ""  # vuoto: quello della configurazione
@@ -56,7 +60,10 @@ class Impostazioni:
     pdf: str = "appunti"
     # Aspetto
     tema: str = "sistema"
-    accento: str = "blu"
+    accento: str = "rosa"
+    colore: str = "#d45bb6"  # accento del tema personalizzato
+    griglia: bool = True  # sfondo a puntini
+    vetro: bool = True  # trasparenze sugli elementi che galleggiano
     animazioni_ridotte: bool = False
     scala_testo: int = 100
     # Fine lezione
@@ -83,6 +90,10 @@ class Impostazioni:
                 continue
             if chiave == "chiave_claude" and isinstance(valore, str) and valore.startswith("••••"):
                 continue  # il client rimanda la chiave mascherata: non cambia
+            if chiave == "accento" and valore in _ACCENTI_VECCHI:
+                valore = _ACCENTI_VECCHI[valore]  # colori del tema a vetro blu, prima di Lectio
+            if chiave == "motore_llm" and valore == "ollama":
+                valore = "mlx"  # Ollama non c'è più: stessi modelli Gemma, ora dentro Sbobina
             if chiave == "sezioni":
                 if isinstance(valore, dict):
                     imp.sezioni.update({k: bool(v) for k, v in valore.items() if k in SEZIONI})
@@ -110,6 +121,8 @@ class Impostazioni:
         ):
             if getattr(self, nome) not in ammessi:
                 raise ValueError(f"Valore non valido per {nome}: {getattr(self, nome)!r} (ammessi: {', '.join(ammessi)})")
+        if not re.fullmatch(r"#[0-9a-fA-F]{6}", self.colore):
+            raise ValueError("Il colore va scritto come #RRGGBB.")
         if not 0.0 <= self.temperatura <= 1.5:
             raise ValueError("La temperatura va da 0 a 1,5.")
         if self.contesto and not 8192 <= self.contesto <= 262144:
@@ -128,10 +141,8 @@ class Impostazioni:
             modello = "claude-opus-5-5"
         elif self.motore_llm != "claude" and modello.startswith("claude"):
             modello = Config.modello
-        if self.motore_llm == "mlx" and "/" not in modello:
-            modello = next((m["mlx"] for m in MODELLI if m["tag"] == modello), MODELLI[2]["mlx"])
-        elif self.motore_llm == "ollama" and "/" in modello:
-            modello = next((m["tag"] for m in MODELLI if m["mlx"] == modello), Config.modello)
+        if self.motore_llm == "mlx":
+            modello = repo_mlx(modello)
         if self.chiave_claude:
             os.environ["ANTHROPIC_API_KEY"] = self.chiave_claude
         return replace(
@@ -143,7 +154,7 @@ class Impostazioni:
 
 
     def contesto_effettivo(self) -> int:
-        return self.contesto or contesto_massimo(info_mac()["ram_gb"])
+        return self.contesto or contesto_massimo(info_mac()["memoria_ai_gb"])
 
 
 def percorso(cartella_dati: Path) -> Path:

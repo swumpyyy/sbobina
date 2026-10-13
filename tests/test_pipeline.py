@@ -243,3 +243,32 @@ def test_fermata_e_ripresa(config, archivio, audio_prova, tmp_path):
 
     prepara_rielaborazione(archivio, lezione.id, "riprendi")
     assert elaborazione.esegui(lezione.id).stato == "completata"
+
+
+def test_fermata_durante_la_trascrizione(config, archivio, audio_prova, tmp_path):
+    from sbobina.llm import FERMA
+
+    class MotoreFermato(FintoMotore):
+        def trascrivi(self, audio, *, avanzamento, **kw):
+            FERMA.set()  # il pulsante "Ferma" mentre Whisper lavora
+            avanzamento(0.5)
+            return super().trascrivi(audio, avanzamento=avanzamento, **kw)
+
+    lezione = _crea(archivio, audio_prova, tmp_path, materiali=False)
+    risultato = Elaborazione(config, archivio, FintoLLM(), [MotoreFermato()]).esegui(lezione.id)
+    assert risultato.stato == "fermata" and risultato.errore == ""
+
+
+def test_blocco_in_loop_resta_trascrizione_originale(config, archivio, audio_prova, tmp_path):
+    from sbobina.llm import ErroreRipetizione
+
+    class LLMInLoop(FintoLLM):
+        def testo(self, *, system, **kw):
+            if isinstance(system, list):  # la revisione dei blocchi
+                raise ErroreRipetizione("loop")
+            return super().testo(system=system, **kw)
+
+    lezione = _crea(archivio, audio_prova, tmp_path, materiali=False)
+    risultato = Elaborazione(config, archivio, LLMInLoop(), [FintoMotore()]).esegui(lezione.id)
+    assert risultato.stato == "completata"
+    assert any("si ripeteva" in a for a in risultato.avvisi)

@@ -1,4 +1,4 @@
-"""Modelli linguistici: in locale con Ollama (gratuito) oppure Claude (Anthropic API, a pagamento)."""
+"""Modelli linguistici: in locale (gratuito: MLX su Mac, llama.cpp su Windows) oppure Claude (Anthropic API, a pagamento)."""
 
 from __future__ import annotations
 
@@ -33,6 +33,10 @@ PREZZI = {
 
 class ErroreClaude(RuntimeError):
     pass
+
+
+class ErroreRipetizione(ErroreClaude):
+    """Il modello locale è entrato in un loop: meglio fermarlo subito che aspettare il limite di token."""
 
 
 class Fermata(Exception):
@@ -177,9 +181,6 @@ class Claude:
         return testo, utilizzo
 
 
-OLLAMA_URL = "http://localhost:11434"
-
-
 def _testo_documento(blocco: dict) -> str:
     """I modelli locali non leggono i PDF: ne passiamo il testo estratto."""
     pdf = PdfReader(io.BytesIO(base64.standard_b64decode(blocco["source"]["data"])))
@@ -187,174 +188,42 @@ def _testo_documento(blocco: dict) -> str:
     return f"<materiale nome=\"{blocco.get('title', 'documento')}\">\n{testo}\n</materiale>" if testo else ""
 
 
-class Locale:
-    """Modello open source eseguito sul computer da Ollama: gratuito e senza inviare dati all'esterno."""
+# Stato della preparazione dell'AI locale, letto da /api/stato: download dei modelli (byte, velocità in byte/s).
+PREPARAZIONE: dict[str, Any] = {
+    "attiva": False, "messaggio": "", "progresso": 0.0, "errore": "", "fatto": 0, "totale": 0, "velocita": 0.0,
+}
 
-    def __init__(
-        self, modello: str, *, url: str = OLLAMA_URL, client: httpx2.Client | None = None, contesto: int = 65536,
-        temperatura: float | None = None,
-    ):
-        self.modello = modello
-        self.temperatura = temperatura
-        self.url = url.rstrip("/")
-        # Trascrizione di una lezione lunga + slide supera i 40.000 token: il contesto predefinito di Ollama non basta.
-        self.contesto = contesto
-        # Su un portatile la scrittura degli appunti può richiedere molti minuti.
-        self.client = client or httpx2.Client(timeout=httpx2.Timeout(30.0, read=3600.0))
-
-    def testo(
-        self, *, system: str | list[dict], contenuto: list[dict], sforzo: str, max_tokens: int = 64000
-    ) -> tuple[str, Utilizzo]:
-        return self._chiama(system, contenuto, None, max_tokens)  # sforzo: solo per Claude
-
-    def json(
-        self, *, system: str | list[dict], contenuto: list[dict], schema: dict, sforzo: str, max_tokens: int = 32000
-    ) -> tuple[dict, Utilizzo]:
-        testo, utilizzo = self._chiama(system, contenuto, schema, max_tokens)
-        try:
-            return json.loads(testo), utilizzo
-        except json.JSONDecodeError as e:
-            raise ErroreClaude(f"Risposta JSON non valida dal modello locale: {e}") from e
-
-    def _chiama(
-        self, system: str | list[dict], contenuto: list[dict], schema: dict | None, max_tokens: int
-    ) -> tuple[str, Utilizzo]:
-        if not isinstance(system, str):
-            system = "\n\n".join(b["text"] for b in system if b.get("type") == "text")
-        testi: list[str] = []
-        immagini: list[str] = []
-        for blocco in contenuto:
-            if blocco["type"] == "text":
-                testi.append(blocco["text"])
-            elif blocco["type"] == "image":
-                immagini.append(blocco["source"]["data"])
-            elif blocco["type"] == "document":
-                testi.append(_testo_documento(blocco))
-        utente: dict[str, Any] = {"role": "user", "content": "\n\n".join(t for t in testi if t)}
-        if immagini:
-            utente["images"] = immagini
-        corpo: dict[str, Any] = {
-            "model": self.modello,
-            "stream": True,
-            "messages": [{"role": "system", "content": system}, utente],
-            # gemma4 ragiona ad alta voce per default: su un blocco lungo esaurisce num_predict e la risposta viene troncata.
-            "think": False,
-            "options": {"num_ctx": self.contesto, "num_predict": max_tokens},
-        }
-        if self.temperatura is not None:
-            corpo["options"]["temperature"] = self.temperatura
-        if schema is not None:
-            corpo["format"] = schema
-        # In streaming per poter fermare: chiudere la connessione interrompe anche la generazione in Ollama.
-        parti: list[str] = []
-        dati: dict[str, Any] = {}
-        try:
-            with self.client.stream("POST", f"{self.url}/api/chat", json=corpo) as risposta:
-                if risposta.status_code == 404:
-                    raise ErroreClaude(f"Modello {self.modello} non scaricato: esegui `ollama pull {self.modello}`.")
-                if risposta.status_code >= 400:
-                    risposta.read()
-                    raise ErroreClaude(f"Errore da Ollama ({risposta.status_code}): {risposta.text[:300]}")
-                for riga in risposta.iter_lines():
-                    if FERMA.is_set():
-                        raise Fermata()
-                    if riga.strip():
-                        dati = json.loads(riga)
-                        parti.append((dati.get("message") or {}).get("content", ""))
-        except httpx2.ConnectError as e:
-            raise ErroreClaude("Ollama non è in esecuzione: apri l'app Ollama e riprova.") from e
-        except httpx2.HTTPError as e:
-            raise ErroreClaude(f"Errore di comunicazione con Ollama: {e}") from e
-        if dati.get("done_reason") == "length":
-            raise ErroreClaude("La risposta del modello locale è stata troncata (limite di lunghezza raggiunto).")
-        testo = "".join(parti).strip()
-        if not testo:
-            raise ErroreClaude("Il modello locale ha restituito una risposta vuota.")
-        return testo, Utilizzo(input=dati.get("prompt_eval_count") or 0, output=dati.get("eval_count") or 0)
+# Cosa sta facendo l'AI in questo momento, letto da /api/diretta: le ultime parole riconosciute o scritte.
+# "turno" cresce a ogni nuova richiesta, così la pagina sa quando ripulire.
+DIRETTA: dict[str, Any] = {"turno": 0, "testo": ""}
 
 
-def locale_pronto(modello: str, url: str = OLLAMA_URL) -> bool:
-    """True se Ollama è in esecuzione e il modello è già scaricato."""
-    try:
-        nomi = {m["name"] for m in httpx2.get(f"{url}/api/tags", timeout=2.0).json().get("models", [])}
-    except (httpx2.HTTPError, ValueError):
+def inizia_diretta() -> None:
+    DIRETTA.update(turno=DIRETTA["turno"] + 1, testo="")
+
+
+def in_diretta(pezzo: str) -> None:
+    DIRETTA["testo"] = (DIRETTA["testo"] + pezzo)[-6000:]
+
+
+def in_loop(testo: str, finestra: int = 60, volte: int = 4) -> bool:
+    """Il modello ripete all'infinito la stessa frase: le ultime `finestra` lettere compaiono già molte volte."""
+    if len(testo) < finestra * volte:
         return False
-    return modello in nomi or f"{modello}:latest" in nomi
-
-
-# Stato della preparazione dell'AI locale, letto da /api/stato: avvio di Ollama e download del modello.
-PREPARAZIONE: dict[str, Any] = {"attiva": False, "messaggio": "", "progresso": 0.0, "errore": ""}
-
-
-_OLLAMA_NOSTRO: Any = None  # il processo `ollama serve` avviato da Sbobina, da chiudere all'uscita
-
-
-def ferma_ollama() -> None:
-    """Chiude `ollama serve` se l'ha avviato Sbobina (l'app Ollama aperta dallo studente resta)."""
-    global _OLLAMA_NOSTRO
-    if _OLLAMA_NOSTRO is not None and _OLLAMA_NOSTRO.poll() is None:
-        _OLLAMA_NOSTRO.terminate()
-        try:
-            _OLLAMA_NOSTRO.wait(timeout=5)
-        except Exception:  # noqa: BLE001 - all'uscita: meglio forzare che restare appesi
-            _OLLAMA_NOSTRO.kill()
-    _OLLAMA_NOSTRO = None
-
-
-def avvia_ollama(url: str = OLLAMA_URL, attesa: float = 20.0) -> bool:
-    """Avvia Ollama se non risponde (app per macOS, altrimenti `ollama serve`). True se ora risponde."""
-    import shutil
-    import subprocess
-    import sys
-
-    def risponde() -> bool:
-        try:
-            return httpx2.get(f"{url}/api/version", timeout=1.0).status_code == 200
-        except httpx2.HTTPError:
-            return False
-
-    if risponde():
-        return True
-    if sys.platform == "darwin" and subprocess.run(["open", "-ga", "Ollama"], capture_output=True).returncode == 0:
-        pass
-    elif shutil.which("ollama"):
-        global _OLLAMA_NOSTRO
-        _OLLAMA_NOSTRO = subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    else:
-        return False
-    fine = time.monotonic() + attesa
-    while time.monotonic() < fine:
-        if risponde():
-            return True
-        time.sleep(0.5)
-    return False
-
-
-def prepara_locale(modello: str, url: str = OLLAMA_URL) -> None:
-    """Avvia Ollama e scarica il modello mostrando l'avanzamento in PREPARAZIONE. Da eseguire in un thread."""
-    _prepara(lambda: _ollama(modello, url))
-
-
-def _ollama(modello: str, url: str = OLLAMA_URL) -> None:
-    PREPARAZIONE["messaggio"] = "Avvio Ollama…"
-    if not avvia_ollama(url):
-        raise ErroreClaude("Ollama non è installato: scaricalo da ollama.com e riapri Sbobina.")
-    if not locale_pronto(modello, url):
-        with httpx2.stream("POST", f"{url}/api/pull", json={"model": modello}, timeout=None) as risposta:
-            for riga in risposta.iter_lines():
-                dati = json.loads(riga) if riga.strip() else {}
-                if dati.get("error"):
-                    raise ErroreClaude(dati["error"])
-                if dati.get("total"):
-                    PREPARAZIONE["progresso"] = dati.get("completed", 0) / dati["total"]
-                    PREPARAZIONE["messaggio"] = f"Scarico {modello}: {dati.get('completed', 0) / 1e9:.1f} di {dati['total'] / 1e9:.1f} GB"
+    return testo[-2000:].count(testo[-finestra:]) >= volte
 
 
 # --------------------------------------------------------------------------
 # MLX: il modello gira dentro Sbobina sulla GPU del Mac, senza Ollama
 # --------------------------------------------------------------------------
 
-MODELLI_LOCALI = Path.home() / "Library/Application Support/Sbobina/modelli"
+def _cartella_app() -> Path:
+    from sbobina.sistema import CARTELLA_APP
+
+    return CARTELLA_APP
+
+
+MODELLI_LOCALI = _cartella_app() / "modelli"
 _MLX: dict[str, tuple[Any, Any]] = {}  # un solo modello in memoria alla volta
 
 
@@ -371,8 +240,60 @@ def _carica_mlx(repo: str) -> tuple[Any, Any]:
         from mlx_lm import load
 
         _MLX.clear()  # libera il modello precedente prima di caricarne un altro
-        _MLX[repo] = load(str(cartella_mlx(repo)) if mlx_pronto(repo) else repo)
+        _MLX[repo] = load(str(cartella_mlx(repo)))
     return _MLX[repo]
+
+
+def _ocr_windows(grezzi: bytes) -> str:
+    """Il riconoscimento del testo integrato in Windows 10/11 (lingue installate nel profilo)."""
+    import asyncio
+
+    from winrt.windows.graphics.imaging import BitmapDecoder
+    from winrt.windows.media.ocr import OcrEngine
+    from winrt.windows.storage.streams import DataWriter, InMemoryRandomAccessStream
+
+    async def leggi() -> str:
+        flusso = InMemoryRandomAccessStream()
+        scrittore = DataWriter(flusso)
+        scrittore.write_bytes(grezzi)
+        await scrittore.store_async()
+        scrittore.detach_stream()
+        flusso.seek(0)
+        immagine = await (await BitmapDecoder.create_async(flusso)).get_software_bitmap_async()
+        motore = OcrEngine.try_create_from_user_profile_languages()
+        if motore is None:
+            return ""
+        return "\n".join(r.text for r in (await motore.recognize_async(immagine)).lines)
+
+    return asyncio.run(leggi())
+
+
+def testo_immagine(dati_base64: str) -> str:
+    """Il testo di una foto (slide, lavagna) con l'OCR del sistema (macOS o Windows): niente modelli da scaricare."""
+    grezzi = base64.standard_b64decode(dati_base64)
+    import sys
+
+    if sys.platform == "win32":
+        try:
+            return _ocr_windows(grezzi)
+        except Exception as e:  # noqa: BLE001 - OCR assente o immagine illeggibile: l'immagine viene saltata
+            log.warning("OCR di Windows non riuscito: %s", e)
+            return ""
+    try:
+        import Vision
+        from Foundation import NSData
+    except ImportError:
+        return ""  # né macOS né Windows: l'immagine viene saltata
+    dati = NSData.dataWithBytes_length_(grezzi, len(grezzi))
+    richiesta = Vision.VNRecognizeTextRequest.alloc().init()
+    richiesta.setRecognitionLanguages_(["it-IT", "en-US"])
+    richiesta.setUsesLanguageCorrection_(True)
+    gestore = Vision.VNImageRequestHandler.alloc().initWithData_options_(dati, None)
+    ok, _ = gestore.performRequests_error_([richiesta], None)
+    if not ok:
+        return ""
+    righe = [r.topCandidates_(1)[0].string() for r in (richiesta.results() or []) if r.topCandidates_(1)]
+    return "\n".join(righe)
 
 
 def _estrai_json(testo: str) -> dict:
@@ -385,6 +306,26 @@ def _estrai_json(testo: str) -> dict:
     if inizio == -1 or fine == -1:
         raise json.JSONDecodeError("nessun oggetto JSON", pulito, 0)
     return json.loads(pulito[inizio : fine + 1])
+
+
+def _solo_testo(system: str | list[dict], contenuto: list[dict], schema: dict | None) -> tuple[str, str]:
+    """System e messaggio utente in testo semplice, per i modelli locali (documenti e foto diventano testo)."""
+    if not isinstance(system, str):
+        system = "\n\n".join(b["text"] for b in system if b.get("type") == "text")
+    testi: list[str] = []
+    for b in contenuto:
+        if b["type"] == "text":
+            testi.append(b["text"])
+        elif b["type"] == "document":
+            testi.append(_testo_documento(b))
+        elif b["type"] == "image" and (letto := testo_immagine(b["source"]["data"])):
+            # shortcut: Gemma locale qui legge solo testo; dell'immagine passa il testo (OCR), non schemi o disegni.
+            testi.append(f"<materiale tipo=\"immagine\">\n{letto}\n</materiale>")
+    utente = "\n\n".join(t for t in testi if t)
+    if schema is not None:
+        utente += ("\n\nRispondi solo con un oggetto JSON valido conforme a questo schema, senza testo prima "
+                   f"o dopo e senza blocchi di codice:\n{json.dumps(schema, ensure_ascii=False)}")
+    return system, utente
 
 
 class MLX:
@@ -415,16 +356,12 @@ class MLX:
         from mlx_lm import stream_generate
         from mlx_lm.sample_utils import make_sampler
 
-        if not isinstance(system, str):
-            system = "\n\n".join(b["text"] for b in system if b.get("type") == "text")
-        # shortcut: MLX legge solo testo, le immagini dei materiali vengono saltate; per le foto della lavagna usa Ollama o Claude.
-        testi = [b["text"] if b["type"] == "text" else _testo_documento(b) for b in contenuto if b["type"] in ("text", "document")]
-        utente = "\n\n".join(t for t in testi if t)
-        if schema is not None:
-            utente += ("\n\nRispondi solo con un oggetto JSON valido conforme a questo schema, senza testo prima "
-                       f"o dopo e senza blocchi di codice:\n{json.dumps(schema, ensure_ascii=False)}")
+        system, utente = _solo_testo(system, contenuto, schema)
         try:
+            assicura_mlx(self.modello)
             modello, tokenizer = _carica_mlx(self.modello)
+        except (Fermata, ErroreClaude):
+            raise
         except Exception as e:  # noqa: BLE001 - rete, disco o memoria: il messaggio deve arrivare allo studente
             raise ErroreClaude(f"Non riesco a caricare il modello integrato {self.modello}: {e}") from e
         messaggi = [{"role": "system", "content": system}, {"role": "user", "content": utente}]
@@ -439,15 +376,22 @@ class MLX:
                 f"La lezione è troppo lunga per la memoria impostata ({lunghezza} token su {self.contesto}): "
                 "aumenta il contesto nelle Impostazioni o usa un Mac con più memoria."
             )
+        from mlx_lm.sample_utils import make_logits_processors
+
         parti: list[str] = []
         ultima = None
-        for risposta in stream_generate(
-            modello, tokenizer, prompt, max_tokens=max_tokens, sampler=make_sampler(temp=self.temperatura)
-        ):
+        inizia_diretta()
+        for i, risposta in enumerate(stream_generate(
+            modello, tokenizer, prompt, max_tokens=max_tokens, sampler=make_sampler(temp=self.temperatura),
+            logits_processors=make_logits_processors(repetition_penalty=1.05, repetition_context_size=256),
+        )):
             if FERMA.is_set():
                 raise Fermata()
             parti.append(risposta.text)
+            in_diretta(risposta.text)
             ultima = risposta
+            if i % 64 == 63 and in_loop("".join(parti[-400:])):
+                raise ErroreRipetizione("Il modello integrato si è bloccato ripetendo la stessa frase.")
         if ultima is not None and ultima.finish_reason == "length":
             raise ErroreClaude("La risposta del modello integrato è stata troncata (limite di lunghezza raggiunto).")
         testo = "".join(parti).strip()
@@ -457,43 +401,271 @@ class MLX:
         return testo, uso
 
 
-def scarica_hf(repo: str, cartella: Path, etichetta: str) -> None:
-    """Scarica un repo Hugging Face in `cartella` aggiornando PREPARAZIONE con i GB scaricati."""
-    import threading as _t
+# --------------------------------------------------------------------------
+# llama.cpp: su Windows lo stesso Gemma (GGUF) gira in llama-server sulla GPU NVIDIA
+# --------------------------------------------------------------------------
 
-    from huggingface_hub import HfApi, snapshot_download
+# shortcut: versione fissata (asset Windows verificati il 13/10/2026); aggiornarla a mano se un modello nuovo non parte.
+LLAMA_VERSIONE = "b11598"
+_LLAMA: dict[str, Any] = {}  # il llama-server in esecuzione: processo, porta, modello, contesto
+
+
+def file_gguf(modello: str) -> Path:
+    from sbobina.sistema import MODELLI
+
+    repo = repo_mlx(modello)
+    gguf = next(m["gguf"] for m in MODELLI if m["mlx"] == repo)
+    return MODELLI_LOCALI / gguf.split("/")[1] / gguf.rsplit("/", 1)[1]
+
+
+def gguf_pronto(modello: str) -> bool:
+    return (file_gguf(modello).parent / ".completo").is_file()
+
+
+def assicura_gguf(modello: str, *, fermabile: bool = True) -> None:
+    from sbobina.sistema import MODELLI
+
+    repo = repo_mlx(modello)
+    gguf = next(m["gguf"] for m in MODELLI if m["mlx"] == repo)
+    with _SCARICO:
+        if gguf_pronto(modello):
+            return
+        gia_attiva = PREPARAZIONE["attiva"]
+        PREPARAZIONE.update(attiva=True, errore="")
+        try:
+            repo_hf, nome = gguf.rsplit("/", 1)
+            scarica_hf(repo_hf, file_gguf(modello).parent, "il modello degli appunti", fermabile=fermabile, file=nome)
+        finally:
+            if not gia_attiva:
+                PREPARAZIONE["attiva"] = False
+
+
+def llama_server() -> Path:
+    """llama-server.exe dalle release ufficiali di llama.cpp: CUDA con una scheda NVIDIA, altrimenti Vulkan."""
+    import shutil
+    import zipfile
+
+    cartella = _cartella_app() / "llama.cpp" / LLAMA_VERSIONE
+    if (cartella / ".completo").is_file():
+        return next(cartella.rglob("llama-server.exe"))
+    cuda = bool(shutil.which("nvidia-smi"))
+    variante = "cuda-13.4" if cuda else "vulkan"
+    base = f"https://github.com/ggml-org/llama.cpp/releases/download/{LLAMA_VERSIONE}/"
+    archivi = [f"llama-{LLAMA_VERSIONE}-bin-win-{variante}-x64.zip"] + ([f"cudart-llama-bin-win-{variante}-x64.zip"] if cuda else [])
+    cartella.mkdir(parents=True, exist_ok=True)
+    for nome in archivi:
+        zip_locale = cartella / nome
+        with httpx2.stream("GET", base + nome, follow_redirects=True, timeout=60) as risposta:
+            risposta.raise_for_status()
+            totale = int(risposta.headers.get("content-length") or 0) or 1
+            fatto = 0
+            with zip_locale.open("wb") as f:
+                for pezzo in risposta.iter_bytes(1 << 20):
+                    f.write(pezzo)
+                    fatto += len(pezzo)
+                    PREPARAZIONE.update(progresso=min(0.99, fatto / totale),
+                                        messaggio=f"Scarico il motore AI: {fatto / 1e6:.0f} di {totale / 1e6:.0f} MB")
+        with zipfile.ZipFile(zip_locale) as z:
+            z.extractall(cartella)
+        zip_locale.unlink()
+    (cartella / ".completo").touch()
+    return next(cartella.rglob("llama-server.exe"))
+
+
+def ferma_llama() -> None:
+    processo = _LLAMA.pop("processo", None)
+    if processo is not None and processo.poll() is None:
+        processo.kill()
+        processo.wait()
+    _LLAMA.clear()
+
+
+def _avvia_llama(modello: Path, contesto: int) -> str:
+    """L'indirizzo di un llama-server con `modello` caricato; lo (ri)avvia se serve."""
+    import os
+    import socket
+    import subprocess
+
+    processo = _LLAMA.get("processo")
+    if processo is not None and processo.poll() is None and _LLAMA.get("chiave") == (modello, contesto):
+        return _LLAMA["indirizzo"]
+    ferma_llama()  # un solo modello in memoria video alla volta
+    eseguibile = llama_server()
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        porta = s.getsockname()[1]
+    registro = _cartella_app() / "llama-server.log"
+    ambiente = {**os.environ, "PATH": f"{eseguibile.parent}{os.pathsep}{eseguibile.parent.parent}{os.pathsep}{os.environ.get('PATH', '')}"}
+    processo = subprocess.Popen(
+        # --fit sceglie da solo quanti strati tenere sulla GPU: il resto va in RAM invece di fallire.
+        [str(eseguibile), "-m", str(modello), "-c", str(contesto), "-np", "1", "--fit", "on", "--reasoning", "off",
+         "--host", "127.0.0.1", "--port", str(porta)],
+        stdout=subprocess.DEVNULL, stderr=registro.open("w"), env=ambiente,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    indirizzo = f"http://127.0.0.1:{porta}"
+    _LLAMA.update(processo=processo, indirizzo=indirizzo, chiave=(modello, contesto))
+    PREPARAZIONE["messaggio"] = "Carico il modello sulla scheda video…"
+    for _ in range(600):  # caricare 5-17 GB dal disco può richiedere qualche minuto
+        if processo.poll() is not None:
+            coda = registro.read_text(errors="replace").strip().splitlines()[-3:]
+            raise ErroreClaude("Il motore AI (llama.cpp) si è chiuso: " + " | ".join(coda))
+        if FERMA.is_set():
+            raise Fermata()
+        try:
+            if httpx2.get(indirizzo + "/health", timeout=2).status_code == 200:
+                return indirizzo
+        except httpx2.HTTPError:
+            pass
+        time.sleep(1.0)
+    ferma_llama()
+    raise ErroreClaude("Il motore AI (llama.cpp) non ha caricato il modello in 10 minuti.")
+
+
+class LlamaCpp:
+    """Gemma in formato GGUF in llama-server (llama.cpp): gratuito e privato, per i PC Windows con GPU."""
+
+    def __init__(self, modello: str, *, temperatura: float = 0.3, contesto: int = 65536):
+        self.modello = repo_mlx(modello)
+        self.temperatura = temperatura
+        self.contesto = contesto
+
+    testo, json = MLX.testo, MLX.json  # stessa interfaccia: cambia solo _chiama
+
+    def _chiama(
+        self, system: str | list[dict], contenuto: list[dict], schema: dict | None, max_tokens: int
+    ) -> tuple[str, Utilizzo]:
+        system, utente = _solo_testo(system, contenuto, schema)
+        try:
+            assicura_gguf(self.modello)
+            indirizzo = _avvia_llama(file_gguf(self.modello), self.contesto)
+        except (Fermata, ErroreClaude):
+            raise
+        except Exception as e:  # noqa: BLE001 - rete, disco o scheda video: il messaggio deve arrivare allo studente
+            raise ErroreClaude(f"Non riesco ad avviare il modello integrato: {e}") from e
+        corpo = {
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": utente}],
+            "stream": True, "stream_options": {"include_usage": True},
+            "max_tokens": max_tokens, "temperature": self.temperatura,
+            "repeat_penalty": 1.05, "repeat_last_n": 256,
+        }
+        parti: list[str] = []
+        fine, uso = None, Utilizzo()
+        inizia_diretta()
+        with httpx2.stream("POST", indirizzo + "/v1/chat/completions", json=corpo, timeout=httpx2.Timeout(30, read=None)) as r:
+            if r.status_code != 200:
+                dettaglio = r.read().decode(errors="replace")
+                if "context" in dettaglio.lower():
+                    raise ErroreClaude("La lezione è troppo lunga per la memoria impostata: aumenta il contesto "
+                                       "nelle Impostazioni o scegli un modello più piccolo.")
+                raise ErroreClaude(f"Il modello integrato ha risposto con un errore: {dettaglio[-300:]}")
+            for i, riga in enumerate(r.iter_lines()):
+                if FERMA.is_set():
+                    raise Fermata()  # chiudere la connessione ferma anche la generazione in llama-server
+                if not riga.startswith("data: ") or riga == "data: [DONE]":
+                    continue
+                pezzo = json.loads(riga[6:])
+                if u := pezzo.get("usage"):
+                    uso = Utilizzo(input=u.get("prompt_tokens", 0), output=u.get("completion_tokens", 0))
+                for scelta in pezzo.get("choices") or []:
+                    testo = (scelta.get("delta") or {}).get("content") or ""
+                    parti.append(testo)
+                    in_diretta(testo)
+                    fine = scelta.get("finish_reason") or fine
+                if i % 64 == 63 and in_loop("".join(parti[-400:])):
+                    raise ErroreRipetizione("Il modello integrato si è bloccato ripetendo la stessa frase.")
+        if fine == "length":
+            raise ErroreClaude("La risposta del modello integrato è stata troncata (limite di lunghezza raggiunto).")
+        testo = "".join(parti).strip()
+        if not testo:
+            raise ErroreClaude("Il modello integrato ha restituito una risposta vuota.")
+        return testo, uso
+
+
+_SCARICO = threading.Lock()  # un download alla volta: la preparazione e una lezione non scaricano due volte
+_PROCESSI_SCARICO: set[Any] = set()  # da chiudere all'uscita: un download orfano litigherebbe con il prossimo
+
+
+def ferma_download() -> None:
+    for processo in list(_PROCESSI_SCARICO):
+        processo.kill()
+
+
+def scarica_hf(repo: str, cartella: Path, etichetta: str, *, fermabile: bool = False, file: str = "*") -> None:
+    """Scarica un repo Hugging Face in `cartella` aggiornando PREPARAZIONE (GB, velocità).
+
+    Il download gira in un processo a parte: se la connessione resta ferma lo si chiude e si riparte
+    dai file a metà (in un thread di Python un download bloccato non si può interrompere).
+    """
+    import subprocess
+    import sys
+
+    from huggingface_hub import HfApi
 
     info = HfApi().model_info(repo, files_metadata=True)
-    totale = sum((s.size or 0) for s in info.siblings or []) or 1
+    import fnmatch
+
+    totale = sum((s.size or 0) for s in info.siblings or [] if fnmatch.fnmatch(s.rfilename, file)) or 1
     cartella.mkdir(parents=True, exist_ok=True)
-    errore: list[BaseException] = []
+    codice = (
+        "import os,sys;os.environ['HF_HUB_DISABLE_XET']='1';from huggingface_hub import snapshot_download;"
+        "snapshot_download(sys.argv[1],local_dir=sys.argv[2],allow_patterns=sys.argv[3])"
+    )
 
-    def scarica() -> None:
-        # Le connessioni lente cadono: snapshot_download riprende dai file a metà, quindi si ritenta.
-        for tentativo in range(4):
-            try:
-                snapshot_download(repo, local_dir=cartella)
-                return
-            except Exception as e:  # noqa: BLE001 - riportato sotto dopo l'ultimo tentativo
-                if tentativo == 3:
-                    errore.append(e)
-                time.sleep(3 * (tentativo + 1))
+    def scaricati() -> int:
+        return sum(f.stat().st_size for f in cartella.rglob("*") if f.is_file())
 
-    lavoro = _t.Thread(target=scarica, daemon=True)
-    lavoro.start()
-    while lavoro.is_alive():
-        fatto = sum(f.stat().st_size for f in cartella.rglob("*") if f.is_file())
-        PREPARAZIONE["progresso"] = min(0.99, fatto / totale)
-        PREPARAZIONE["messaggio"] = f"Scarico {etichetta}: {fatto / 1e9:.1f} di {totale / 1e9:.1f} GB"
-        lavoro.join(1.0)
-    if errore:
-        raise ErroreClaude(f"Download di {etichetta} non riuscito: {errore[0]}")
-    (cartella / ".completo").touch()
+    PREPARAZIONE.update(totale=totale, fatto=scaricati(), velocita=0.0)
+    for tentativo in range(12):
+        processo = subprocess.Popen(
+            [sys.executable, "-c", codice, repo, str(cartella), file], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        _PROCESSI_SCARICO.add(processo)
+        ultimo, fermo_da, istante = scaricati(), time.monotonic(), time.monotonic()
+        try:
+            while processo.poll() is None:
+                time.sleep(1.0)
+                if fermabile and FERMA.is_set():
+                    raise Fermata()
+                fatto, adesso = scaricati(), time.monotonic()
+                if fatto > ultimo:
+                    fermo_da = adesso
+                # media mobile: la velocità non salta a ogni secondo
+                istantanea = max(0, fatto - ultimo) / max(0.001, adesso - istante)
+                PREPARAZIONE["velocita"] = 0.7 * PREPARAZIONE["velocita"] + 0.3 * istantanea
+                ultimo, istante = fatto, adesso
+                PREPARAZIONE.update(fatto=fatto, progresso=min(0.99, fatto / totale))
+                PREPARAZIONE["messaggio"] = f"Scarico {etichetta}: {fatto / 1e9:.1f} di {totale / 1e9:.1f} GB"
+                if adesso - fermo_da > 60:
+                    PREPARAZIONE["messaggio"] = f"Connessione ferma, riprovo a scaricare {etichetta}…"
+                    break
+        finally:
+            if processo.poll() is None:
+                processo.kill()
+                processo.wait()
+            _PROCESSI_SCARICO.discard(processo)
+        if processo.returncode == 0:
+            (cartella / ".completo").touch()
+            PREPARAZIONE["velocita"] = 0.0
+            return
+        time.sleep(min(30, 3 * (tentativo + 1)))
+    dettaglio = (processo.stderr.read().decode(errors="replace").strip().splitlines() or ["connessione assente"])[-1]
+    raise ErroreClaude(f"Download di {etichetta} non riuscito: {dettaglio}")
 
 
-def prepara_mlx(repo: str) -> None:
-    """Scarica il modello MLX che scrive gli appunti. Da eseguire in un thread."""
-    _prepara(lambda: mlx_pronto(repo) or scarica_hf(repo, cartella_mlx(repo), "il modello degli appunti"))
+def assicura_mlx(repo: str, *, fermabile: bool = True) -> None:
+    """Il modello degli appunti sul disco: lo scarica (con barra e tentativi) se manca."""
+    with _SCARICO:
+        if mlx_pronto(repo):
+            return
+        gia_attiva = PREPARAZIONE["attiva"]
+        PREPARAZIONE.update(attiva=True, errore="")  # la barra di download appare anche se lo chiede una lezione
+        try:
+            scarica_hf(repo, cartella_mlx(repo), "il modello degli appunti", fermabile=fermabile)
+        finally:
+            if not gia_attiva:
+                PREPARAZIONE["attiva"] = False
 
 
 def _prepara(*passi: Callable[[], object]) -> None:
@@ -513,6 +685,14 @@ def _prepara(*passi: Callable[[], object]) -> None:
         PREPARAZIONE["attiva"] = False
 
 
+def usa_mlx() -> bool:
+    """MLX sui Mac con chip Apple; altrove (Windows) llama.cpp."""
+    import platform
+    import sys
+
+    return sys.platform == "darwin" and platform.machine() == "arm64"
+
+
 def e_mlx(modello: str) -> bool:
     return "/" in modello
 
@@ -523,26 +703,38 @@ def pronto(modello: str) -> bool:
 
     if modello.startswith("claude"):
         return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
-    return mlx_pronto(modello) if e_mlx(modello) else locale_pronto(modello)
+    return mlx_pronto(repo_mlx(modello)) if usa_mlx() else gguf_pronto(modello)
+
+
+def repo_mlx(modello: str) -> str:
+    """Il repo MLX del modello: i nomi brevi (gemma4:12b, salvati dalle versioni con Ollama) diventano il repo."""
+    from sbobina.sistema import MODELLI
+
+    return modello if e_mlx(modello) else next((m["mlx"] for m in MODELLI if m["tag"] == modello), MODELLI[2]["mlx"])
 
 
 def prepara(modello: str, whisper: str = "") -> None:
-    """Prepara tutto ciò che serve in locale: il modello degli appunti (MLX o Ollama) e Whisper."""
+    """Prepara tutto ciò che serve in locale: il modello degli appunti (MLX) e Whisper."""
     from sbobina.trascrizione import whisper_locale
 
     def appunti() -> None:
-        if e_mlx(modello):
-            if not mlx_pronto(modello):
-                scarica_hf(modello, cartella_mlx(modello), "il modello degli appunti")
+        if usa_mlx():
+            assicura_mlx(repo_mlx(modello), fermabile=False)
         else:
-            _ollama(modello)
+            assicura_gguf(modello, fermabile=False)
+            with _SCARICO:
+                llama_server()
 
     def riconoscimento() -> None:
-        if not whisper or not whisper_locale.mlx_disponibile():
+        if not whisper:
+            return
+        if not whisper_locale.mlx_disponibile():
+            whisper_locale.assicura_fw(whisper)
             return
         repo = whisper_locale.repo_hf(whisper)
         if whisper_locale.repo_mlx(whisper) == repo:  # non ancora scaricato
-            scarica_hf(repo, whisper_locale.MODELLI_LOCALI / repo.split("/")[1], "il riconoscimento vocale")
+            with _SCARICO:
+                scarica_hf(repo, whisper_locale.MODELLI_LOCALI / repo.split("/")[1], "il riconoscimento vocale")
 
     _prepara(*([appunti] if not modello.startswith("claude") else []), riconoscimento)
 
@@ -550,6 +742,5 @@ def prepara(modello: str, whisper: str = "") -> None:
 def crea_modello(modello: str, *, temperatura: float | None = None, contesto: int = 65536) -> ModelloLinguistico:
     if modello.startswith("claude"):
         return Claude(modello)
-    if e_mlx(modello):
-        return MLX(modello, temperatura=0.3 if temperatura is None else temperatura, contesto=contesto)
-    return Locale(modello, temperatura=temperatura, contesto=contesto)
+    classe = MLX if usa_mlx() else LlamaCpp
+    return classe(repo_mlx(modello), temperatura=0.3 if temperatura is None else temperatura, contesto=contesto)

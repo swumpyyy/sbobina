@@ -47,7 +47,9 @@ motion:
 
 # Sbobina: design
 
-Direzione scelta dal proprietario il 13/10/2026: **glassmorphism con accenti blu e bianchi**, finitura professionale. Sostituisce il precedente pannello hi-fi in neumorfismo.
+**Aggiornamento 13/10/2026 (sera): Sbobina adotta lo stile di Lectio** (vedi `progetto1/Lectio/Documenti/DESIGN.md`): sistema operativo retro a 1 bit, carta #FEFEFE e inchiostro #1E1E1E, finestre con barra del titolo nera (`data-titolo` sui pannelli, es. "Lezioni 1.1"), Departure Mono per etichette e numeri, Geist Black per i titoli, griglia a puntini e retino, angoli vivi e ombre nette sfalsate, un solo accento rosa #D45BB6, desktop rosa a puntini #F386A1 mentre si registra. Il vetro resta solo su ciò che galleggia (barra in alto, download, trasporto audio, comandi di registrazione). Regole fisse: **tutto ad angoli vivi** (anche schede, interruttori, distintivi, cursori dei range e nodi delle mappe SVG; tondi solo i punti REC/"in corso"); ogni pannello e ogni foglio ha la barra del titolo nera; le scelte sono ChoiceChip «✣» (inchiostro + ombra d'accento quando scelte). **Temi colore** in Impostazioni > Aspetto: Jev rosa (predefinito), Menta, Arancio, Cobalto, Limone, Seppia (cambia anche carta e inchiostro), Tuo colore (#RRGGBB libero); ognuno imposta `--lectio` (accento) e `--rosa` (desktop di registrazione). Interruttori Griglia a puntini e Vetro (spento: carta piena). Implementato come blocco «TEMA LECTIO» in fondo ad `app.css`, che ridefinisce i gettoni; il resto di questo documento descrive la versione precedente.
+
+Direzione precedente: **glassmorphism con accenti blu e bianchi**, finitura professionale. Sostituisce il precedente pannello hi-fi in neumorfismo.
 
 ## Mondo
 - **Cielo:** fondo chiaro `campo` con tre nebbie blu sfocate che si spostano piano (livello fisso `body::before`, 38 s) e una grana leggerissima. Al buio (`prefers-color-scheme: dark`) il cielo diventa blu notte.
@@ -60,6 +62,8 @@ Direzione scelta dal proprietario il 13/10/2026: **glassmorphism con accenti blu
 - **Tasto principale:** pillola blu con l'icona nel suo pozzetto circolare che scivola al passaggio; si preme scalando a 0,98.
 - **Vassoio (benvenuto):** grande zona dove trascinare la registrazione; il disco blu si alza e ruota quando ci passa sopra un file.
 - **Avanzamento:** l'unico momento animato davvero. Percentuale grande, barra liquida con riflesso che scorre mentre lavora, sei tappe (fatte con la spunta, corrente con battito), tasti Ferma / Riprendi. Stati: in coda, attiva, fermata (grigia), errore (rossa).
+- **Dietro le quinte (dentro l'avanzamento):** riga con la girandola (asterisco disegnato in SVG che gira e respira, mai un glifo Unicode), un verbo buffo che cambia ogni ~4 s mettendosi a fuoco dalla nebbia (metà italiano, metà inglese, a tema con la tappa: Whisper "Origliando", la revisione "Limando", gli appunti "Scarabocchiando"), i secondi trascorsi e chi sta lavorando. Sotto, il testo in diretta su **carta** (serif degli appunti): frasi di Whisper con il minuto in blu, oppure gli appunti mentre il modello li scrive, con le parole nuove che passano dal blu all'inchiostro e un cursore blu. Richiudibile; la scelta resta.
+- **Download dei modelli:** lastra di vetro sticky sotto la testata, pozzetto blu con la freccia che scende, nome del modello, "GB di GB · MB/s · tempo che manca", barra liquida e percentuale. Compare e scompare mettendosi a fuoco; è l'unico posto dove si vede un download.
 - **Commutatore delle schede:** il cursore bianco scivola sotto la scheda scelta; cambia solo il foglio, non la pagina.
 
 ## Movimento

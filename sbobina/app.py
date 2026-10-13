@@ -1,4 +1,4 @@
-"""App nativa per macOS: finestra propria (WebKit) sopra il server locale, con Ollama avviato in automatico."""
+"""App nativa per macOS e Windows: finestra propria (WebKit / WebView2) sopra il server locale; i modelli girano dentro Sbobina."""
 
 from __future__ import annotations
 
@@ -63,29 +63,38 @@ class Ponte:
         AppHelper.callAfter(lambda: NSApplication.sharedApplication().dockTile().setBadgeLabel_(str(testo) or None))
 
     def notifica(self, titolo: str, testo: str) -> None:
-        """Notifica di macOS a fine lezione. Nel bundle usa UserNotifications, altrimenti osascript."""
+        """Notifica di sistema a fine lezione: osascript su macOS, un toast via PowerShell su Windows.
+
+        Niente UserNotifications: il processo è python3, non il bundle, e currentNotificationCenter()
+        fallisce con un'asserzione Objective-C che chiude l'app (non è catturabile da Python).
+        """
+        import os
         import subprocess
 
-        try:
-            from UserNotifications import (
-                UNMutableNotificationContent,
-                UNNotificationRequest,
-                UNUserNotificationCenter,
+        if os.name == "nt":
+            # Testi passati come variabili d'ambiente: niente da "escapare" nello script.
+            script = (
+                "[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime]>$null;"
+                "$x=[Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent(5);"  # ToastText02: titolo + testo
+                "$t=$x.GetElementsByTagName('text');"
+                "$t[0].AppendChild($x.CreateTextNode($env:SB_TITOLO))>$null;$t[1].AppendChild($x.CreateTextNode($env:SB_TESTO))>$null;"
+                # AUMID di PowerShell: un'app non registrata non può mostrare toast.
+                "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("
+                "'{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe')"
+                ".Show([Windows.UI.Notifications.ToastNotification]::new($x))"
             )
-
-            centro = UNUserNotificationCenter.currentNotificationCenter()
-            centro.requestAuthorizationWithOptions_completionHandler_(0b111, lambda *_: None)
-            contenuto = UNMutableNotificationContent.alloc().init()
-            contenuto.setTitle_(titolo)
-            contenuto.setBody_(testo)
-            richiesta = UNNotificationRequest.requestWithIdentifier_content_trigger_(str(time.time()), contenuto, None)
-            centro.addNotificationRequest_withCompletionHandler_(richiesta, None)
-        except Exception:  # noqa: BLE001 - fuori dal bundle .app UserNotifications non funziona
-            pulisci = lambda s: s.replace("\\", "").replace('"', "'")  # noqa: E731
             subprocess.run(
-                ["osascript", "-e", f'display notification "{pulisci(testo)}" with title "{pulisci(titolo)}"'],
-                check=False, capture_output=True,
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+                env={**os.environ, "SB_TITOLO": titolo, "SB_TESTO": testo},
+                check=False, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW,
             )
+            return
+
+        pulisci = lambda s: s.replace("\\", "").replace('"', "'")  # noqa: E731
+        subprocess.run(
+            ["osascript", "-e", f'display notification "{pulisci(testo)}" with title "{pulisci(titolo)}"'],
+            check=False, capture_output=True,
+        )
 
     def tema(self, scuro: bool) -> None:
         """La barra del titolo segue il tema scelto nell'app."""
@@ -116,15 +125,9 @@ def main() -> None:
     import uvicorn
     import webview
 
-    from sbobina import impostazioni
-    from sbobina.llm import avvia_ollama
     from sbobina.server import crea_app
 
     config = Config.da_ambiente()
-    effettiva = impostazioni.carica(config.cartella_dati).applica(config)
-    if effettiva.locale and "/" not in effettiva.modello:  # Ollama parte con l'app (con MLX non serve)
-        threading.Thread(target=avvia_ollama, daemon=True).start()
-
     porta = _porta_libera()
     indirizzo = f"http://127.0.0.1:{porta}"
     server = uvicorn.Server(uvicorn.Config(crea_app(config), host="127.0.0.1", port=porta, log_level="warning"))
@@ -140,9 +143,15 @@ def main() -> None:
     ponte.finestra.events.shown += lambda: _barra_titolo(ponte.finestra, None)
     webview.start()
     server.should_exit = True
-    from sbobina.llm import ferma_ollama
+    from sbobina.llm import ferma_download, ferma_llama
 
-    ferma_ollama()
+    ferma_download()  # i download riprendono dai file a metà al prossimo avvio
+    ferma_llama()  # os._exit non chiude i processi figli: llama-server terrebbe occupata la scheda video
+    # Senza questo Python attende i thread di trascrizione (non daemon) e l'app resta con la rotella.
+    # La lezione resta "in elaborazione" e riparte da sola al prossimo avvio.
+    import os
+
+    os._exit(0)
 
 
 def _barra_titolo(finestra, scuro: bool | None) -> None:

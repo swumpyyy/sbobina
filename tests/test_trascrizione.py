@@ -124,3 +124,25 @@ def test_repo_mlx_usa_cartella_locale_solo_se_completa(tmp_path, monkeypatch):
     assert whisper_locale.repo_mlx("large-v3-turbo") == "mlx-community/whisper-large-v3-turbo"  # pesi mancanti
     (cartella / "weights.safetensors").write_bytes(b"")
     assert whisper_locale.repo_mlx("large-v3-turbo") == str(cartella)
+
+
+def test_modello_pronto_ripiega_su_un_modello_gia_scaricato(tmp_path, monkeypatch):
+    monkeypatch.setattr(whisper_locale, "MODELLI_LOCALI", tmp_path)
+    assert whisper_locale.modello_pronto("large-v3") == "mlx-community/whisper-large-v3-mlx"  # niente sul disco
+    cartella = tmp_path / "whisper-large-v3-turbo"
+    cartella.mkdir()
+    (cartella / "config.json").write_text("{}")
+    (cartella / "weights.safetensors").write_bytes(b"")
+    assert whisper_locale.modello_pronto("large-v3") == str(cartella)  # niente download a metà trascrizione
+
+
+def test_microfono_windows_prende_il_primo_dispositivo_audio(monkeypatch):
+    from types import SimpleNamespace
+
+    from sbobina import registrazione
+
+    uscita = ('[dshow @ 0x1] "Integrated Camera" (video)\n'
+              '[dshow @ 0x1]   Alternative name "@device_pnp_..."\n'
+              '[dshow @ 0x1] "Microfono (Realtek(R) Audio)" (audio)\n')
+    monkeypatch.setattr(registrazione.subprocess, "run", lambda *a, **k: SimpleNamespace(stderr=uscita))
+    assert registrazione.microfono_windows() == "Microfono (Realtek(R) Audio)"

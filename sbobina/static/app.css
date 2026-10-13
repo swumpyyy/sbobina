@@ -520,6 +520,108 @@ a { color: var(--blu-testo); text-underline-offset: 3px; }
 .avanzamento.fermata .tappa.corrente { color: var(--inchiostro-tenue); }
 .avanzamento.fermata .tappa.corrente .punto { border-color: var(--inchiostro-lieve); box-shadow: none; }
 
+/* --- dietro le quinte: il testo che l'AI sta scrivendo, in diretta --------- */
+
+.quinte { border-top: 1px solid var(--filo-scuro); padding-top: 16px; }
+.quinte > summary {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 4px 12px;
+  list-style: none; cursor: pointer; border-radius: var(--r-piccolo);
+}
+.quinte > summary::-webkit-details-marker { display: none; }
+.riga-verbo { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.quinte .verbo {
+  font-size: 16px; font-weight: 620; letter-spacing: -0.01em; color: var(--blu-testo);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* il verbo nuovo arriva dalla nebbia, come il vetro che si mette a fuoco */
+.quinte .verbo.cambia { animation: verbo-arriva 700ms var(--uscita); }
+@keyframes verbo-arriva {
+  from { opacity: 0; filter: blur(5px); transform: translateY(5px); }
+  to { opacity: 1; filter: none; transform: none; }
+}
+.quinte .tempo { font-size: 13px; color: var(--inchiostro-lieve); }
+.quinte .chi { font-size: 13px; color: var(--inchiostro-tenue); white-space: nowrap; }
+.quinte .apri { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: var(--inchiostro-lieve); }
+.quinte .apri .icona { width: 16px; height: 16px; transform: rotate(90deg); transition: transform 500ms var(--molla); }
+.quinte:not([open]) .apri .icona { transform: rotate(0deg); }
+.quinte > summary:hover .apri { background: var(--vetro-forte); color: var(--inchiostro); }
+
+/* la girandola: l'asterisco di Claude Code, disegnato, che gira e respira */
+.girandola {
+  width: 22px; height: 22px; fill: none; stroke: var(--blu); stroke-width: 2.4; stroke-linecap: round;
+}
+.girandola g { transform-origin: 12px 12px; animation: girandola 2.4s var(--molla) infinite; }
+@keyframes girandola {
+  0% { transform: rotate(0deg) scale(0.82); }
+  50% { transform: rotate(90deg) scale(1.08); }
+  100% { transform: rotate(180deg) scale(0.82); }
+}
+.quinte.ferma .girandola { stroke: var(--inchiostro-lieve); }
+.quinte.ferma .girandola g { animation: none; }
+.quinte.ferma .verbo { color: var(--inchiostro-lieve); }
+
+/* il testo sta su carta: si legge, non si guarda */
+.flusso {
+  margin-top: 14px; max-height: 240px; overflow-y: auto; overscroll-behavior: contain;
+  padding: 16px 20px; border-radius: var(--r-medio);
+  background: var(--carta); border: 1px solid var(--filo-scuro);
+  box-shadow: inset 0 1px 3px rgba(16, 40, 90, 0.06);
+  font-family: var(--font-testo); font-size: 15.5px; line-height: 1.65; color: var(--inchiostro);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 28px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 28px);
+}
+.flusso p { margin: 0; }
+.flusso .attesa { font-family: var(--font-ui); font-size: 14px; color: var(--inchiostro-lieve); }
+.flusso .frase { display: grid; grid-template-columns: 52px 1fr; gap: 10px; padding: 2px 0; }
+.flusso .minuto {
+  font-family: var(--font-ui); font-size: 12px; font-weight: 600; color: var(--blu-testo);
+  font-variant-numeric: tabular-nums; padding-top: 3px;
+}
+.flusso .scritto { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* le parole appena arrivate escono dal blu e si posano nell'inchiostro */
+.flusso .fresca { animation: fresca 1600ms var(--uscita); }
+@keyframes fresca { from { color: var(--blu); filter: blur(1.5px); } to { color: inherit; filter: none; } }
+.flusso .cursore {
+  display: inline-block; width: 2px; height: 1.05em; margin-left: 2px; vertical-align: -0.15em;
+  border-radius: 2px; background: var(--blu); animation: cursore 1.1s var(--uscita) infinite;
+}
+@keyframes cursore { 0%, 45% { opacity: 1; } 55%, 100% { opacity: 0.15; } }
+.quinte.ferma .cursore { display: none; }
+
+/* --- download dei modelli: una lastra di vetro sotto la testata ------------- */
+
+.scarico {
+  position: sticky; top: 82px; z-index: 19;
+  width: min(760px, calc(100% - 28px)); margin: 10px auto 0;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(120px, 220px) auto; align-items: center; gap: 14px;
+  padding: 10px 18px 10px 10px; border-radius: 999px;
+  background: var(--vetro-forte); border: 1px solid var(--filo);
+  box-shadow: var(--luce-interna), var(--ombra);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
+  opacity: 0; transform: translateY(-10px); filter: blur(6px); pointer-events: none;
+  transition: opacity 500ms var(--uscita), transform 600ms var(--molla), filter 500ms var(--uscita);
+}
+.scarico.visibile { opacity: 1; transform: none; filter: none; pointer-events: auto; }
+.scarico:not(.visibile) { position: absolute; left: 0; right: 0; }
+.scarico .pozzetto {
+  display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--blu) 85%, white), var(--blu)); color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 14px -6px var(--blu-alone);
+}
+.scarico .pozzetto .icona { animation: scende 1.8s var(--uscita) infinite; }
+@keyframes scende { 0% { transform: translateY(-3px); opacity: 0.4; } 60% { transform: none; opacity: 1; } 100% { transform: translateY(2px); opacity: 0.4; } }
+.scarico .testi { display: grid; min-width: 0; }
+.scarico .cosa { font-size: 14px; font-weight: 620; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scarico .quanto { font-size: 12.5px; color: var(--inchiostro-tenue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scarico .liquido { height: 8px; }
+.scarico .percentuale { font-size: 15px; font-weight: 650; color: var(--blu-testo); min-width: 3.2ch; text-align: right; }
+@media (max-width: 640px) {
+  .scarico { grid-template-columns: auto minmax(0, 1fr) auto; border-radius: var(--r-medio); }
+  .scarico .liquido { grid-column: 1 / -1; }
+  .quinte > summary { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .quinte .chi { grid-column: 2; grid-row: 2; }
+}
+
 /* --- trasporto audio ------------------------------------------------------ */
 
 .trasporto {
@@ -1064,3 +1166,425 @@ a { color: var(--blu-testo); text-underline-offset: 3px; }
   }
   body::before { animation: none; }
 }
+
+/* ==========================================================================
+   TEMA LECTIO (13/10/2026): sistema operativo retro a 1 bit, carta e inchiostro,
+   finestre con barra del titolo nera, testo pixel, griglia a puntini. Il vetro resta
+   solo su ciò che galleggia: barra in alto, download, trasporto audio, comandi REC.
+   Questo blocco ridefinisce i gettoni e i componenti; la struttura resta quella di prima.
+   ========================================================================== */
+
+@font-face { font-family: "Departure Mono"; src: url("/static/fonts/DepartureMono-Regular.otf") format("opentype"); font-display: swap; }
+@font-face { font-family: "Geist"; src: url("/static/fonts/Geist-Regular.otf") format("opentype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Geist"; src: url("/static/fonts/Geist-Medium.otf") format("opentype"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Geist"; src: url("/static/fonts/Geist-SemiBold.otf") format("opentype"); font-weight: 600 700; font-display: swap; }
+@font-face { font-family: "Geist"; src: url("/static/fonts/Geist-Black.otf") format("opentype"); font-weight: 800 900; font-display: swap; }
+
+:root, :root[data-accento] {
+  --font-ui: "Geist", system-ui, -apple-system, sans-serif;
+  --font-mono: "Departure Mono", ui-monospace, monospace;
+  --font-testo: "Geist", system-ui, sans-serif;
+  --campo: light-dark(#fefefe, #141414);
+  --carta: light-dark(#fefefe, #1b1b1b);
+  --finestra: light-dark(#dedede, #262626);
+  --griglia: light-dark(#c4c4c4, #3a3a3a);
+  --inchiostro: light-dark(#1e1e1e, #ececec);
+  --inchiostro-tenue: light-dark(#4a4a4a, #bdbdbd);
+  --inchiostro-lieve: light-dark(#6b6b6b, #9a9a9a);
+  --rosa: light-dark(#f386a1, #b85a73);
+  --lectio: light-dark(#d45bb6, #e27fca);
+  --stato: #09aea1;
+  --ok: #03aa5c;
+  --guasto: #e5484d;
+  --guasto-tenue: light-dark(rgba(229, 72, 77, 0.1), rgba(229, 72, 77, 0.18));
+  /* il "blu" di prima diventa inchiostro: un solo accento (rosa) per schermata */
+  --blu: var(--inchiostro);
+  --blu-forte: var(--inchiostro);
+  --blu-testo: var(--inchiostro);
+  --blu-tenue: light-dark(rgba(30, 30, 30, 0.07), rgba(236, 236, 236, 0.1));
+  --blu-alone: light-dark(rgba(30, 30, 30, 0.18), rgba(0, 0, 0, 0.5));
+  --vetro: light-dark(rgba(254, 254, 254, 0.62), rgba(27, 27, 27, 0.62));
+  --vetro-forte: light-dark(rgba(254, 254, 254, 0.86), rgba(27, 27, 27, 0.86));
+  --vetro-tenue: light-dark(rgba(254, 254, 254, 0.4), rgba(27, 27, 27, 0.4));
+  --filo: var(--inchiostro);
+  --filo-scuro: light-dark(rgba(30, 30, 30, 0.22), rgba(236, 236, 236, 0.22));
+  --luce-interna: inset 0 0 0 0 transparent;
+  --ombra-lieve: 3px 3px 0 var(--inchiostro);
+  --ombra: 6px 6px 0 var(--inchiostro);
+  --ombra-alta: 8px 8px 0 var(--inchiostro);
+  --ombra-vetro: 0 12px 32px -14px rgba(30, 30, 30, 0.35), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  --r-grande: 0px;
+  --r-medio: 0px;
+  --r-piccolo: 0px;
+}
+
+html { background: var(--campo); }
+body { font-family: var(--font-ui); font-size: 14.5px; caret-color: var(--lectio); }
+/* il cielo diventa la griglia a puntini di Lectio, con un angolo di retino in basso a destra */
+body::before {
+  inset: 0; opacity: 1; animation: none;
+  background:
+    radial-gradient(circle, var(--griglia) 1px, transparent 1.3px) 0 0 / 22px 22px;
+  -webkit-mask-image: radial-gradient(120% 90% at 50% 0%, #000 30%, transparent 100%);
+  mask-image: radial-gradient(120% 90% at 50% 0%, #000 30%, transparent 100%);
+}
+body::after {
+  inset: auto 0 0 auto; width: 340px; height: 300px; opacity: 1;
+  background: radial-gradient(circle, var(--inchiostro) 1.4px, transparent 1.7px) 0 0 / 8px 8px;
+  -webkit-mask-image: radial-gradient(100% 100% at 100% 100%, #000 0%, rgba(0,0,0,.55) 35%, transparent 72%);
+  mask-image: radial-gradient(100% 100% at 100% 100%, #000 0%, rgba(0,0,0,.55) 35%, transparent 72%);
+}
+::selection { background: var(--rosa); color: #1e1e1e; }
+:focus-visible { outline: 2px solid var(--lectio); outline-offset: 2px; border-radius: 0; }
+a { color: var(--inchiostro); text-decoration-thickness: 1px; }
+.dati, .conta, .tempo-letto, .valore, .contatori b, .percentuale, .tempo { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* --- finestre retro: barra del titolo nera, bordo 1 px, ombra netta sfalsata ---- */
+.pannello, .rastrelliera, .avviso, .voci-menu {
+  background: var(--finestra);
+  border: 1px solid var(--inchiostro);
+  border-radius: 0;
+  box-shadow: var(--ombra);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.pannello[data-titolo], .rastrelliera[data-titolo] { position: relative; padding-top: 58px; }
+.pannello[data-titolo]::before, .rastrelliera[data-titolo]::before {
+  content: attr(data-titolo);
+  position: absolute; inset: 0 0 auto 0; height: 30px;
+  display: flex; align-items: center; padding: 0 12px;
+  background: var(--inchiostro); color: var(--carta);
+  font-family: var(--font-ui); font-size: 13px; font-weight: 600; letter-spacing: 0;
+}
+/* il doppio filo interno delle finestre di Lectio */
+.pannello[data-titolo]::after, .rastrelliera[data-titolo]::after {
+  content: ""; position: absolute; inset: 34px 4px 4px; border: 1px solid var(--carta); pointer-events: none;
+}
+.rastrelliera { padding: 44px 12px 12px; top: 74px; max-height: calc(100dvh - 92px); }
+.rastrelliera[data-titolo] { padding-top: 44px; }
+
+h1, .benvenuto h1 { font-family: var(--font-ui); font-weight: 900; letter-spacing: -0.045em; line-height: 0.95; }
+.benvenuto h1 em { color: var(--inchiostro); font-style: normal; text-decoration: underline; text-decoration-skip-ink: none; text-decoration-color: var(--rosa); text-decoration-thickness: 0.12em; text-underline-offset: 0.08em; }
+h2 { font-weight: 700; letter-spacing: -0.02em; }
+
+/* --- barra in alto: vetro sopra la carta, a tutta larghezza -------------------- */
+.testata {
+  top: 0; margin: 0; width: 100%; border-radius: 0;
+  border: 0; border-bottom: 1px solid var(--inchiostro);
+  background: var(--vetro);
+  box-shadow: none;
+  -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
+  padding: 10px 20px;
+}
+.marchio { gap: 10px; }
+.marchio .logo { display: none; }
+.marchio span {
+  background: var(--inchiostro); color: var(--carta);
+  font-family: var(--font-ui); font-weight: 600; font-size: 13px; letter-spacing: 0.02em;
+  padding: 3px 8px;
+}
+.stato-ai {
+  border-radius: 0; background: transparent; border: 1px solid var(--inchiostro);
+  font-family: var(--font-mono); font-size: 12px; color: var(--inchiostro); padding: 3px 9px;
+}
+.stato-ai .lampadina { border-radius: 0; width: 8px; height: 8px; background: var(--ok); box-shadow: none; }
+.stato-ai.spenta .lampadina { background: var(--lectio); }
+
+/* --- pulsanti retro: rettangoli, primario inchiostro, secondario carta -------- */
+.tasto {
+  border-radius: 0; border: 1px solid var(--inchiostro);
+  background: var(--carta); color: var(--inchiostro);
+  box-shadow: none; font-weight: 500;
+  transition: transform 280ms var(--molla), background-color 200ms var(--uscita), color 200ms var(--uscita);
+}
+.tasto:hover { transform: none; box-shadow: 3px 3px 0 var(--inchiostro); }
+.tasto:active { transform: scale(0.97); box-shadow: none; }
+.tasto.grande, .tasto.grande:hover {
+  background: var(--inchiostro); color: var(--carta); border-color: var(--inchiostro);
+  text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600;
+  box-shadow: none;
+}
+.tasto.grande:hover { box-shadow: 3px 3px 0 var(--lectio); }
+.tasto.grande .icona, .tasto.grande > svg { background: transparent !important; box-shadow: none !important; }
+.tasto.tondo { border-radius: 0; }
+.tasto.trasparente { border-color: transparent; background: transparent; }
+.tasto.trasparente:hover { border-color: var(--inchiostro); box-shadow: none; }
+.tasto.ferma, .tasto.pericolo { color: var(--guasto); border-color: var(--guasto); background: var(--carta); }
+#btn-registra { border: 1px solid var(--inchiostro); text-transform: uppercase; font-size: 13px; letter-spacing: 0.03em; }
+#btn-registra::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--guasto); }
+#btn-registra .icona { display: none; }
+
+/* --- elenco lezioni ----------------------------------------------------------- */
+.cerca { border-radius: 0; background: var(--carta); border: 1px solid var(--inchiostro); font-family: var(--font-mono); }
+.cerca:focus-within { box-shadow: 3px 3px 0 var(--inchiostro); border-color: var(--inchiostro); }
+.cerca input { height: 36px; font-family: var(--font-mono); font-size: 13px; }
+.modulo-testa h2 {
+  font-family: var(--font-mono); font-weight: 400; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--inchiostro-tenue); display: flex; gap: 6px; overflow: hidden;
+}
+.modulo-testa h2::after { content: ""; flex: 1; border-bottom: 1px dotted var(--inchiostro-lieve); transform: translateY(-4px); min-width: 12px; }
+.conta { background: transparent; border-radius: 0; padding: 0; font-size: 12px; }
+.preselezione { border-radius: 0; padding: 8px 10px; }
+.preselezione:hover { background: var(--blu-tenue); }
+.preselezione[aria-current="true"] { background: var(--inchiostro); border-color: var(--inchiostro); box-shadow: none; }
+.preselezione[aria-current="true"] .titolo, .preselezione[aria-current="true"] .sotto, .preselezione[aria-current="true"] .dati { color: var(--carta); }
+.preselezione .titolo { font-weight: 500; }
+.preselezione .sotto { font-family: var(--font-mono); font-size: 11.5px; }
+.segnale { border-radius: 0; width: 8px; height: 8px; }
+.segnale.nuova { background: var(--lectio); box-shadow: none; }
+.segnale.letta { background: var(--inchiostro); }
+.segnale.attiva { background: var(--stato); border-radius: 50%; }
+.preselezione[aria-current="true"] .segnale.letta { background: var(--carta); }
+.mini-meter { border-radius: 0; background: var(--blu-tenue); }
+.mini-meter > div { border-radius: 0; background: var(--stato); }
+
+/* --- benvenuto e vassoio -------------------------------------------------------- */
+.vassoio {
+  border-radius: 0; background: var(--carta); border: 1px solid var(--inchiostro);
+  box-shadow: var(--ombra);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.vassoio::before { border-radius: 0; border: 1px dashed var(--inchiostro-lieve); }
+.vassoio.sopra { background: color-mix(in oklab, var(--rosa) 22%, var(--carta)); }
+.vassoio.sopra::before { border-color: var(--lectio); }
+.vassoio .disco {
+  border-radius: 0; background: var(--inchiostro); color: var(--carta); box-shadow: none;
+}
+.vassoio strong { font-weight: 700; }
+.vassoio span { font-family: var(--font-mono); font-size: 12px; }
+
+/* --- avanzamento: percentuale Geist Black, barra a celle, tappe a quadratini -- */
+.percento .valore { font-family: var(--font-ui); font-weight: 900; color: var(--inchiostro); letter-spacing: -0.06em; }
+.percento .unita { font-family: var(--font-mono); font-size: 16px; }
+.fase-blocco .fase { font-weight: 700; }
+.fase-blocco .messaggio { font-family: var(--font-mono); font-size: 12.5px; }
+.liquido { border-radius: 0; height: 16px; background: transparent; box-shadow: none; }
+/* celle: lo stesso misuratore di Lectio, a quadretti */
+.liquido::before, .riempimento {
+  -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 10px, transparent 10px 13px);
+  mask-image: repeating-linear-gradient(90deg, #000 0 10px, transparent 10px 13px);
+}
+.liquido::before { content: ""; position: absolute; inset: 0; background: var(--griglia); }
+.riempimento { border-radius: 0; background: var(--inchiostro); transition: transform 900ms steps(24, end); }
+.avanzamento.attiva .riempimento { background: var(--inchiostro); }
+.avanzamento.guasto .riempimento { background: var(--guasto); }
+.tappa .punto { border-radius: 0; border: 1px solid var(--inchiostro); background: var(--carta); }
+.tappa.fatta .punto { background: var(--inchiostro); border-color: var(--inchiostro); }
+.tappa.fatta .punto .icona { color: var(--carta); }
+.tappa.corrente { color: var(--inchiostro); font-weight: 700; }
+.tappa.corrente .punto { border-color: var(--inchiostro); box-shadow: 3px 3px 0 var(--lectio); transform: none; }
+.avanzamento.attiva .tappa.corrente .punto::after { border-radius: 0; background: var(--stato); }
+.tappa { font-family: var(--font-mono); font-size: 11.5px; }
+
+/* dietro le quinte: la trascrizione in diretta come nella finestra di Lectio */
+.quinte { border-top: 1px solid var(--inchiostro); }
+.quinte .verbo { color: var(--inchiostro); font-weight: 700; }
+.quinte .chi, .quinte .tempo { font-family: var(--font-mono); font-size: 12px; }
+.girandola { stroke: var(--lectio); }
+.flusso {
+  border-radius: 0; border: 1px solid var(--inchiostro); background: var(--carta); box-shadow: none;
+  font-family: var(--font-ui); font-size: 14.5px;
+}
+.flusso .minuto { font-family: var(--font-mono); color: var(--inchiostro-lieve); font-weight: 400; }
+.flusso .minuto::before { content: "["; } .flusso .minuto::after { content: "]"; }
+.flusso .fresca { animation-name: fresca-lectio; }
+@keyframes fresca-lectio { from { color: var(--lectio); } to { color: inherit; } }
+.flusso .cursore { width: 0.6em; border-radius: 0; background: var(--inchiostro); vertical-align: -0.12em; }
+
+/* --- vetro: download, trasporto audio, commutatore ----------------------------- */
+.scarico, .trasporto {
+  border-radius: 0; border: 1px solid var(--inchiostro);
+  background: var(--vetro);
+  box-shadow: var(--ombra-vetro);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
+}
+.scarico { top: 64px; }
+.scarico .pozzetto, .trasporto .tasto.tondo.grande {
+  border-radius: 0; background: var(--inchiostro); color: var(--carta); box-shadow: none;
+}
+.scarico .percentuale { color: var(--inchiostro); }
+.scarico .quanto { font-family: var(--font-mono); font-size: 11.5px; }
+.trasporto { top: 70px; }
+.commutatore { border-radius: 0; border: 0; background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; gap: 8px; }
+.commutatore .cursore { display: none; }
+.commutatore button { border-radius: 0; border: 1px solid var(--inchiostro); background: var(--finestra); color: var(--inchiostro); font-size: 13px; }
+.commutatore button::before { content: "✣ "; }
+.commutatore button[aria-selected="true"] { background: var(--inchiostro); color: var(--carta); }
+.sintonia { accent-color: var(--inchiostro); }
+
+/* --- moduli e avvisi -------------------------------------------------------- */
+.campo input, .campo textarea, .campo select, select, textarea {
+  border-radius: 0 !important; border: 1px solid var(--inchiostro) !important; background: var(--carta) !important; box-shadow: none !important;
+}
+.campo > span { font-family: var(--font-mono); font-weight: 400; text-transform: uppercase; letter-spacing: 0.04em; font-size: 11.5px; }
+.avviso { background: var(--carta); box-shadow: 3px 3px 0 var(--inchiostro); }
+.avviso > .icona { color: var(--lectio); }
+.avviso.grave { border-color: var(--guasto); box-shadow: 3px 3px 0 var(--guasto); }
+
+/* --- appunti su carta ----------------------------------------------------- */
+.foglio { border-radius: 0; border: 1px solid var(--inchiostro); box-shadow: var(--ombra); background: var(--carta); }
+.carta { border-radius: 0; border: 1px solid var(--inchiostro); box-shadow: 4px 4px 0 var(--inchiostro); }
+
+/* --- registrare: a riposo è una finestra normale; mentre registra diventa il desktop rosa a puntini -- */
+.pannello.registrazione { transition: background-color 500ms var(--uscita); }
+.pannello.registrazione.attiva {
+  background:
+    radial-gradient(circle, rgba(30, 30, 30, 0.32) 1px, transparent 1.3px) 0 0 / 6px 6px,
+    var(--rosa);
+}
+.pannello.registrazione.attiva::before { content: attr(data-titolo); background: #1e1e1e; color: #fefefe; }
+.pannello.registrazione.attiva > h2, .pannello.registrazione.attiva > p, .pannello.registrazione.attiva .campo > span { color: #1e1e1e; }
+/* il quadrante "Segnale": finestra di carta con il tempo in Geist Black e il misuratore a celle */
+.quadrante-reg {
+  position: relative; background: var(--carta); border: 1px solid var(--inchiostro); box-shadow: var(--ombra);
+  padding: 44px 22px 18px; display: grid; gap: 14px;
+}
+.quadrante-reg::before {
+  content: "Segnale 1.1"; position: absolute; inset: 0 0 auto 0; height: 28px; display: flex; align-items: center;
+  padding: 0 12px; background: var(--inchiostro); color: var(--carta); font-size: 12.5px; font-weight: 600;
+}
+.registrazione.attiva .quadrante-reg::before { content: "Segnale 1.1 · ● REC"; }
+.tempo-reg {
+  font-family: var(--font-ui) !important; font-weight: 900; letter-spacing: -0.05em; line-height: 0.9;
+  font-size: clamp(56px, 9vw, 110px); color: var(--inchiostro) !important; font-variant-numeric: tabular-nums;
+}
+.vu-barre i { border-radius: 0 !important; background: var(--inchiostro) !important; }
+.registrazione.attiva .vu-barre i { background: var(--inchiostro) !important; }
+/* comandi in vetro sopra il rosa: inchiostro per avviare, rosso per fermare */
+.registrazione .azioni-form .tasto {
+  background: rgba(254, 254, 254, 0.7); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3);
+  text-transform: uppercase; letter-spacing: 0.03em; min-height: 40px;
+}
+.registrazione .azioni-form .tasto.grande.registra { background: var(--inchiostro); color: var(--carta); }
+.registrazione .azioni-form .tasto.grande:not(.registra) { background: rgba(254, 254, 254, 0.78); color: var(--guasto); border-color: var(--guasto); }
+
+/* gli appunti seguono Lectio: inchiostro, il rosa solo per ciò che conta all'esame */
+.appunti, .foglio { --accento: var(--inchiostro); --accento-forte: var(--inchiostro); --accento-tenue: var(--blu-tenue); }
+.foglio {
+  --sfondo: var(--carta); --superficie: var(--carta); --superficie-2: var(--finestra);
+  --testo: var(--inchiostro); --testo-tenue: var(--inchiostro-tenue); --bordo: var(--inchiostro);
+  --su-accento: var(--carta);
+  --definizione: var(--inchiostro); --definizione-sfondo: var(--carta);
+  --teorema: var(--inchiostro); --teorema-sfondo: var(--finestra);
+  --integrazione: var(--lectio); --integrazione-sfondo: color-mix(in oklab, var(--lectio) 12%, var(--carta));
+  --sintesi: var(--inchiostro); --sintesi-sfondo: var(--finestra);
+  --font-ui: "Geist", system-ui, sans-serif;
+}
+.foglio *, .legende li, .foglio .tempo { border-radius: 0 !important; }
+.foglio h1, .foglio h2, .foglio h3 { color: var(--inchiostro); letter-spacing: -0.03em; }
+.foglio h2 { font-weight: 900; }
+.foglio .tempo { font-family: var(--font-mono); background: transparent; border: 1px solid var(--inchiostro); font-size: 0.5em; padding: 2px 8px; }
+.legende li { border: 1px solid var(--inchiostro); background: var(--carta); font-family: var(--font-mono); font-size: 12px; }
+.legende .icona { color: var(--inchiostro); }
+
+/* --- un solo linguaggio: tutto ad angoli vivi (come Lectio). Restano tondi solo i punti REC e "in corso". --- */
+*, *::before, *::after { border-radius: 0 !important; }
+#btn-registra::before, .segnale.attiva, .registrazione.attiva .quadrante-reg::after { border-radius: 50% !important; }
+
+/* scelte: ChoiceChip di Lectio, quadratini separati con «✣», inchiostro quando scelti */
+.scelte { padding: 0; gap: 6px; background: transparent; border: 0; }
+.scelta span {
+  padding: 5px 11px; font-size: 13px; font-weight: 500; color: var(--inchiostro);
+  background: var(--finestra); border: 1px solid var(--inchiostro);
+  transition: background-color 200ms var(--uscita), color 200ms var(--uscita), box-shadow 280ms var(--molla);
+}
+.scelta span::before { content: "✣ "; opacity: 0.7; }
+.scelta:hover span { box-shadow: 2px 2px 0 var(--inchiostro); }
+.scelta input:checked + span { background: var(--inchiostro); color: var(--carta); box-shadow: 2px 2px 0 var(--lectio); }
+.scelta input:focus-visible + span { outline: 2px solid var(--lectio); outline-offset: 2px; }
+
+/* interruttori: RetroToggle, un quadratino che scorre in una cella */
+.interruttore { background: var(--carta); border: 1px solid var(--inchiostro); }
+.interruttore:hover { background: var(--carta); box-shadow: 3px 3px 0 var(--inchiostro); }
+.levetta { width: 42px; height: 22px; background: var(--finestra); border: 1px solid var(--inchiostro); box-shadow: none; }
+.levetta::after { top: 2px; left: 2px; width: 16px; height: 16px; background: var(--inchiostro); box-shadow: none; transition: transform 300ms var(--molla); }
+.interruttore input:checked ~ .levetta { background: var(--lectio); }
+.interruttore input:checked ~ .levetta::after { transform: translateX(20px); background: var(--carta); outline: 1px solid var(--inchiostro); }
+.interruttore input:focus-visible ~ .levetta { outline: 2px solid var(--lectio); }
+
+/* distintivi: Chip in negativo */
+.distintivo { background: var(--carta); color: var(--inchiostro); border: 1px solid var(--inchiostro); font-family: var(--font-mono); font-weight: 400; padding: 1px 6px; }
+.distintivo.pieno { background: var(--inchiostro); color: var(--carta); }
+
+/* schede modello e sezioni delle impostazioni: un titolo solo (la barra della finestra) */
+.pannello.imp > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.scheda-modello, .modelli label { background: var(--carta); border: 1px solid var(--inchiostro); }
+
+/* cursore della dimensione del testo: binario a celle e cursore quadrato */
+input[type="range"] { -webkit-appearance: none; appearance: none; height: 14px; background: transparent; }
+input[type="range"]::-webkit-slider-runnable-track { height: 6px; background: var(--finestra); border: 1px solid var(--inchiostro); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 18px; margin-top: -7px; background: var(--inchiostro); border: 1px solid var(--carta); outline: 1px solid var(--inchiostro); cursor: pointer; }
+
+/* temi colore: ogni campione è una finestrella con barra del titolo, il suo accento e il rosa della registrazione */
+.temi-colore { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.tema-colore { --c: #d45bb6; --r: #f386a1; display: grid; justify-items: center; gap: 5px; cursor: pointer; position: relative; }
+.tema-colore input { position: absolute; opacity: 0; pointer-events: none; }
+.tema-colore .anteprima {
+  display: grid; grid-template-rows: 7px 1fr; width: 52px; height: 40px;
+  background: var(--r); border: 1px solid var(--inchiostro); box-shadow: 3px 3px 0 var(--inchiostro);
+  transition: transform 280ms var(--molla), box-shadow 280ms var(--molla);
+}
+.tema-colore .anteprima i { background: var(--inchiostro); }
+.tema-colore .anteprima b { margin: 7px 8px; background: radial-gradient(circle, rgba(30,30,30,.35) 1px, transparent 1.3px) 0 0 / 4px 4px; border-left: 10px solid var(--c); }
+.tema-colore .nome { font-family: var(--font-mono); font-size: 11px; color: var(--inchiostro-tenue); }
+.tema-colore:hover .anteprima { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--inchiostro); }
+.tema-colore:has(input:checked) .anteprima { box-shadow: 3px 3px 0 var(--c), 0 0 0 2px var(--inchiostro); }
+.tema-colore:has(input:checked) .nome { color: var(--inchiostro); text-decoration: underline; text-decoration-color: var(--c); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.tema-colore:has(input:focus-visible) .anteprima { outline: 2px solid var(--c); outline-offset: 4px; }
+.tema-colore.menta { --c: #09aea1; --r: #8fdcd1; }
+.tema-colore.arancio { --c: #e8590c; --r: #ffa877; }
+.tema-colore.cobalto { --c: #2f5bea; --r: #9fb4ff; }
+.tema-colore.limone { --c: #8a7d00; --r: #efe27a; }
+.tema-colore.seppia { --c: #b5452b; --r: #e9b39f; }
+.tema-colore.personalizzato { --r: color-mix(in oklab, var(--c) 55%, white); }
+.pozzetto-colore { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--inchiostro); background: var(--carta); padding: 4px 10px 4px 4px; cursor: pointer; }
+.pozzetto-colore input { -webkit-appearance: none; appearance: none; width: 30px; height: 24px; border: 1px solid var(--inchiostro); padding: 0; background: none; cursor: pointer; }
+.pozzetto-colore input::-webkit-color-swatch-wrapper { padding: 0; }
+.pozzetto-colore input::-webkit-color-swatch { border: 0; }
+.codice-colore { font-size: 12.5px; }
+
+/* i temi applicati a tutta l'app */
+:root[data-accento="menta"] { --lectio: #09aea1; --rosa: light-dark(#8fdcd1, #2f7d74); }
+:root[data-accento="arancio"] { --lectio: light-dark(#d9480f, #ff8a4c); --rosa: light-dark(#ffa877, #a8552a); }
+:root[data-accento="cobalto"] { --lectio: light-dark(#2f5bea, #7d9bff); --rosa: light-dark(#9fb4ff, #3c4f9e); }
+:root[data-accento="limone"] { --lectio: light-dark(#7a6f00, #e3d34d); --rosa: light-dark(#efe27a, #7d7322); }
+:root[data-accento="seppia"] {
+  --lectio: light-dark(#b5452b, #e58b72); --rosa: light-dark(#e9b39f, #8a4a3a);
+  --carta: light-dark(#f6f1e7, #1c1915); --campo: light-dark(#f6f1e7, #15130f); --finestra: light-dark(#e6dfd0, #2a2620);
+  --inchiostro: light-dark(#2b2620, #ece5d8); --griglia: light-dark(#cfc5b2, #3d372e);
+}
+:root[data-accento="personalizzato"] { --lectio: var(--colore-tuo); --rosa: color-mix(in oklab, var(--colore-tuo) 55%, light-dark(white, black)); }
+/* lo sfondo dei momenti attivi segue l'accento del tema */
+.segnale.nuova { background: var(--lectio); }
+
+/* interruttori dell'aspetto */
+:root[data-griglia="no"] body::before, :root[data-griglia="no"] body::after { display: none; }
+:root[data-vetro="no"] .testata, :root[data-vetro="no"] .scarico, :root[data-vetro="no"] .trasporto,
+:root[data-vetro="no"] .registrazione .azioni-form .tasto, :root[data-vetro="no"] .pannello.registrazione .tasto {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: var(--carta) !important;
+}
+:root[data-vetro="no"] .registrazione .azioni-form .tasto.grande.registra { background: var(--inchiostro) !important; }
+
+/* il foglio degli appunti è una finestra di Lectio come le altre: barra del titolo con il nome della scheda */
+.foglio[data-titolo] { position: relative; padding-top: max(58px, 3.6em); }
+.foglio[data-titolo]::before {
+  content: attr(data-titolo); position: absolute; inset: 0 0 auto 0; height: 30px;
+  display: flex; align-items: center; padding: 0 12px;
+  background: var(--inchiostro); color: var(--carta); font-family: var(--font-ui); font-size: 13px; font-weight: 600;
+}
+/* scheda scelta = ChoiceChip scelto (stessa ombra d'accento) */
+.commutatore button[aria-selected="true"] { box-shadow: 2px 2px 0 var(--lectio); }
+.commutatore button:hover:not([aria-selected="true"]) { box-shadow: 2px 2px 0 var(--inchiostro); }
+/* barra dell'audio: binario a celle e cursore quadrato, come la dimensione del testo */
+.sintonia::-webkit-slider-runnable-track {
+  height: 8px; border: 1px solid var(--inchiostro);
+  background: linear-gradient(90deg, var(--inchiostro) var(--pos), var(--finestra) var(--pos));
+}
+.sintonia::-webkit-slider-thumb {
+  width: 12px; height: 20px; margin-top: -7px; background: var(--lectio);
+  border: 1px solid var(--inchiostro); box-shadow: 2px 2px 0 var(--inchiostro);
+}
+.sintonia:active::-webkit-slider-thumb { transform: none; box-shadow: none; }
+/* le mappe e gli schemi (SVG) seguono gli angoli vivi; i cursori dei range non li tocca il reset globale */
+.foglio svg rect { rx: 0 !important; ry: 0 !important; }
+.sintonia::-webkit-slider-thumb, input[type="range"]::-webkit-slider-thumb { border-radius: 0 !important; }
+.sintonia::-moz-range-thumb, input[type="range"]::-moz-range-thumb { border-radius: 0 !important; }

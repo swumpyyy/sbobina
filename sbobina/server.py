@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -34,7 +35,7 @@ from sbobina.config import Config
 from sbobina.esporta import LIBRERIE, crea_pdf, esporta_html, esporta_pdf_html
 from sbobina import impostazioni, sistema, studio
 from sbobina.registrazione import Registratore
-from sbobina.llm import FERMA, PREPARAZIONE, costo_stimato, prepara
+from sbobina.llm import DIRETTA, FERMA, PREPARAZIONE, costo_stimato, prepara
 from sbobina.pipeline import RIPARTENZE, Elaborazione, File, prepara_rielaborazione
 
 STATIC = Path(__file__).parent / "static"
@@ -208,13 +209,18 @@ def crea_app(
             threading.Thread(target=prepara, args=(cfg.modello, cfg.whisper_modello), daemon=True).start()
         return PREPARAZIONE
 
+    @app.get("/api/diretta")
+    def diretta() -> dict:
+        """Le ultime parole riconosciute da Whisper o scritte dal modello, per vederlo lavorare."""
+        return DIRETTA
+
     @app.get("/api/sistema")
     def info_sistema() -> dict:
-        from sbobina.llm import locale_pronto, mlx_pronto
+        from sbobina.llm import pronto
 
         dati = sistema.proposte()
         for m in dati["modelli"]:
-            m["installato"] = mlx_pronto(m["mlx"]) or locale_pronto(m["tag"])
+            m["installato"] = pronto(m["mlx"])
         dati["cartella_dati"] = str(config.cartella_dati.resolve())
         dati["aree"] = list(impostazioni.AREE)
         dati["anni"] = list(impostazioni.ANNI)
@@ -235,7 +241,10 @@ def crea_app(
 
     @app.post("/api/cartella-dati", dependencies=protetto)
     def apri_cartella_dati() -> Response:
-        subprocess.run(["open", str(config.cartella_dati.resolve())], check=False)
+        if os.name == "nt":
+            os.startfile(config.cartella_dati.resolve())  # Esplora file
+        else:
+            subprocess.run(["open", str(config.cartella_dati.resolve())], check=False)
         return Response(status_code=204)
 
     @app.get("/api/lezioni")

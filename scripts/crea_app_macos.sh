@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Crea Sbobina.app (icona nel Dock, doppio clic per aprire).
 #   senza argomenti: app di sviluppo in ~/Applications che avvia il .venv di questa cartella (non va spostata).
-#   --dmg: app autonoma (Python, ffmpeg e Ollama dentro il bundle) in dist/Sbobina.dmg, da dare a chiunque.
+#   --dmg: app autonoma (Python, ffmpeg e i motori MLX dentro il bundle) in dist/Sbobina.dmg, da dare a chiunque.
 set -euo pipefail
 
 PROGETTO="${0:A:h:h}"
@@ -15,8 +15,6 @@ trap 'rm -rf "$LAVORO"' EXIT
 CACHE="$HOME/Library/Caches/sbobina-build"
 PY_URL="https://github.com/astral-sh/python-build-standalone/releases/download/20261009/cpython-3.14.8+20261009-aarch64-apple-darwin-install_only.tar.gz"
 PY_SHA="ff8e1ddc02a9df3190b62d5af475cb642a02cfc77901ef780f9826cc23b51934"
-OLLAMA_URL="https://github.com/ollama/ollama/releases/download/v0.40.3/ollama-darwin.tgz"
-OLLAMA_SHA="a2d1d906a2c8febd9cb18f5c183854d0a6db5dc522940d68b0c0ed048e8dfdea"
 
 scarica() {  # url sha destinazione
   [[ -f "$3" ]] || curl -fL --progress-bar -o "$3.part" "$1"
@@ -66,10 +64,7 @@ if (( DMG )); then
   R="$APP/Contents/Resources"
   mkdir -p "$CACHE" "$R/bin"
   scarica "$PY_URL" "$PY_SHA" "$CACHE/python.tar.gz"
-  scarica "$OLLAMA_URL" "$OLLAMA_SHA" "$CACHE/ollama-darwin.tgz"
   tar xzf "$CACHE/python.tar.gz" -C "$R"
-  mkdir "$R/ollama" && tar xzf "$CACHE/ollama-darwin.tgz" -C "$R/ollama"
-  ln -s ../ollama/ollama "$R/bin/ollama"
   # ffmpeg statico già usato in sviluppo (pacchetto static-ffmpeg del .venv).
   cp "${PROGETTO}/.venv/bin/ffmpeg"(:A) "${PROGETTO}/.venv/bin/ffprobe"(:A) "$R/bin/"
   PIP=("$R/python/bin/python3" -m pip install -q --no-compile --disable-pip-version-check)
@@ -77,7 +72,7 @@ if (( DMG )); then
   # mlx-whisper senza torch (serve solo a convertire modelli, non a trascrivere): ~1 GB in meno.
   "${PIP[@]}" --no-deps "mlx-whisper>=0.4"
   "${PIP[@]}" huggingface_hub mlx more-itertools numba numpy scipy tiktoken tqdm "mlx-lm>=0.28"
-  "$R/python/bin/python3" -c "import sbobina.app, mlx_whisper, mlx_lm, webview" || { echo "Import fallito nel bundle"; exit 1; }
+  "$R/python/bin/python3" -c "import sbobina.app, mlx_whisper, mlx_lm, webview, Vision" || { echo "Import fallito nel bundle"; exit 1; }
 
   cat > "$APP/Contents/MacOS/Sbobina" <<'LANCIO'
 #!/bin/zsh

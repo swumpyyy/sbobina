@@ -36,7 +36,9 @@ def test_motore_sceglie_il_modello():
     config = Config(modello="gemma4:12b")
     assert Impostazioni(motore_llm="mlx").applica(config).modello == "mlx-community/gemma-4-12B-it-4bit"
     assert Impostazioni(motore_llm="mlx", modello="gemma4:e4b").applica(config).modello.endswith("e4b-it-4bit")
-    assert Impostazioni(motore_llm="ollama", modello="mlx-community/gemma-4-e2b-it-4bit").applica(config).modello == "gemma4:e2b"
+    # chi aveva scelto Ollama passa a MLX con lo stesso modello
+    vecchie = Impostazioni.da_dict({"motore_llm": "ollama", "modello": "gemma4:e2b"})
+    assert vecchie.motore_llm == "mlx" and vecchie.applica(config).modello == "mlx-community/gemma-4-e2b-it-4bit"
     assert Impostazioni(motore_llm="claude").applica(config).modello.startswith("claude")
     assert Impostazioni(sezioni={"verifica": False}).applica(config).verifica is False
 
@@ -69,3 +71,10 @@ def test_api_impostazioni(config):
         assert client.put("/api/impostazioni", headers=PROTETTO, json={"scala_testo": 300}).status_code == 400
         sistema = client.get("/api/sistema").json()
         assert sistema["modelli"] and "ram_gb" in sistema["mac"] and "economia" in sistema["aree"]
+
+
+def test_temi_colore_lectio():
+    assert Impostazioni.da_dict({"accento": "blu"}).accento == "cobalto"  # vecchio tema a vetro
+    assert Impostazioni.da_dict({"accento": "personalizzato", "colore": "#12ab9F"}).colore == "#12ab9F"
+    with pytest.raises(ValueError):
+        Impostazioni.da_dict({"colore": "rosso"})

@@ -13,7 +13,7 @@ Italian university students (Scuola di Economia e Studi Aziendali): the owner an
 Sbobina turns a lecture recording into accurate Italian study notes: transcription, revised transcript, notes with tables, diagrams and concept maps, teacher's exam hints, glossary and review questions, plus a check of the notes against the transcript. Success: a student drops in an audio file and later gets notes they trust enough to study from, without paying anything.
 
 ## Positioning
-Free and fully local: transcription with Whisper and note writing with an open-source model through Ollama (an in-process MLX engine is planned), all on the student's own computer. No account, no API key and no per-lesson cost. The audio never leaves the machine. Claude (paid API) remains possible only if someone explicitly configures it.
+Free and fully local: transcription with Whisper and note writing with an open-source model (Gemma 4) running in-process with MLX (Ollama was removed on 2026-10-13), all on the student's own computer. No account, no API key and no per-lesson cost. The audio never leaves the machine. Claude (paid API) remains possible only if someone explicitly configures it.
 
 ## Operating Context
 - Runs as a local web app (FastAPI + static HTML/CSS/JS) at localhost, started from the terminal; also has a CLI.
@@ -23,7 +23,7 @@ Free and fully local: transcription with Whisper and note writing with an open-s
 
 ## Capabilities and Constraints
 - Three outputs per lecture are all required: a PDF to copy by hand, on-screen reading and review, and concept maps with review questions.
-- Must stay free: the default AI is local (Ollama, model gemma4:12b); there are no paid defaults.
+- Must stay free: the default AI is local (MLX in-process, Gemma 4 sized to the Mac's RAM: 26B-A4B from 32 GB); there are no paid defaults.
 - Hardware reference: the owner's Mac M1 Max with 32 GB. Classmates' computers are unknown and may be weaker.
 - Language: Italian UI and Italian notes.
 

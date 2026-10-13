@@ -1,12 +1,13 @@
 """Verifica la richiesta che l'SDK Anthropic invia davvero, con un trasporto HTTP finto."""
 
 import json
+from pathlib import Path
 
 import anthropic
 import httpx2
 import pytest
 
-from sbobina.llm import Claude, ErroreClaude, Locale, Utilizzo, costo_stimato, crea_modello
+from sbobina.llm import MLX, Claude, ErroreClaude, Utilizzo, costo_stimato, crea_modello, in_loop
 
 
 def _sse(eventi: list[dict]) -> bytes:
@@ -111,46 +112,102 @@ def test_costo_stimato():
     assert costo_stimato("modello-sconosciuto", utilizzo) is None
 
 
-def _locale(risposta: dict | None, richieste: list, stato: int = 200) -> Locale:
-    def gestore(req: httpx2.Request) -> httpx2.Response:
-        richieste.append(req)
-        return httpx2.Response(stato, json=risposta or {"error": "model not found"})
-
-    return Locale("gemma4:12b", client=httpx2.Client(transport=httpx2.MockTransport(gestore)))
-
-
-def test_locale_testo_e_json():
-    richieste = []
-    pronta = {"message": {"content": '{"termini": ["Rolle"]}'}, "done_reason": "stop",
-              "prompt_eval_count": 900, "eval_count": 40}
-    system = [{"type": "text", "text": "Sei un revisore.", "cache_control": {"type": "ephemeral"}}]
-    contenuto = [{"type": "text", "text": "trascrizione"},
-                 {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": "QUJD"}}]
-    dati, uso = _locale(pronta, richieste).json(system=system, contenuto=contenuto, schema={"type": "object"}, sforzo="high")
-    assert dati == {"termini": ["Rolle"]} and uso == Utilizzo(input=900, output=40)
-    corpo = json.loads(richieste[0].content)
-    assert corpo["model"] == "gemma4:12b" and corpo["format"] == {"type": "object"} and corpo["stream"] is True
-    assert corpo["messages"][0] == {"role": "system", "content": "Sei un revisore."}
-    assert corpo["messages"][1]["content"] == "trascrizione" and corpo["messages"][1]["images"] == ["QUJD"]
-    assert corpo["options"]["num_ctx"] >= 32768
-
-
-def test_locale_errori_chiari():
-    with pytest.raises(ErroreClaude, match="ollama pull gemma4:12b"):
-        _locale(None, [], stato=404).testo(system="s", contenuto=[{"type": "text", "text": "x"}], sforzo="low")
-    troncata = {"message": {"content": "metà"}, "done_reason": "length"}
-    with pytest.raises(ErroreClaude, match="troncata"):
-        _locale(troncata, []).testo(system="s", contenuto=[{"type": "text", "text": "x"}], sforzo="low")
-
-    def spento(req):
-        raise httpx2.ConnectError("rifiutata", request=req)
-
-    locale = Locale("gemma4:12b", client=httpx2.Client(transport=httpx2.MockTransport(spento)))
-    with pytest.raises(ErroreClaude, match="Ollama non è in esecuzione"):
-        locale.testo(system="s", contenuto=[{"type": "text", "text": "x"}], sforzo="low")
-
-
 def test_crea_modello_sceglie_il_motore(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
-    assert isinstance(crea_modello("gemma4:12b"), Locale)
+    # i nomi brevi delle versioni con Ollama diventano il repo MLX equivalente
+    assert crea_modello("gemma4:12b").modello == "mlx-community/gemma-4-12B-it-4bit"
+    assert isinstance(crea_modello("mlx-community/gemma-4-26b-a4b-it-4bit"), MLX)
     assert isinstance(crea_modello("claude-opus-5-5"), Claude)
+
+
+def test_in_loop_riconosce_le_ripetizioni():
+    frase = "Il teorema di Rolle vale se la funzione è continua. "
+    assert in_loop("Introduzione alla lezione. " + frase * 8)
+    assert not in_loop("Appunti normali che non si ripetono mai, " * 1 + "con frasi sempre diverse e nuove. " * 1)
+
+
+def test_scarica_hf_completa_e_poi_si_arrende(tmp_path, monkeypatch):
+    import io
+    import subprocess
+    from types import SimpleNamespace
+
+    import huggingface_hub
+
+    from sbobina import llm
+
+    info = SimpleNamespace(siblings=[SimpleNamespace(size=10, rfilename="model.safetensors")])
+    monkeypatch.setattr(huggingface_hub.HfApi, "model_info", lambda self, repo, files_metadata: info)
+    monkeypatch.setattr(llm.time, "sleep", lambda s: None)
+
+    class FintoProcesso:
+        esito = 0
+
+        def __init__(self, argomenti, **_):
+            (Path(argomenti[-2]) / "pesi.safetensors").write_bytes(b"x" * 10)
+            self.returncode, self.stderr = FintoProcesso.esito, io.BytesIO(b"rete assente")
+
+        def poll(self):
+            return self.returncode
+
+    monkeypatch.setattr(subprocess, "Popen", FintoProcesso)
+    llm.scarica_hf("org/modello", tmp_path / "ok", "il modello")
+    assert (tmp_path / "ok" / ".completo").is_file() and not llm._PROCESSI_SCARICO
+
+    FintoProcesso.esito = 1
+    with pytest.raises(ErroreClaude, match="rete assente"):
+        llm.scarica_hf("org/modello", tmp_path / "ko", "il modello")
+    assert not (tmp_path / "ko" / ".completo").exists()
+
+
+def test_fuori_dal_mac_usa_llama_cpp_con_il_gguf_giusto(monkeypatch, tmp_path):
+    from sbobina import llm
+
+    monkeypatch.setattr(llm, "usa_mlx", lambda: False)
+    monkeypatch.setattr(llm, "MODELLI_LOCALI", tmp_path)
+    modello = crea_modello("gemma4:e4b")
+    assert isinstance(modello, llm.LlamaCpp) and modello.modello == "mlx-community/gemma-4-e4b-it-4bit"
+    gguf = llm.file_gguf("gemma4:e4b")
+    assert gguf == tmp_path / "gemma-4-E4B-it-GGUF" / "gemma-4-E4B-it-Q4_K_M.gguf"
+    assert not llm.pronto("gemma4:e4b")
+    gguf.parent.mkdir(parents=True)
+    (gguf.parent / ".completo").touch()
+    assert llm.pronto("gemma4:e4b")
+
+
+def test_llama_cpp_legge_lo_stream_di_llama_server(monkeypatch):
+    """Un finto llama-server con lo stesso formato SSE (OpenAI) di quello vero."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    from sbobina import llm
+
+    pezzi = [{"choices": [{"delta": {"content": t}, "finish_reason": None}]} for t in ('{"titolo": ', '"Rolle"}')]
+    pezzi += [{"choices": [{"delta": {}, "finish_reason": "stop"}]},
+              {"choices": [], "usage": {"prompt_tokens": 12, "completion_tokens": 5}}]
+    ricevuto = {}
+
+    class Finto(BaseHTTPRequestHandler):
+        def do_POST(self):
+            ricevuto.update(json.loads(self.rfile.read(int(self.headers["Content-Length"]))))
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.end_headers()
+            for p in pezzi:
+                self.wfile.write(f"data: {json.dumps(p)}\n\n".encode())
+            self.wfile.write(b"data: [DONE]\n\n")
+
+        def log_message(self, *_):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Finto)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    monkeypatch.setattr(llm, "assicura_gguf", lambda modello: None)
+    monkeypatch.setattr(llm, "_avvia_llama", lambda modello, contesto: f"http://127.0.0.1:{server.server_port}")
+    try:
+        dati, uso = llm.LlamaCpp("gemma4:e4b").json(
+            system="Sei un tutor.", contenuto=[{"type": "text", "text": "Lezione"}], schema={"type": "object"}, sforzo="low"
+        )
+    finally:
+        server.shutdown()
+    assert dati == {"titolo": "Rolle"} and uso.input == 12 and uso.output == 5
+    assert ricevuto["messages"][0] == {"role": "system", "content": "Sei un tutor."} and ricevuto["stream"] is True

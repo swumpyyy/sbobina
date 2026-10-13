@@ -59,7 +59,7 @@ def _sforzo(valore: str | None, predefinito: str) -> str:
 @dataclass(frozen=True)
 class Config:
     cartella_dati: Path = Path("dati")
-    # Modello locale gratuito via Ollama; un nome "claude-..." usa invece l'API Anthropic (a pagamento).
+    # Modello locale gratuito (Gemma in MLX, dentro Sbobina); un nome "claude-..." usa l'API Anthropic (a pagamento).
     modello: str = "gemma4:12b"
     # Sforzo per appunti, verifica e correzione finale (le tre fasi condividono la cache del prompt).
     sforzo_appunti: str = "high"
@@ -104,7 +104,7 @@ class Config:
 
     @property
     def llm_pronto(self) -> bool:
-        """Il modello che scrive gli appunti è utilizzabile: Ollama o MLX con il modello scaricato, o chiave Claude."""
+        """Il modello che scrive gli appunti è utilizzabile: MLX con il modello scaricato, o chiave Claude."""
         from sbobina.llm import pronto
 
         return pronto(self.modello)

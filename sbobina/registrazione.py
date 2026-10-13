@@ -1,13 +1,31 @@
-"""Registrazione dal microfono con ffmpeg (avfoundation su macOS), con il livello reale per il VU meter."""
+"""Registrazione dal microfono con ffmpeg (avfoundation su macOS, dshow su Windows), con il livello reale per il VU meter."""
 
 from __future__ import annotations
 
 import re
 import signal
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
+
+WINDOWS = sys.platform == "win32"
+PERMESSO = ("Impostazioni → Privacy e sicurezza → Microfono (attiva \"Consenti alle app desktop\")" if WINDOWS
+            else "Impostazioni di Sistema → Privacy e sicurezza → Microfono")
+
+
+def microfono_windows() -> str:
+    """Il primo microfono che vede DirectShow: su Windows ffmpeg vuole il nome, non un numero."""
+    uscita = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-list_devices", "true", "-f", "dshow", "-i", "dummy"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+    ).stderr
+    trovato = re.search(r'"([^"]+)" \(audio\)', uscita)
+    if not trovato:
+        raise RuntimeError(f"Non trovo nessun microfono: controlla che sia collegato e il permesso in {PERMESSO}.")
+    return trovato.group(1)
+
 
 RE_LIVELLO = re.compile(r"lavfi\.astats\.Overall\.RMS_level=(-?[\d.]+|-inf)")
 
@@ -41,7 +59,7 @@ class Registratore:
             # astats misura ogni ~0,1 s; ametadata stampa il livello su stdout, che leggiamo in un thread.
             comando = [
                 "ffmpeg", "-hide_banner", "-loglevel", "error",
-                "-f", "avfoundation", "-i", dispositivo,
+                *(["-f", "dshow", "-i", f"audio={microfono_windows()}"] if WINDOWS else ["-f", "avfoundation", "-i", dispositivo]),
                 "-af", "asetnsamples=4410,astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.RMS_level:file=-",
                 "-ac", "1", "-c:a", "aac", "-b:a", "96k", str(self._file),
             ]
@@ -70,9 +88,8 @@ class Registratore:
             self._errore = "La registrazione si è interrotta."
         secondi = time.monotonic() - self._inizio
         if self.attiva and not self._segnale and secondi > 5 and not self._errore:
-            # Senza permesso macOS non consegna l'audio: ffmpeg resta fermo senza errori.
-            self._errore = ("Il microfono non manda audio: dai a Sbobina il permesso in Impostazioni di Sistema → "
-                            "Privacy e sicurezza → Microfono, poi riprova.")
+            # Senza permesso il sistema non consegna l'audio: ffmpeg resta fermo senza errori.
+            self._errore = f"Il microfono non manda audio: dai a Sbobina il permesso in {PERMESSO}, poi riprova."
         return {
             "attiva": self.attiva,
             "secondi": round(time.monotonic() - self._inizio, 1) if self.attiva else 0,
@@ -92,10 +109,12 @@ class Registratore:
                     processo.stdin.flush()  # type: ignore[union-attr]
                 except (BrokenPipeError, OSError):
                     pass
-                # "q" chiude il file per bene; poi SIGINT (fa lo stesso); kill solo se ffmpeg è bloccato.
-                for segnale in (None, signal.SIGINT, signal.SIGKILL):
-                    if segnale is not None:
-                        processo.send_signal(segnale)
+                # "q" chiude il file per bene; poi SIGINT (fa lo stesso, non su Windows); kill solo se ffmpeg è bloccato.
+                for passo in ("aspetta", "interrompi", "uccidi"):
+                    if passo == "interrompi" and not WINDOWS:
+                        processo.send_signal(signal.SIGINT)
+                    elif passo == "uccidi":
+                        processo.kill()
                     try:
                         processo.wait(timeout=5)
                         break
@@ -115,5 +134,5 @@ class Registratore:
 
 def _messaggio(errore: str) -> str:
     if "not authorized" in errore.lower() or "permission" in errore.lower():
-        return "Sbobina non ha il permesso di usare il microfono: aprilo in Impostazioni di Sistema → Privacy → Microfono."
+        return f"Sbobina non ha il permesso di usare il microfono: aprilo in {PERMESSO}."
     return f"Errore del microfono: {errore[-200:]}"
