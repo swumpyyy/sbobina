@@ -7,3 +7,4 @@ dati/
 .DS_Store
 graphify-out/
 dist/
+build/
