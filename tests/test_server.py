@@ -17,7 +17,7 @@ def client(config):
         return Elaborazione(config, app.state.archivio, FintoLLM(), [FintoMotore()])
 
     app = crea_app(config, crea_elaborazione=crea_elaborazione)
-    with TestClient(app) as c:
+    with TestClient(app, base_url="http://localhost") as c:
         yield c
 
 
@@ -172,8 +172,25 @@ def test_approfondisci_richiede_appunti_pronti(client, audio_prova):
 
 
 def test_ferma_lezione_in_coda(config, audio_prova):
-    with TestClient(crea_app(config, avvia_coda=False)) as client:
+    with TestClient(crea_app(config, avvia_coda=False), base_url="http://localhost") as client:
         [creata] = _carica(client, audio_prova).json()
         risposta = client.post(f"/api/lezioni/{creata['id']}/ferma", headers=PROTETTO)
         assert risposta.status_code == 200 and risposta.json()["stato"] == "fermata"
         assert client.post(f"/api/lezioni/{creata['id']}/ferma", headers=PROTETTO).status_code == 409
+
+
+def test_host_estraneo_rifiutato(client):
+    # DNS rebinding: la richiesta arriva a 127.0.0.1 ma con l'Host del sito estraneo.
+    assert client.get("/api/lezioni", headers={"Host": "evil.com"}).status_code == 400
+
+
+def test_corsi_con_lo_stesso_slug_restano_separati(client):
+    client.put("/api/glossario", headers=PROTETTO, json={"corso": "C", "termini": ["puntatore"]})
+    client.put("/api/glossario", headers=PROTETTO, json={"corso": "C++", "termini": ["template"]})
+    assert client.get("/api/glossario", params={"corso": "C"}).json()["termini"] == ["puntatore"]
+    assert client.get("/api/glossario", params={"corso": "C++"}).json()["termini"] == ["template"]
+
+
+def test_un_corso_rovinato_non_blocca_lo_stato(client, config):
+    (config.cartella_dati / "corsi" / "rotto.json").write_text("{", encoding="utf-8")
+    assert client.get("/api/stato").status_code == 200

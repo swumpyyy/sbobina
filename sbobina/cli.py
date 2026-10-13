@@ -142,7 +142,9 @@ def _comando_server(args: argparse.Namespace, config: Config) -> int:
         import webbrowser
 
         threading.Timer(1.5, lambda: webbrowser.open(indirizzo)).start()
-    uvicorn.run(crea_app(config), host=args.host, port=args.port, log_level="warning")
+    locale = args.host in ("127.0.0.1", "localhost")
+    # --host diverso = l'utente ha scelto di esporre l'app in rete: ogni Host è accettato.
+    uvicorn.run(crea_app(config, host_ammessi=("127.0.0.1", "localhost") if locale else ("*",)), host=args.host, port=args.port, log_level="warning")
     return 0
 
 

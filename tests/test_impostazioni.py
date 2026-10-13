@@ -62,7 +62,7 @@ def test_json_dal_modello_integrato():
 
 
 def test_api_impostazioni(config):
-    with TestClient(crea_app(config, avvia_coda=False)) as client:
+    with TestClient(crea_app(config, avvia_coda=False), base_url="http://localhost") as client:
         assert client.get("/api/impostazioni").json()["tema"] == "sistema"
         assert client.put("/api/impostazioni", json={"tema": "scuro"}).status_code == 403
         risposta = client.put("/api/impostazioni", headers=PROTETTO, json={"tema": "scuro", "scala_testo": 120})

@@ -98,7 +98,7 @@ def test_stime_della_coda():
 
 
 def test_modifica_appunti_e_ripristino(config, lezione):
-    with TestClient(crea_app(config, avvia_coda=False)) as client:
+    with TestClient(crea_app(config, avvia_coda=False), base_url="http://localhost") as client:
         url = f"/api/lezioni/{lezione.id}/appunti"
         assert client.put(url, json={"testo": "x"}).status_code == 403
         risposta = client.put(url, headers=PROTETTO, json={"testo": "# Mie note\nCorrette a mano."})
