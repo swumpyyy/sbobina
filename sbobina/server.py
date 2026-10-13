@@ -61,6 +61,25 @@ class Glossario(BaseModel):
     termini: list[str]
 
 
+MESI = ("gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic")
+
+
+def data_leggibile(iso: str) -> str:
+    """2026-10-12 → 12 ott 2026 (testo libero lasciato com'è)."""
+    try:
+        anno, mese, giorno = (int(x) for x in iso.split("-"))
+        return f"{giorno} {MESI[mese - 1]} {anno}"
+    except (ValueError, IndexError):
+        return iso
+
+
+def durata_leggibile(secondi: float | None) -> str:
+    if not secondi:
+        return ""
+    minuti = round(secondi / 60)
+    return f"{minuti} min" if minuti < 60 else f"{minuti // 60} h {minuti % 60:02d} min"
+
+
 def riassunto(lezione: Lezione) -> dict:
     return {
         "id": lezione.id,
@@ -265,7 +284,7 @@ def crea_app(
         return FileResponse(percorso, media_type="audio/mpeg")
 
     @app.get("/api/lezioni/{id_lezione}/scarica/{formato}")
-    def scarica(id_lezione: str, formato: str, allegato: bool = False) -> FileResponse:
+    def scarica(id_lezione: str, formato: str, allegato: bool = False, contenuto: str = "") -> FileResponse:
         lezione = trova(id_lezione)
         f = File(archivio.cartella(id_lezione))
         nome = slug(f"{lezione.corso} {lezione.titolo}", 80)
@@ -275,7 +294,7 @@ def crea_app(
             "trascrizione": (f.trascrizione, "text/markdown; charset=utf-8", f"{nome}-trascrizione.md"),
         }
         if formato == "pdf":
-            return _pdf(lezione, f, nome)
+            return _pdf(lezione, f, nome, contenuto or impostazioni.carica(config.cartella_dati).pdf)
         if formato not in opzioni:
             raise HTTPException(404, "Formato non disponibile")
         percorso, tipo, nome_file = opzioni[formato]
@@ -285,23 +304,59 @@ def crea_app(
             return FileResponse(percorso, media_type=tipo)  # si apre nel browser, pronta da stampare
         return FileResponse(percorso, media_type=tipo, filename=nome_file)
 
-    def _pdf(lezione: Lezione, f: File, nome: str) -> FileResponse:
+    def _pdf(lezione: Lezione, f: File, nome: str, contenuto: str) -> FileResponse:
+        if contenuto not in impostazioni.PDF:
+            raise HTTPException(400, f"Contenuto del PDF non valido: {contenuto}")
         if not f.appunti.is_file():
             raise HTTPException(404, "Gli appunti non sono ancora pronti.")
-        fonti = [f.appunti, f.approfondimento]
-        if not f.pdf.is_file() or any(p.is_file() and p.stat().st_mtime > f.pdf.stat().st_mtime for p in fonti):
+        leggi = lambda p: p.read_text(encoding="utf-8") if p.is_file() else ""  # noqa: E731
+        parti = [("Appunti della lezione", leggi(f.appunti))]
+        if contenuto == "approfondimento" and f.approfondimento.is_file():
+            parti.append(("Approfondimento", leggi(f.approfondimento)))
+        if contenuto == "trascrizione" and f.trascrizione.is_file():
+            parti.append(("Trascrizione revisionata", leggi(f.trascrizione)))
+        destinazione = f.pdf if contenuto == "appunti" else f.pdf.with_name(f"appunti-{contenuto}.pdf")
+        fonti = [f.appunti, f.approfondimento, f.trascrizione]
+        if not destinazione.is_file() or any(
+            p.is_file() and p.stat().st_mtime > destinazione.stat().st_mtime for p in fonti
+        ):
             pagina = esporta_pdf_html(
-                titolo=lezione.titolo,
-                corso=lezione.corso,
-                data=lezione.data,
-                appunti=f.appunti.read_text(encoding="utf-8"),
-                approfondimento=f.approfondimento.read_text(encoding="utf-8") if f.approfondimento.is_file() else None,
+                titolo=lezione.titolo, corso=lezione.corso, data=data_leggibile(lezione.data), parti=parti,
+                durata=durata_leggibile(lezione.durata_secondi),
             )
             try:
-                crea_pdf(pagina, f.pdf)
+                crea_pdf(pagina, destinazione)
             except (RuntimeError, OSError, subprocess.TimeoutExpired) as e:
                 raise HTTPException(503, str(e)) from e
-        return FileResponse(f.pdf, media_type="application/pdf", filename=f"{nome}.pdf")
+        suffisso = "" if contenuto == "appunti" else f"-{contenuto}"
+        return FileResponse(destinazione, media_type="application/pdf", filename=f"{nome}{suffisso}.pdf")
+
+    @app.get("/api/corsi/pdf")
+    def pdf_corso(corso: str) -> FileResponse:
+        """Tutte le lezioni pronte di un corso in un unico PDF, in ordine di data, con indice."""
+        lezioni = sorted(
+            (l for l in archivio.elenco() if l.corso == corso and l.stato == "completata"),
+            key=lambda l: (l.data or "", l.creata),
+        )
+        parti = []
+        for l in lezioni:
+            appunti = File(archivio.cartella(l.id)).appunti
+            if appunti.is_file():
+                parti.append((f"{l.titolo} · {data_leggibile(l.data)}" if l.data else l.titolo, appunti.read_text(encoding="utf-8")))
+        if not parti:
+            raise HTTPException(404, "Questo corso non ha ancora lezioni pronte.")
+        ore = sum(l.durata_secondi or 0 for l in lezioni)
+        pagina = esporta_pdf_html(
+            titolo="Tutte le lezioni", corso=corso, data=f"{len(parti)} lezioni", parti=parti,
+            durata=durata_leggibile(ore),
+        )
+        destinazione = config.cartella_dati / "esportazioni" / f"{slug(corso, 80)}.pdf"
+        destinazione.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            crea_pdf(pagina, destinazione)
+        except (RuntimeError, OSError, subprocess.TimeoutExpired) as e:
+            raise HTTPException(503, str(e)) from e
+        return FileResponse(destinazione, media_type="application/pdf", filename=f"{slug(corso, 80)}.pdf")
 
     @app.post("/api/lezioni/{id_lezione}/approfondisci", dependencies=protetto)
     def approfondisci(id_lezione: str, corpo: Approfondimento) -> dict:

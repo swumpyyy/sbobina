@@ -274,6 +274,13 @@
         h("div", { class: "modulo-testa" },
           h("h2", {}, corso),
           h("span", { class: "conta", "aria-label": `${voci.length} lezioni` }, String(voci.length).padStart(2, "0")),
+          (() => {
+            const tasto = h("button", {
+              class: "tasto tondo", type: "button", title: `PDF di tutto il corso ${corso}`, "aria-label": `PDF di tutto il corso ${corso}`,
+            }, icona("scarica"));
+            tasto.addEventListener("click", () => scaricaPdf(tasto, `/api/corsi/pdf?corso=${encodeURIComponent(corso)}`, `${corso} - tutte le lezioni.pdf`));
+            return tasto;
+          })(),
           h("button", {
             class: "tasto tondo",
             type: "button",
@@ -661,28 +668,28 @@
   }
 
   /** Scarica il PDF: la prima volta va creato, quindi il tasto mostra l'attesa. */
-  async function scaricaPdf(tasto, l) {
+  async function scaricaPdf(tasto, url, nomeFile) {
     const etichetta = [...tasto.childNodes];
     tasto.disabled = true;
-    tasto.replaceChildren(icona("orologio"), "Preparo il PDF…");
+    tasto.replaceChildren(icona("orologio"), ...(tasto.classList.contains("tondo") ? [] : ["Preparo il PDF…"]));
     try {
       if (window.pywebview) {  // app nativa: finestra Salva di macOS
-        const esito = await window.pywebview.api.salva(`/api/lezioni/${l.id}/scarica/pdf`, `${l.corso} - ${l.titolo}.pdf`);
+        const esito = await window.pywebview.api.salva(url, nomeFile);
         if (esito && !esito.startsWith("/")) throw new Error(esito);
         return;
       }
-      const risposta = await fetch(`/api/lezioni/${l.id}/scarica/pdf`);
+      const risposta = await fetch(url);
       if (!risposta.ok) {
         let messaggio = `Errore ${risposta.status}`;
         try { messaggio = (await risposta.json()).detail || messaggio; } catch (e) { /* non JSON */ }
         throw new Error(messaggio);
       }
-      const url = URL.createObjectURL(await risposta.blob());
-      const collegamento = h("a", { href: url, download: `${l.corso} - ${l.titolo}.pdf` });
+      const blob = URL.createObjectURL(await risposta.blob());
+      const collegamento = h("a", { href: blob, download: nomeFile });
       document.body.append(collegamento);
       collegamento.click();
       collegamento.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      setTimeout(() => URL.revokeObjectURL(blob), 10000);
     } catch (e) {
       alert(e.message);
     } finally {
@@ -737,10 +744,22 @@
     const attiva = ATTIVI.has(l.stato);
     const barra = h("div", { class: "tastiera", role: "toolbar", "aria-label": "Azioni sulla lezione" });
     if (l.stato === "completata") {
+      const base = `/api/lezioni/${l.id}/scarica/pdf`;
+      const nome = `${l.corso} - ${l.titolo}`;
       const tastoPdf = h("button", { class: "tasto grande", type: "button" }, icona("scarica"), "Scarica il PDF");
-      tastoPdf.addEventListener("click", () => scaricaPdf(tastoPdf, l));
+      tastoPdf.addEventListener("click", () => scaricaPdf(tastoPdf, base, `${nome}.pdf`));
+      const variante = (contenuto, titolo, spiegazione) => h("button", { type: "button", onclick: (e) => {
+        e.currentTarget.closest("details").removeAttribute("open");
+        scaricaPdf(tastoPdf, `${base}?contenuto=${contenuto}`, `${nome}${contenuto === "appunti" ? "" : ` - ${contenuto}`}.pdf`);
+      } }, titolo, h("small", {}, spiegazione));
       barra.append(
         tastoPdf,
+        h("details", { class: "menu" },
+          h("summary", { class: "tasto", role: "button", "aria-label": "Altri PDF" }, icona("stampa"), "Altri PDF"),
+          h("div", { class: "voci-menu" },
+            variante("appunti", "Solo appunti", "Il PDF da ricopiare nel quaderno."),
+            variante("approfondimento", "Appunti + approfondimento", "Con spiegazioni, esempi ed esercizi."),
+            variante("trascrizione", "Appunti + trascrizione", "Con il testo completo della lezione."))),
         h("a", { class: "tasto", href: `/api/lezioni/${l.id}/scarica/html`, target: "_blank", rel: "noopener" },
           icona("stampa"), "Stampa"),
         h("a", { class: "tasto", href: `/api/lezioni/${l.id}/scarica/md` }, icona("scarica"), "Markdown"),

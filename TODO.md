@@ -11,9 +11,9 @@
 - [x] Stato "fermata" (non "errore") + pulsante "Riprendi" che riparte dall'ultimo blocco salvato
 
 ## 2. PDF scaricabili (richiesto)
-- [ ] Pulsante "Scarica PDF" che salva il file direttamente (nell'app nativa: finestra Salva di macOS, non la stampa)
-- [ ] Scelte PDF: solo appunti / appunti + approfondimento / con trascrizione; copertina con corso, data, durata
-- [ ] "Esporta tutto il corso" in un unico PDF con indice
+- [x] Pulsante "Scarica PDF" che salva il file direttamente (nell'app nativa: finestra Salva di macOS, non la stampa)
+- [x] Scelte PDF: solo appunti / appunti + approfondimento / con trascrizione; copertina con corso, data, durata
+- [x] "Esporta tutto il corso" in un unico PDF con indice
 
 ## 3. Menu iniziale / onboarding (richiesto)
 - [x] Primo avvio guidato: benvenuto → università, corso, area di studio, anno → scelta modello in base alla RAM (`sistema.py`) → download Ollama + modello + Whisper con barra di avanzamento

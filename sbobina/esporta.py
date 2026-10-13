@@ -137,19 +137,21 @@ document.querySelectorAll('.appunti').forEach(function (radice) {
 
 
 def esporta_pdf_html(
-    *, titolo: str, corso: str, data: str, appunti: str, approfondimento: str | None, base: str | None = None
+    *, titolo: str, corso: str, data: str, appunti: str = "", approfondimento: str | None = None,
+    parti: list[tuple[str, str]] | None = None, durata: str = "", base: str | None = None,
 ) -> str:
-    """Pagina impaginata per il PDF: copertina con indice, poi appunti e approfondimento.
+    """Pagina impaginata per il PDF: copertina con indice, poi una sezione per parte.
 
+    `parti`: coppie (titolo, markdown); se manca, appunti e approfondimento.
     `base`: da dove caricare font e librerie ("/static" se servita dall'app; di default i file locali).
     """
     base = base or STATIC.as_uri()
     css = (STATIC / "appunti.css").read_text(encoding="utf-8")
     render_js = (STATIC / "render.js").read_text(encoding="utf-8")
     font = f"{base}/fonts/Geist-Variable.woff2"
-    parti = [("appunti", "Appunti della lezione", appunti)]
-    if approfondimento:
-        parti.append(("approfondimento", "Approfondimento", approfondimento))
+    if parti is None:
+        parti = [("Appunti della lezione", appunti)] + ([("Approfondimento", approfondimento)] if approfondimento else [])
+    parti = [(f"parte-{i}", nome, testo) for i, (nome, testo) in enumerate(parti)]
     indice = "".join(f"<li>{html.escape(nome)}</li>" for _, nome, _ in parti)
     sezioni = "".join(
         f'<section class="parte"><h1 class="titolo-parte">{html.escape(nome)}</h1>'
@@ -166,7 +168,7 @@ def esporta_pdf_html(
         f"@font-face {{ font-family: 'Geist'; src: url('{font}') format('woff2'); font-weight: 100 900; }}\n"
         f"{css}\n:root {{ --c: {colore_corso(corso)}; }}\n{CSS_PDF}\n</style>\n</head>\n<body>\n"
         f'<div class="copertina"><div class="corso">{html.escape(corso)}</div><h1>{html.escape(titolo)}</h1>'
-        f'<div class="data">{html.escape(data)}</div><div class="barra"></div><ol>{indice}</ol>'
+        f'<div class="data">{html.escape(" · ".join(x for x in (data, durata) if x))}</div><div class="barra"></div><ol>{indice}</ol>'
         '<div class="legenda"><span>⭐ indicato dal docente</span><span>Integrazione: oltre la lezione</span>'
         '<span><span class="q">da verificare</span> controlla sul libro</span></div></div>\n'
         f"{sezioni}\n<script>\n{render_js}\n</script>\n<script>\n{render}{MARCA_INCERTI}</script>\n"

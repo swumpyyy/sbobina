@@ -154,6 +154,13 @@ def test_approfondisci_e_pdf(client, audio_prova):
     pdf = client.get(f"/api/lezioni/{creata['id']}/scarica/pdf")
     assert pdf.status_code == 200, pdf.text
     assert pdf.content.startswith(b"%PDF") and pdf.headers["content-type"] == "application/pdf"
+    con_trascrizione = client.get(f"/api/lezioni/{creata['id']}/scarica/pdf?contenuto=trascrizione")
+    assert con_trascrizione.status_code == 200 and "trascrizione" in con_trascrizione.headers["content-disposition"]
+    assert len(con_trascrizione.content) != len(pdf.content)
+    assert client.get(f"/api/lezioni/{creata['id']}/scarica/pdf?contenuto=boh").status_code == 400
+    corso = client.get("/api/corsi/pdf", params={"corso": "Fisica 1"})
+    assert corso.status_code == 200 and corso.content.startswith(b"%PDF")
+    assert client.get("/api/corsi/pdf", params={"corso": "Inesistente"}).status_code == 404
 
 
 def test_approfondisci_richiede_appunti_pronti(client, audio_prova):
