@@ -6,6 +6,7 @@ import base64
 import io
 import json
 import logging
+import re
 import threading
 import time
 from dataclasses import asdict, dataclass
@@ -305,7 +306,31 @@ def _estrai_json(testo: str) -> dict:
     inizio, fine = pulito.find("{"), pulito.rfind("}")
     if inizio == -1 or fine == -1:
         raise json.JSONDecodeError("nessun oggetto JSON", pulito, 0)
-    return json.loads(pulito[inizio : fine + 1])
+    pulito = pulito[inizio : fine + 1]
+    try:
+        return json.loads(pulito)
+    except json.JSONDecodeError:
+        return json.loads(_ripara_json(pulito))  # se anche la riparazione fallisce, resta l'errore vero
+
+
+# I comandi LaTeX che iniziano con una lettera che in JSON è un escape valido (\frac = \f + "rac"):
+# vanno raddoppiati anche loro, altrimenti diventerebbero un carattere di controllo.
+_LATEX = r"(?:frac|forall|beta|bar|binom|begin|boldsymbol|bigcup|bigcap|bmod|nu|nabla|neq|ne|not|notin|newline|nmid|" \
+         r"theta|times|text|textbf|tau|tan|to|top|tilde|triangle|rho|right|rightarrow|rangle|rfloor|rceil|Rightarrow|underline|uparrow|unlhd)"
+
+
+def _ripara_json(testo: str) -> str:
+    """Gli errori tipici dei modelli locali: LaTeX con una sola barra (\\frac, \\sum) e virgole prima di } o ]."""
+    def barra(m: re.Match) -> str:
+        dopo = m.group(1)
+        if dopo in '\\"/':
+            return m.group(0)  # escape già valido
+        if dopo in "bfnrtu" and not re.match(_LATEX + "(?![A-Za-z])", testo[m.start(1):]):
+            return m.group(0)  # \n, \t... veri
+        return "\\\\" + dopo
+
+    testo = re.sub(r"\\(.)", barra, testo, flags=re.S)
+    return re.sub(r",(\s*[}\]])", r"\1", testo)
 
 
 def _solo_testo(system: str | list[dict], contenuto: list[dict], schema: dict | None) -> tuple[str, str]:
@@ -324,7 +349,8 @@ def _solo_testo(system: str | list[dict], contenuto: list[dict], schema: dict | 
     utente = "\n\n".join(t for t in testi if t)
     if schema is not None:
         utente += ("\n\nRispondi solo con un oggetto JSON valido conforme a questo schema, senza testo prima "
-                   f"o dopo e senza blocchi di codice:\n{json.dumps(schema, ensure_ascii=False)}")
+                   "o dopo e senza blocchi di codice. Nelle stringhe raddoppia ogni barra rovesciata delle formule "
+                   f"(\\\\frac, non \\frac) e non mettere virgole prima di }} o ]:\n{json.dumps(schema, ensure_ascii=False)}")
     return system, utente
 
 
