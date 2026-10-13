@@ -2,8 +2,9 @@
 
 **Dalle registrazioni delle lezioni ad appunti di studio accurati, con schemi e mappe concettuali.**
 
-Sbobina non registra: prende gli audio che hai già (note vocali del telefono, registratore, file
-di Teams/Zoom…) e li trasforma in appunti completi, pensati per studiare e preparare l'esame.
+Sbobina prende gli audio che hai già (note vocali del telefono, registratore, file di Teams/Zoom…)
+oppure registra la lezione dal microfono del Mac, e li trasforma in appunti completi, pensati per
+studiare e preparare l'esame.
 L'obiettivo è l'accuratezza: ogni passaggio è progettato per ridurre gli errori di trascrizione e
 per non far inventare nulla agli appunti.
 
@@ -19,8 +20,14 @@ per non far inventare nulla agli appunti.
 - **Approfondimento**: non un riassunto ma una spiegazione più ampia dell'argomento, con esempi,
   esercizi svolti e domande d'esame. Puoi chiedere di **approfondire ancora** un punto: l'AI aggiunge
   una nuova sezione.
-- **PDF della lezione** con copertina, appunti e approfondimento, pronto da stampare o ricopiare;
-  esportazione anche in **Markdown** (per Obsidian, Notion, ecc.).
+- **PDF della lezione** con copertina (corso, data, durata): solo appunti, con l'approfondimento o con
+  la trascrizione. **PDF di tutto il corso** con indice. Esportazione in **Markdown** e in una cartella
+  per **Obsidian** (una nota per lezione, con collegamenti).
+- **Per studiare**: **flashcard** con ripasso a scatole (Leitner) ed esportazione per **Anki**, **quiz** a
+  scelta multipla con spiegazioni, **Chiedi alla lezione** (risposte che citano il minuto), **ricerca**
+  nel testo di tutte le lezioni, **modifica a mano** degli appunti.
+- **Trascrizione che segue l'audio**: il paragrafo in ascolto si illumina, un clic e riascolti da lì;
+  velocità 1×–2×.
 
 ## Perché è accurato
 
@@ -51,8 +58,9 @@ aggiungendo il nome del docente).
 
 ## Installazione
 
-Ti servono **Python 3.10 o più recente**, **ffmpeg** e **Ollama** (l'AI gratuita che scrive gli appunti
-sul tuo computer). Per creare i PDF serve anche Google Chrome (o Chromium o Edge).
+Ti servono **Python 3.10 o più recente** e **ffmpeg**. L'AI gratuita che scrive gli appunti gira sul tuo
+computer: sui Mac con Apple Silicon direttamente dentro Sbobina (motore **Integrato**, MLX), altrimenti con
+**Ollama**. Per creare i PDF serve anche Google Chrome (o Chromium o Edge).
 
 ```bash
 # ffmpeg
@@ -60,8 +68,7 @@ brew install ffmpeg            # macOS
 sudo apt install ffmpeg        # Ubuntu/Debian
 winget install ffmpeg          # Windows
 
-# Ollama: scarica l'app da https://ollama.com. Il modello (circa 8 GB) lo scarica Sbobina
-# con il tasto "Prepara l'AI"; da terminale: ollama pull gemma4:12b
+# Solo se non usi il motore Integrato: Ollama da https://ollama.com (il modello lo scarica Sbobina)
 
 # Sbobina
 git clone <questo repository> sbobina && cd sbobina
@@ -99,8 +106,15 @@ sbobina stato
 ```
 
 Crea **Sbobina.app** in `~/Applications` con la sua icona: aprila dal Launchpad o tienila nel Dock.
-Avvia da sola Ollama; se il modello non è ancora scaricato, il tasto **Prepara l'AI** lo scarica
-mostrando l'avanzamento. PDF, Markdown e trascrizioni si salvano con la normale finestra *Salva* di macOS.
+Con `--dmg` crea invece `dist/Sbobina.dmg`, un'app autonoma (Python, ffmpeg e Ollama inclusi) da dare
+a chiunque.
+
+Al primo avvio una procedura guidata chiede università, corso e area di studio, propone il modello
+adatto alla memoria del Mac e scarica tutto con una barra di avanzamento. Dalle **Impostazioni** (icona
+in alto) scegli lunghezza e stile degli appunti, le sezioni da includere, motore e modello dell'AI,
+creatività e istruzioni personali, il contenuto del PDF, tema chiaro/scuro, colore, dimensione del testo,
+notifica e suono a fine lezione. Durante l'elaborazione puoi **fermare** e poi **riprendere** dal punto
+salvato; il Dock mostra quante lezioni sono in lavorazione. PDF, Markdown e trascrizioni si salvano con la normale finestra *Salva* di macOS.
 L'app usa il `.venv` di questa cartella: se sposti la cartella, rilancia lo script.
 Il registro degli errori è in `~/Library/Logs/Sbobina.log`.
 
@@ -170,7 +184,11 @@ sbobina/
   trascrizione/         motori: AssemblyAI, ElevenLabs, Whisper locale
   materiali.py          slide PDF, immagini, testi → contenuti per l'AI
   prompt.py             istruzioni per l'AI (revisione, appunti, verifica, correzione, approfondimento)
-  llm.py                modello che scrive: Ollama in locale (predefinito) o Claude
+  llm.py                modello che scrive: Integrato (MLX), Ollama o Claude
+  impostazioni.py       le scelte dello studente (impostazioni.json)
+  sistema.py            il Mac (chip, memoria) e i modelli adatti
+  studio.py             ricerca, quiz, flashcard e ripasso Leitner, domande alla lezione, Anki/Obsidian
+  registrazione.py      registrazione dal microfono con ffmpeg
   pipeline.py           le fasi dell'elaborazione, con ripresa dai punti salvati
   archivio.py           lezioni e corsi salvati come file JSON
   server.py, static/    app web

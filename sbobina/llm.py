@@ -286,6 +286,21 @@ def locale_pronto(modello: str, url: str = OLLAMA_URL) -> bool:
 PREPARAZIONE: dict[str, Any] = {"attiva": False, "messaggio": "", "progresso": 0.0, "errore": ""}
 
 
+_OLLAMA_NOSTRO: Any = None  # il processo `ollama serve` avviato da Sbobina, da chiudere all'uscita
+
+
+def ferma_ollama() -> None:
+    """Chiude `ollama serve` se l'ha avviato Sbobina (l'app Ollama aperta dallo studente resta)."""
+    global _OLLAMA_NOSTRO
+    if _OLLAMA_NOSTRO is not None and _OLLAMA_NOSTRO.poll() is None:
+        _OLLAMA_NOSTRO.terminate()
+        try:
+            _OLLAMA_NOSTRO.wait(timeout=5)
+        except Exception:  # noqa: BLE001 - all'uscita: meglio forzare che restare appesi
+            _OLLAMA_NOSTRO.kill()
+    _OLLAMA_NOSTRO = None
+
+
 def avvia_ollama(url: str = OLLAMA_URL, attesa: float = 20.0) -> bool:
     """Avvia Ollama se non risponde (app per macOS, altrimenti `ollama serve`). True se ora risponde."""
     import shutil
@@ -303,7 +318,8 @@ def avvia_ollama(url: str = OLLAMA_URL, attesa: float = 20.0) -> bool:
     if sys.platform == "darwin" and subprocess.run(["open", "-ga", "Ollama"], capture_output=True).returncode == 0:
         pass
     elif shutil.which("ollama"):
-        subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        global _OLLAMA_NOSTRO
+        _OLLAMA_NOSTRO = subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
         return False
     fine = time.monotonic() + attesa

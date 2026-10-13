@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import signal
 import subprocess
 import threading
 import time
@@ -21,6 +22,7 @@ class Registratore:
         self._inizio = 0.0
         self._livello = -90.0
         self._errore = ""
+        self._segnale = False  # è arrivata almeno una misura dal microfono
         self._lock = threading.Lock()
 
     @property
@@ -34,10 +36,11 @@ class Registratore:
             self.cartella.mkdir(parents=True, exist_ok=True)
             self._file = self.cartella / time.strftime("registrazione-%Y%m%d-%H%M%S.m4a")
             self._errore = ""
+            self._segnale = False
             self._livello = -90.0
             # astats misura ogni ~0,1 s; ametadata stampa il livello su stdout, che leggiamo in un thread.
             comando = [
-                "ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin",
+                "ffmpeg", "-hide_banner", "-loglevel", "error",
                 "-f", "avfoundation", "-i", dispositivo,
                 "-af", "asetnsamples=4410,astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.RMS_level:file=-",
                 "-ac", "1", "-c:a", "aac", "-b:a", "96k", str(self._file),
@@ -55,6 +58,7 @@ class Registratore:
         for riga in processo.stdout:  # type: ignore[union-attr]
             trovato = RE_LIVELLO.search(riga)
             if trovato:
+                self._segnale = True
                 valore = trovato.group(1)
                 self._livello = -90.0 if valore == "-inf" else max(-90.0, float(valore))
         errore = (processo.stderr.read() if processo.stderr else "").strip()  # type: ignore[union-attr]
@@ -64,6 +68,11 @@ class Registratore:
     def stato(self) -> dict:
         if self._processo is not None and self._processo.poll() is not None and not self._errore and self._processo.returncode not in (0, 255):
             self._errore = "La registrazione si è interrotta."
+        secondi = time.monotonic() - self._inizio
+        if self.attiva and not self._segnale and secondi > 5 and not self._errore:
+            # Senza permesso macOS non consegna l'audio: ffmpeg resta fermo senza errori.
+            self._errore = ("Il microfono non manda audio: dai a Sbobina il permesso in Impostazioni di Sistema → "
+                            "Privacy e sicurezza → Microfono, poi riprova.")
         return {
             "attiva": self.attiva,
             "secondi": round(time.monotonic() - self._inizio, 1) if self.attiva else 0,
@@ -83,11 +92,15 @@ class Registratore:
                     processo.stdin.flush()  # type: ignore[union-attr]
                 except (BrokenPipeError, OSError):
                     pass
-                try:
-                    processo.wait(timeout=10)
-                except subprocess.TimeoutExpired:
-                    processo.terminate()
-                    processo.wait(timeout=5)
+                # "q" chiude il file per bene; poi SIGINT (fa lo stesso); kill solo se ffmpeg è bloccato.
+                for segnale in (None, signal.SIGINT, signal.SIGKILL):
+                    if segnale is not None:
+                        processo.send_signal(segnale)
+                    try:
+                        processo.wait(timeout=5)
+                        break
+                    except subprocess.TimeoutExpired:
+                        continue
             self._processo = None
             if not file.is_file() or file.stat().st_size < 1000:
                 raise RuntimeError(self._errore or "La registrazione è vuota: controlla il permesso del microfono.")

@@ -58,6 +58,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSArchitecturePriority</key><array><string>arm64</string></array>
   <key>LSRequiresNativeExecution</key><true/>
   <key>LSApplicationCategoryType</key><string>public.app-category.education</string>
+  <key>NSMicrophoneUsageDescription</key><string>Sbobina registra la lezione dal microfono per trascriverla e scriverne gli appunti. L'audio resta sul tuo Mac.</string>
 </dict></plist>
 PLIST
 

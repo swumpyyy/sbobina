@@ -140,6 +140,9 @@ def main() -> None:
     ponte.finestra.events.shown += lambda: _barra_titolo(ponte.finestra, None)
     webview.start()
     server.should_exit = True
+    from sbobina.llm import ferma_ollama
+
+    ferma_ollama()
 
 
 def _barra_titolo(finestra, scuro: bool | None) -> None:

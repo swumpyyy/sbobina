@@ -47,6 +47,7 @@
     spunta: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
     ferma: '<rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/>',
     carica: '<path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9"/><path d="M4.5 14.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/>',
+    puntini: '<circle cx="5.5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="18.5" cy="12" r="1.3" fill="currentColor"/>',
     cuffie: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6.5" rx="2"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="2"/>',
   };
 
@@ -257,6 +258,7 @@
         const sotto = attiva
           ? h("span", { class: "sotto" },
               h("span", { class: "dati" }, l.stato === "in_coda" ? "in coda" : percentuale(l.progresso)),
+              l.stima_secondi ? h("span", { class: "dati", title: "Tempo stimato" }, `~${formattaDurata(l.stima_secondi)}`) : null,
               h("span", { class: "mini-meter", "aria-hidden": "true" }, h("div", { style: `width:${percentuale(l.progresso)}` })))
           : h("span", { class: "sotto" },
               h("span", {}, formattaData(l.data)),
@@ -274,22 +276,25 @@
         h("div", { class: "modulo-testa" },
           h("h2", {}, corso),
           h("span", { class: "conta", "aria-label": `${voci.length} lezioni` }, String(voci.length).padStart(2, "0")),
-          (() => {
-            const tasto = h("button", {
-              class: "tasto tondo", type: "button", title: `PDF di tutto il corso ${corso}`, "aria-label": `PDF di tutto il corso ${corso}`,
-            }, icona("scarica"));
-            tasto.addEventListener("click", () => scaricaPdf(tasto, `/api/corsi/pdf?corso=${encodeURIComponent(corso)}`, `${corso} - tutte le lezioni.pdf`));
-            return tasto;
-          })(),
-          h("button", {
-            class: "tasto tondo",
-            type: "button",
-            title: `Glossario di ${corso}`,
-            "aria-label": `Glossario di ${corso}`,
-            onclick: () => mostraGlossario(corso),
-          }, icona("glossario"))),
+          menuCorso(corso)),
         elenco));
     }
+  }
+
+  /** PDF del corso, esportazione per Obsidian e glossario, in un menu accanto al nome del corso. */
+  function menuCorso(corso) {
+    const pdf = h("button", { type: "button" }, "PDF di tutto il corso", h("small", {}, "Tutte le lezioni pronte, con indice."));
+    pdf.addEventListener("click", (e) => {
+      e.currentTarget.closest("details").removeAttribute("open");
+      scaricaPdf(pdf, `/api/corsi/pdf?corso=${encodeURIComponent(corso)}`, `${corso} - tutte le lezioni.pdf`);
+    });
+    return h("details", { class: "menu menu-corso" },
+      h("summary", { class: "tasto tondo", role: "button", "aria-label": `Azioni sul corso ${corso}`, title: "Azioni sul corso" }, icona("puntini")),
+      h("div", { class: "voci-menu" },
+        pdf,
+        h("a", { class: "voce", href: `/api/corsi/obsidian?corso=${encodeURIComponent(corso)}` }, "Esporta per Obsidian", h("small", {}, "Una nota Markdown per lezione, con collegamenti.")),
+        h("button", { type: "button", onclick: (e) => { e.currentTarget.closest("details").removeAttribute("open"); mostraGlossario(corso); } },
+          "Glossario", h("small", {}, "I termini che aiutano a riconoscere la voce."))));
   }
 
   // --- benvenuto --------------------------------------------------------------
@@ -329,12 +334,25 @@
           ? h("ul", { class: "contatori" },
               h("li", {}, h("b", {}, String(pronte.length)), pronte.length === 1 ? "lezione pronta" : "lezioni pronte"),
               h("li", {}, h("b", {}, ore.toLocaleString("it-IT", { maximumFractionDigits: 1 })), "ore sbobinate"),
-              h("li", {}, h("b", {}, String(corsi)), corsi === 1 ? "corso" : "corsi"))
+              h("li", {}, h("b", {}, String(corsi)), corsi === 1 ? "corso" : "corsi"),
+              h("li", { class: "da-ripassare", hidden: true }, h("button", { class: "collegamento", type: "button", onclick: mostraRipassoGenerale },
+                h("b", {}), "carte da ripassare oggi")))
           : h("ol", { class: "percorso", "aria-label": "Come funziona" },
               passo("microfono", "Carica l'audio"),
               passo("onda", "Lascia lavorare, anche a finestra chiusa"),
               passo("stampa", "Studia, riascolta, stampa il PDF"))),
     ]);
+    contaRipasso();
+  }
+
+  /** Nel benvenuto: quante flashcard toccano oggi (si mostra solo se ce ne sono). */
+  async function contaRipasso() {
+    const voce = $(".contatori .da-ripassare");
+    if (!voce) return;
+    try {
+      const carte = await api("/api/ripasso");
+      if (carte.length) { voce.querySelector("b").textContent = String(carte.length); voce.hidden = false; }
+    } catch (e) { /* niente */ }
   }
 
   // --- dettaglio lezione ----------------------------------------------------
@@ -533,6 +551,8 @@
     const commutatore = h("div", { class: "commutatore", role: "tablist", "aria-label": "Cosa vuoi vedere" },
       h("span", { class: "cursore", "aria-hidden": "true" }));
     const schede = [["appunti", "Appunti", null], ["approfondimento", "Approfondimento", null], ["trascrizione", "Trascrizione", null], ["verifica", "Verifica", problemi]];
+    if (l.stato === "completata") schede.push(["ripasso", "Ripasso", null], ["chiedi", "Chiedi", null]);
+    if (!schede.some(([k]) => k === stato.scheda)) stato.scheda = "appunti";
     for (const [chiave, etichetta, conteggio] of schede) {
       commutatore.append(h("button", {
         type: "button",
@@ -566,6 +586,8 @@
     if (stato.scheda === "appunti") mostraAppunti(foglio, d);
     else if (stato.scheda === "approfondimento") mostraApprofondimento(foglio, d);
     else if (stato.scheda === "trascrizione") mostraTrascrizione(foglio, d);
+    else if (stato.scheda === "ripasso") mostraRipasso(foglio, d);
+    else if (stato.scheda === "chiedi") mostraChiedi(foglio, d);
     else mostraVerifica(foglio, d);
     area.replaceChildren(foglio);
     if (stato.scheda === "approfondimento" && d.approfondimento && l.stato === "completata") area.append(pannelloEspansione(d));
@@ -622,7 +644,11 @@
       return;
     }
     if (d.bozza) foglio.append(nota("Bozza: la verifica con la registrazione è in corso e potrebbe correggerla."));
-    const articolo = h("article", { class: "appunti" });
+    if (d.lezione.stato === "completata") {
+      foglio.append(h("div", { class: "barra-foglio" },
+        h("button", { class: "tasto trasparente", type: "button", onclick: () => modificaAppunti(foglio, d) }, icona("matita"), "Modifica")));
+    }
+    const articolo = h("article", { class: "appunti progressivo" });
     foglio.append(articolo);
     window.Sbobina.render(articolo, d.appunti, { onTempo: d.audio ? vaiA : null });
   }
@@ -1068,6 +1094,334 @@
     area.focus();
   }
 
+  // --- studio: ripasso, quiz, domande -------------------------------------
+
+  /** Un'attesa onesta mentre l'AI genera: con un modello locale può volerci qualche minuto. */
+  function attesa(testo) {
+    return h("div", { class: "attesa", role: "status" }, h("span", { class: "puntini", "aria-hidden": "true" }, h("i"), h("i"), h("i")), testo);
+  }
+
+  async function mostraRipasso(foglio, d) {
+    const l = d.lezione;
+    if (l.stato !== "completata") {
+      foglio.append(h("p", { class: "segnaposto" }, "Flashcard e quiz si creano quando gli appunti sono pronti."));
+      return;
+    }
+    foglio.append(attesa("Carico…"));
+    let s;
+    try { s = await api(`/api/lezioni/${l.id}/studio`); } catch (e) { foglio.replaceChildren(nota(e.message)); return; }
+    const zonaCarte = h("section", { class: "blocco-studio", "aria-labelledby": "titolo-carte" });
+    const zonaQuiz = h("section", { class: "blocco-studio", "aria-labelledby": "titolo-quiz" });
+    foglio.replaceChildren(zonaCarte, zonaQuiz);
+    disegnaCarte(zonaCarte, l, s);
+    disegnaQuiz(zonaQuiz, l, s.quiz);
+  }
+
+  async function generaStudio(zona, url, testoAttesa, dopo) {
+    const prima = [...zona.childNodes];
+    zona.replaceChildren(attesa(testoAttesa));
+    try {
+      dopo(await api(url, { method: "POST" }));
+    } catch (e) {
+      zona.replaceChildren(...prima, h("p", { class: "errore-modulo", role: "alert" }, e.message));
+    }
+  }
+
+  function disegnaCarte(zona, l, s) {
+    const testa = h("div", { class: "testa-studio" }, h("h3", { id: "titolo-carte" }, "Flashcard"));
+    if (!s.carte.length) {
+      zona.replaceChildren(testa,
+        h("p", {}, "Domande e risposte brevi da ripassare con il metodo Leitner: le carte che sai tornano sempre più di rado, quelle che sbagli tornano domani."),
+        h("button", { class: "tasto grande", type: "button", onclick: () => generaStudio(zona, `/api/lezioni/${l.id}/flashcard`,
+          "Preparo le flashcard dagli appunti (qualche minuto con l'AI locale)…", () => apriLezione(l.id, { mantieniScheda: true })) },
+          icona("piu"), "Crea le flashcard"));
+      return;
+    }
+    testa.append(h("a", { class: "tasto", href: `/api/lezioni/${l.id}/anki` }, icona("scarica"), "Esporta per Anki"));
+    zona.replaceChildren(testa, sessioneRipasso(s.da_ripassare, `${s.carte.length} carte in questa lezione`));
+  }
+
+  /** Una sessione di ripasso: la carta si gira, poi "La sapevo" o "Da rivedere". */
+  function sessioneRipasso(carte, contesto) {
+    const box = h("div", { class: "sessione" });
+    let i = 0;
+    let giuste = 0;
+    const mostra = () => {
+      if (i >= carte.length) {
+        box.replaceChildren(h("div", { class: "fine-sessione" },
+          h("strong", {}, carte.length ? `Fatto: ${giuste} su ${carte.length} le sapevi.` : "Niente da ripassare oggi."),
+          h("span", {}, carte.length ? "Le carte sbagliate tornano domani, le altre più avanti." : `${contesto}. Torna domani.`)));
+        return;
+      }
+      const c = carte[i];
+      const retro = h("div", { class: "retro" }, c.retro);
+      const carta = h("button", { class: "carta", type: "button", "aria-label": "Gira la carta" },
+        h("span", { class: "fronte" }, c.fronte), retro);
+      const esiti = h("div", { class: "esiti", hidden: true },
+        h("button", { class: "tasto", type: "button", onclick: () => rispondi(false) }, "Da rivedere"),
+        h("button", { class: "tasto grande", type: "button", onclick: () => rispondi(true) }, icona("spunta"), "La sapevo"));
+      carta.addEventListener("click", () => { carta.classList.add("girata"); esiti.hidden = false; esiti.querySelector(".grande").focus(); });
+      const rispondi = async (giusta) => {
+        if (giusta) giuste += 1;
+        api("/api/ripasso/esito", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, giusta }) }).catch(() => {});
+        i += 1;
+        mostra();
+      };
+      box.replaceChildren(
+        h("div", { class: "contatore-carte" }, h("span", { class: "dati" }, `${i + 1} / ${carte.length}`),
+          h("span", {}, `scatola ${c.scatola}`), c.titolo && carte.some((x) => x.lezione !== c.lezione) ? h("span", {}, c.titolo) : null),
+        carta, esiti);
+      carta.focus();
+    };
+    mostra();
+    return box;
+  }
+
+  function disegnaQuiz(zona, l, quiz) {
+    const testa = h("div", { class: "testa-studio" }, h("h3", { id: "titolo-quiz" }, "Quiz di verifica"));
+    const nuovo = (testo) => h("button", { class: testo ? "tasto" : "tasto grande", type: "button", onclick: () =>
+      generaStudio(zona, `/api/lezioni/${l.id}/quiz`, "Preparo le domande (qualche minuto con l'AI locale)…", (q) => disegnaQuiz(zona, l, q)) },
+      icona(testo ? "ricarica" : "piu"), testo || "Crea il quiz");
+    if (!quiz) {
+      zona.replaceChildren(testa, h("p", {}, "Dieci domande a scelta multipla come all'esame, con la spiegazione e il minuto della lezione in cui se ne parla."), nuovo());
+      return;
+    }
+    let i = 0;
+    let punti = 0;
+    const corpo = h("div", { class: "quiz" });
+    const mostra = () => {
+      if (i >= quiz.domande.length) {
+        corpo.replaceChildren(h("div", { class: "fine-sessione" },
+          h("strong", {}, `${punti} su ${quiz.domande.length}`),
+          h("span", {}, punti === quiz.domande.length ? "Perfetto." : "Riguarda le spiegazioni delle domande sbagliate."),
+          h("div", { class: "esiti" },
+            h("button", { class: "tasto", type: "button", onclick: () => { i = 0; punti = 0; mostra(); } }, icona("ricarica"), "Rifai"),
+            nuovo("Nuove domande"))));
+        return;
+      }
+      const q = quiz.domande[i];
+      const spiegazione = h("div", { class: "spiegazione", hidden: true });
+      const avanti = h("button", { class: "tasto grande", type: "button", hidden: true, onclick: () => { i += 1; mostra(); } },
+        icona("freccia"), i + 1 < quiz.domande.length ? "Avanti" : "Risultato");
+      const opzioni = h("div", { class: "opzioni", role: "group", "aria-label": "Risposte" }, q.opzioni.map((testo, n) =>
+        h("button", { class: "opzione", type: "button", onclick: (e) => {
+          const giusta = n === Number(q.corretta);
+          if (giusta) punti += 1;
+          opzioni.querySelectorAll(".opzione").forEach((b, k) => {
+            b.disabled = true;
+            if (k === Number(q.corretta)) b.classList.add("giusta");
+          });
+          if (!giusta) e.currentTarget.classList.add("sbagliata");
+          spiegazione.replaceChildren(h("strong", {}, giusta ? "Giusto. " : "Non proprio. "), q.spiegazione,
+            q.tempo && $("#lettore-audio") ? h("a", { class: "tempo", href: "#", onclick: (ev) => { ev.preventDefault(); vaiA(secondiDa(q.tempo)); } }, ` ⏱ ${q.tempo}`) : null);
+          spiegazione.hidden = false;
+          avanti.hidden = false;
+          avanti.focus();
+        } }, h("span", { class: "lettera" }, "ABCD"[n] || String(n + 1)), testo)));
+      corpo.replaceChildren(
+        h("div", { class: "contatore-carte" }, h("span", { class: "dati" }, `${i + 1} / ${quiz.domande.length}`)),
+        h("p", { class: "domanda" }, q.domanda), opzioni, spiegazione, avanti);
+    };
+    mostra();
+    zona.replaceChildren(testa, corpo);
+  }
+
+  const secondiDa = (testo) => testo.split(":").map(Number).reduce((s, n) => s * 60 + n, 0);
+
+  async function mostraChiedi(foglio, d) {
+    const l = d.lezione;
+    if (l.stato !== "completata") {
+      foglio.append(h("p", { class: "segnaposto" }, "Potrai fare domande alla lezione quando gli appunti sono pronti."));
+      return;
+    }
+    let storia = [];
+    try { storia = (await api(`/api/lezioni/${l.id}/studio`)).chat; } catch (e) { /* conversazione vuota */ }
+    const elenco = h("div", { class: "chat", "aria-live": "polite" });
+    const disegna = () => {
+      elenco.replaceChildren(...(storia.length ? storia.map((m) => {
+        const bolla = h("div", { class: `bolla ${m.ruolo}` });
+        // "[05:40, 06:18]" → due tempi cliccabili
+        const testo = m.testo.replace(/\[(\d{1,2}:\d{2}(?:,\s*\d{1,2}:\d{2})+)\]/g, (_, l) => l.split(/,\s*/).map((x) => `[${x}]`).join(" "));
+        if (m.ruolo === "sbobina") window.Sbobina.render(bolla, testo, { onTempo: d.audio ? vaiA : null });
+        else bolla.textContent = m.testo;
+        return bolla;
+      }) : [h("p", { class: "segnaposto" }, "Chiedi qualcosa su questa lezione: \"che differenza c'è tra…\", \"dove spiega…\", \"fammi un esempio di…\". Ti rispondo solo con ciò che è stato detto, citando il minuto.")]));
+    };
+    disegna();
+    const campo = h("textarea", { rows: "2", maxlength: "1000", placeholder: "Scrivi la tua domanda…", "aria-label": "Domanda" });
+    const invia = h("button", { class: "tasto grande", type: "submit" }, icona("freccia"), "Chiedi");
+    const errore = h("p", { class: "errore-modulo", role: "alert", hidden: true });
+    const form = h("form", { class: "chiedi" }, campo, invia);
+    campo.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const domanda = campo.value.trim();
+      if (!domanda) return;
+      errore.hidden = true;
+      invia.disabled = true;
+      storia = [...storia, { ruolo: "studente", testo: domanda }];
+      disegna();
+      elenco.append(attesa("Cerco nella lezione…"));
+      campo.value = "";
+      try {
+        storia = await api(`/api/lezioni/${l.id}/chiedi`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ domanda }) });
+      } catch (err) {
+        storia = storia.slice(0, -1);
+        campo.value = domanda;
+        errore.textContent = err.message;
+        errore.hidden = false;
+      }
+      disegna();
+      invia.disabled = false;
+      campo.focus();
+    });
+    const cancella = h("button", { class: "tasto trasparente", type: "button", onclick: async () => {
+      await api(`/api/lezioni/${l.id}/chat`, { method: "DELETE" });
+      storia = [];
+      disegna();
+    } }, icona("cestino"), "Nuova conversazione");
+    foglio.append(h("div", { class: "testa-studio" }, h("h3", {}, "Chiedi alla lezione"), cancella), elenco, errore, form);
+  }
+
+  /** Modifica a mano degli appunti, con ritorno alla versione dell'AI. */
+  function modificaAppunti(foglio, d) {
+    const l = d.lezione;
+    const area = h("textarea", { class: "editor", spellcheck: "true", "aria-label": "Testo degli appunti (Markdown)" });
+    area.value = d.appunti;
+    const errore = h("p", { class: "errore-modulo", role: "alert", hidden: true });
+    const salva = async (url, corpo) => {
+      try {
+        await api(url, { method: corpo ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: corpo ? JSON.stringify(corpo) : undefined });
+        salvato("Appunti salvati");
+        await apriLezione(l.id, { mantieniScheda: true });
+      } catch (e) { errore.textContent = e.message; errore.hidden = false; }
+    };
+    foglio.replaceChildren(
+      nota("Markdown: # titoli, **grassetto**, - elenchi, $formule$. Il PDF si rifà con le tue modifiche."),
+      area, errore,
+      h("div", { class: "azioni-form" },
+        h("button", { class: "tasto trasparente", type: "button", onclick: () => {
+          if (confirm("Tornare agli appunti scritti dall'AI? Le tue modifiche andranno perse.")) salva(`/api/lezioni/${l.id}/appunti/ripristina`);
+        } }, icona("ricarica"), "Versione dell'AI"),
+        h("button", { class: "tasto", type: "button", onclick: () => apriLezione(l.id, { mantieniScheda: true }) }, "Annulla"),
+        h("button", { class: "tasto grande", type: "button", onclick: () => salva(`/api/lezioni/${l.id}/appunti`, { testo: area.value }) }, icona("spunta"), "Salva")));
+    area.style.height = `${Math.min(innerHeight * 0.7, Math.max(320, area.scrollHeight))}px`;
+    area.focus();
+  }
+
+  // --- ripasso di tutte le lezioni -------------------------------------------
+
+  async function mostraRipassoGenerale() {
+    let carte;
+    try { carte = await api("/api/ripasso"); } catch (e) { alert(e.message); return; }
+    stato.vista = "ripasso";
+    riempiPiastra([
+      h("header", { class: "intestazione" }, h("h1", {}, "Ripasso di oggi"),
+        h("p", { class: "sottotitolo" }, "Le flashcard di tutte le lezioni che oggi tocca rivedere.")),
+      h("section", { class: "foglio" }, sessioneRipasso(carte, "Hai ripassato tutto")),
+    ]);
+  }
+
+  // --- registrazione dal microfono --------------------------------------------
+
+  async function mostraRegistrazione() {
+    stato.vista = "registrazione";
+    const BARRE = 32;
+    const vu = h("div", { class: "vu-barre", "aria-hidden": "true" }, Array.from({ length: BARRE }, () => h("i")));
+    const tempo = h("div", { class: "tempo-reg dati", role: "timer" }, "0:00");
+    const errore = h("p", { class: "errore-modulo", role: "alert", hidden: true });
+    const corso = h("input", { name: "corso", list: "elenco-corsi-reg", required: true, placeholder: "es. Diritto privato", autocomplete: "off",
+      value: stato.dettaglio ? stato.dettaglio.lezione.corso : null });
+    const corsi = h("datalist", { id: "elenco-corsi-reg" }, ...(stato.info ? stato.info.corsi : []).map((c) => h("option", { value: c.nome })));
+    const titolo = h("input", { name: "titolo", placeholder: "es. Lezione 6, Le obbligazioni" });
+    const avvia = h("button", { class: "tasto grande registra", type: "button" }, icona("microfono"), "Inizia a registrare");
+    const ferma = h("button", { class: "tasto grande", type: "button", hidden: true }, icona("ferma"), "Ferma e crea gli appunti");
+    const annulla = h("button", { class: "tasto", type: "button", hidden: true }, "Annulla");
+    let timer = null;
+    const storico = [];
+    const aggiorna = async () => {
+      let s;
+      try { s = await api("/api/registrazione"); } catch (e) { return; }
+      if (s.errore) { errore.textContent = s.errore; errore.hidden = false; }
+      if (!s.attiva) { clearTimeout(timer); return; }
+      tempo.textContent = formattaOrologio(s.secondi);
+      // dB → altezza: -60 dB silenzio, 0 dB pieno.
+      storico.push(Math.max(0, Math.min(1, (s.livello + 60) / 60)));
+      while (storico.length > BARRE) storico.shift();
+      vu.querySelectorAll("i").forEach((b, k) => {
+        const v = storico[k - (BARRE - storico.length)] || 0;
+        b.style.transform = `scaleY(${0.06 + v * 0.94})`;
+      });
+      timer = setTimeout(aggiorna, 120);
+    };
+    const inCorso = (si) => { avvia.hidden = si; ferma.hidden = !si; annulla.hidden = !si; pannello.classList.toggle("attiva", si); };
+    avvia.addEventListener("click", async () => {
+      errore.hidden = true;
+      try { await api("/api/registrazione/avvia", { method: "POST" }); } catch (e) { errore.textContent = e.message; errore.hidden = false; return; }
+      inCorso(true);
+      aggiorna();
+    });
+    ferma.addEventListener("click", async () => {
+      if (!corso.value.trim()) { corso.focus(); errore.textContent = "Indica il corso prima di fermare."; errore.hidden = false; return; }
+      ferma.disabled = true;
+      try {
+        const l = await api("/api/registrazione/ferma", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ corso: corso.value, titolo: titolo.value, data: new Date().toISOString().slice(0, 10) }) });
+        clearTimeout(timer);
+        await aggiornaElenco();
+        await apriLezione(l.id);
+      } catch (e) { errore.textContent = e.message; errore.hidden = false; ferma.disabled = false; }
+    });
+    annulla.addEventListener("click", async () => {
+      if (!confirm("Buttare via questa registrazione?")) return;
+      clearTimeout(timer);
+      await api("/api/registrazione/annulla", { method: "POST" });
+      inCorso(false);
+      tempo.textContent = "0:00";
+    });
+    const pannello = h("section", { class: "pannello registrazione", "aria-labelledby": "titolo-reg" },
+      h("h2", { id: "titolo-reg" }, "Registra la lezione"),
+      h("p", {}, "Tieni il Mac vicino al docente. Puoi usare altre app mentre registri; alla fine Sbobina crea gli appunti da sola."),
+      h("div", { class: "quadrante-reg" }, vu, tempo),
+      h("div", { class: "due" },
+        h("label", { class: "campo" }, h("span", {}, "Corso"), corso, corsi),
+        h("label", { class: "campo" }, h("span", {}, "Titolo ", h("small", {}, "(facoltativo)")), titolo)),
+      errore,
+      h("div", { class: "azioni-form" }, annulla, avvia, ferma));
+    riempiPiastra([pannello]);
+    // Una registrazione già in corso (es. dopo aver cambiato pagina) riprende da qui.
+    try { if ((await api("/api/registrazione")).attiva) { inCorso(true); aggiorna(); } } catch (e) { /* server irraggiungibile */ }
+  }
+
+  // --- ricerca nel testo di tutte le lezioni ----------------------------------
+
+  let timerCerca = null;
+  function cercaNelTesto() {
+    clearTimeout(timerCerca);
+    const q = stato.filtro.trim();
+    const vecchi = $("#risultati-testo");
+    if (q.length < 3) { if (vecchi) vecchi.remove(); return; }
+    timerCerca = setTimeout(async () => {
+      let risultati;
+      try { risultati = await api(`/api/cerca?q=${encodeURIComponent(q)}`); } catch (e) { return; }
+      if (stato.filtro.trim() !== q) return;
+      const zona = h("section", { class: "modulo risultati", id: "risultati-testo", "aria-label": "Nel testo delle lezioni" },
+        h("div", { class: "modulo-testa" }, h("h2", {}, "Nel testo delle lezioni"), h("span", { class: "conta" }, String(risultati.length))),
+        risultati.length ? h("div", { class: "preselezioni" }, risultati.slice(0, 30).map((r) =>
+          h("button", { class: "preselezione risultato", type: "button", onclick: async () => {
+            stato.scheda = r.fonte;
+            await apriLezione(r.lezione, { mantieniScheda: true });
+            if (r.tempo && $("#lettore-audio")) { const a = $("#lettore-audio"); a.currentTime = secondiDa(r.tempo); }
+          } },
+            h("span", { class: "titolo" }, r.titolo),
+            h("span", { class: "sotto" }, h("span", {}, r.fonte === "appunti" ? "appunti" : "trascrizione"), r.tempo ? h("span", { class: "dati" }, `⏱ ${r.tempo}`) : null),
+            h("span", { class: "estratto" }, r.estratto))))
+          : h("p", { class: "vuoto-elenco" }, "Nessun passaggio trovato."));
+      const attuale = $("#risultati-testo");
+      if (attuale) attuale.replaceWith(zona); else $("#elenco").append(zona);
+    }, 280);
+  }
+
   // --- impostazioni -------------------------------------------------------
 
   const imp = () => (stato.info && stato.info.impostazioni) || {};
@@ -1459,6 +1813,7 @@
   function collegaEventi() {
     $("#btn-nuova").addEventListener("click", () => mostraNuova());
     $("#btn-impostazioni").addEventListener("click", mostraImpostazioni);
+    $("#btn-registra").addEventListener("click", mostraRegistrazione);
     $("#marchio").addEventListener("click", (e) => {
       e.preventDefault();
       stato.selezionata = null;
@@ -1466,7 +1821,7 @@
       mostraElenco();
       mostraBenvenuto();
     });
-    $("#cerca").addEventListener("input", (e) => { stato.filtro = e.target.value; mostraElenco(); });
+    $("#cerca").addEventListener("input", (e) => { stato.filtro = e.target.value; mostraElenco(); cercaNelTesto(); });
     window.addEventListener("resize", () => { const c = $(".commutatore"); if (c) posizionaCursore(c); });
     window.addEventListener("hashchange", () => {
       const id = location.hash.slice(1);
@@ -1493,10 +1848,13 @@
         h("span", {}, `Controlla che il server sia acceso (sbobina server) e ricarica la pagina. Dettaglio: ${e.message}`)));
       return;
     }
-    const daHash = location.hash.slice(1);
+    const [daHash, schedaHash] = location.hash.slice(1).split("/");
+    if (schedaHash) stato.scheda = schedaHash;
     if (daHash === "impostazioni") mostraImpostazioni();
+    else if (daHash === "registra") mostraRegistrazione();
+    else if (daHash === "ripasso") mostraRipassoGenerale();
     else if (daHash === "primo-avvio" || (!imp().configurato && !stato.lezioni.length)) mostraPrimoAvvio();
-    else if (daHash && stato.lezioni.some((l) => l.id === daHash)) await apriLezione(daHash);
+    else if (daHash && stato.lezioni.some((l) => l.id === daHash)) await apriLezione(daHash, { mantieniScheda: !!schedaHash });
     else mostraBenvenuto();
   }
 
