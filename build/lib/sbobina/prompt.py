@@ -11,6 +11,8 @@ del prompt evita di ripagare la trascrizione a ogni passaggio.
 
 from __future__ import annotations
 
+import re
+
 from sbobina.trascrizione.base import Blocco, tempo
 
 # --------------------------------------------------------------------------
@@ -239,6 +241,55 @@ Rispondi solo con il Markdown degli appunti, senza premesse."""
 
 ISTRUZIONI_APPUNTI = "Scrivi gli appunti completi di questa lezione in Markdown.\n\n" + REGOLE_APPUNTI
 
+_TITOLI_SEZIONI = {
+    "mappa": "## Mappa concettuale",
+    "indicazioni": "## Indicazioni del docente",
+    "glossario": "## Glossario",
+    "domande": "## Domande di ripasso",
+}
+_LUNGHEZZE = {
+    "essenziale": "Lunghezza: appunti essenziali, solo i concetti chiave, definizioni e formule; niente dettagli secondari.",
+    "normale": "",
+    "dettagliata": "Lunghezza: appunti molto dettagliati, quasi una dispensa: ogni passaggio, esempio e osservazione della lezione.",
+}
+_STILI = {
+    "discorsivo": "",
+    "schematico": "Stile: schematico, con elenchi puntati brevi e frasi nominali; paragrafi discorsivi solo dove servono.",
+}
+
+
+def sezioni_escluse(imp) -> list[str]:
+    return [t.removeprefix("## ") for s, t in _TITOLI_SEZIONI.items() if imp is not None and not imp.sezione(s)]
+
+
+def regole_appunti(imp=None) -> str:
+    """Le regole degli appunti adattate alle impostazioni dello studente (sezioni, lunghezza, stile, area)."""
+    if imp is None:
+        return REGOLE_APPUNTI
+    from sbobina.impostazioni import AREE
+
+    testo = REGOLE_APPUNTI
+    for sezione, titolo in _TITOLI_SEZIONI.items():
+        if not imp.sezione(sezione):
+            testo = re.sub(rf"\n{re.escape(titolo)}\n.*?(?=\n## |\nStile:)", "", testo, flags=re.S)
+    if not imp.sezione("schemi"):
+        testo = re.sub(r"\n- Schemi:.*?(?=\n\n## )", "", testo, flags=re.S)
+    preferenze = [_LUNGHEZZE.get(imp.lunghezza, ""), _STILI.get(imp.stile, ""), AREE.get(imp.area, "")]
+    if imp.anno or imp.corso_di_laurea:
+        preferenze.append(f"Lo studente è iscritto a {imp.corso_di_laurea or 'un corso di laurea'}"
+                          + (f", anno {imp.anno}" if imp.anno else "") + ".")
+    if imp.prompt_extra:
+        preferenze.append("Indicazioni personali dello studente (seguile se non contraddicono le regole di fedeltà): "
+                          + imp.prompt_extra)
+    preferenze = [p for p in preferenze if p]
+    if preferenze:
+        testo += "\n\nPreferenze dello studente\n" + "\n".join(f"- {p}" for p in preferenze)
+    return testo
+
+
+def istruzioni_appunti(imp=None) -> str:
+    return "Scrivi gli appunti completi di questa lezione in Markdown.\n\n" + regole_appunti(imp)
+
 ISTRUZIONI_VERIFICA = """\
 Ora fai da revisore. Confronta la bozza di appunti qui sotto con la trascrizione e i materiali, \
 sezione per sezione, e trova i problemi di accuratezza:
@@ -290,11 +341,14 @@ SCHEMA_VERIFICA = {
 }
 
 
-def istruzioni_verifica(bozza: str) -> str:
-    return f"{ISTRUZIONI_VERIFICA}\n\n<bozza_appunti>\n{bozza}\n</bozza_appunti>"
+def istruzioni_verifica(bozza: str, imp=None) -> str:
+    escluse = sezioni_escluse(imp)
+    nota = (f"\nLo studente ha escluso queste sezioni: {', '.join(escluse)}. Non segnalarle come mancanti."
+            if escluse else "")
+    return f"{ISTRUZIONI_VERIFICA}{nota}\n\n<bozza_appunti>\n{bozza}\n</bozza_appunti>"
 
 
-def istruzioni_correzione(bozza: str, problemi: list[dict]) -> str:
+def istruzioni_correzione(bozza: str, problemi: list[dict], imp=None) -> str:
     elenco = "\n".join(
         f"{i}. [{p['tipo']}, gravità {p['gravita']}] {p['posizione']}\n"
         f"   Evidenza: {p['evidenza']}\n   Correzione: {p['correzione']}"
@@ -305,7 +359,7 @@ def istruzioni_correzione(bozza: str, problemi: list[dict]) -> str:
         "appunti completi applicando le correzioni. Controlla ogni segnalazione sulla trascrizione: "
         "se una è infondata, ignorala. Lascia invariato tutto ciò che è corretto (struttura, titoli, "
         "formulazioni) e rispetta le stesse regole della bozza:\n\n"
-        f"<regole>\n{REGOLE_APPUNTI}\n</regole>\n\n"
+        f"<regole>\n{regole_appunti(imp)}\n</regole>\n\n"
         f"<bozza_appunti>\n{bozza}\n</bozza_appunti>\n\n"
         f"<problemi>\n{elenco}\n</problemi>\n\n"
         "Rispondi solo con il Markdown completo degli appunti corretti."

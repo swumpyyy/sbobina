@@ -21,7 +21,7 @@ ESTENSIONI_AUDIO = {
 }
 ESTENSIONI_MATERIALI = {".pdf", ".txt", ".md", ".jpg", ".jpeg", ".png", ".webp"}
 
-STATI = ("in_coda", "in_elaborazione", "completata", "errore")
+STATI = ("in_coda", "in_elaborazione", "completata", "errore", "fermata")
 
 _scrittura = threading.Lock()
 
@@ -76,6 +76,8 @@ class Lezione:
     motori: list[str] = field(default_factory=list)
     utilizzo: dict[str, dict[str, int]] = field(default_factory=dict)
     da_approfondire: list[str] = field(default_factory=list)
+    approfondimento_richiesto: bool = False
+    secondi_elaborazione: float = 0.0  # lavoro effettivo, per stimare le prossime
     creata: str = field(default_factory=adesso)
     aggiornata: str = field(default_factory=adesso)
 

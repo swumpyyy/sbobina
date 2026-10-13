@@ -130,14 +130,14 @@
   function variabiliMermaid() {
     const scuro = temaScuro();
     return {
-      fontFamily: '"Saira", system-ui, sans-serif',
+      fontFamily: '"Geist", system-ui, sans-serif',
       fontSize: "15px",
       background: "transparent",
       primaryColor: scuro ? "#2a303c" : "#eef1f6",
       primaryTextColor: scuro ? "#e8ebf1" : "#1d2330",
       primaryBorderColor: scuro ? "#8792a6" : "#1d2330",
       secondaryColor: scuro ? "#323947" : "#fbe6d8",
-      secondaryBorderColor: scuro ? "#ff8a3d" : "#a8420a",
+      secondaryBorderColor: scuro ? "#94bbff" : "#0c4bcc",
       tertiaryColor: scuro ? "#20252f" : "#f6f8fb",
       lineColor: scuro ? "#aab3c3" : "#4f596d",
       textColor: scuro ? "#e8ebf1" : "#1d2330",
@@ -145,7 +145,7 @@
       clusterBkg: scuro ? "#232833" : "#f3f5f9",
       clusterBorder: scuro ? "#4f596d" : "#c4ccd9",
       noteBkgColor: scuro ? "#3a2a1f" : "#fff4ea",
-      noteBorderColor: scuro ? "#ff8a3d" : "#a8420a",
+      noteBorderColor: scuro ? "#94bbff" : "#0c4bcc",
       actorBkg: scuro ? "#2a303c" : "#eef1f6",
       actorBorder: scuro ? "#8792a6" : "#1d2330",
       signalColor: scuro ? "#aab3c3" : "#4f596d",
@@ -209,7 +209,7 @@
 
   function larghezzaTesto(testo, peso) {
     if (!righello) righello = document.createElement("canvas").getContext("2d");
-    righello.font = `${peso} 14px Saira, system-ui, sans-serif`;
+    righello.font = `${peso} 14px Geist, system-ui, sans-serif`;
     return righello.measureText(testo).width;
   }
 

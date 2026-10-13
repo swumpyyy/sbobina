@@ -22,7 +22,7 @@
   --attenzione-sfondo: #fdf0e9;
   --errore: #b42318;
   --font-testo: "Iowan Old Style", "Charter", "Georgia", "Times New Roman", serif;
-  --font-ui: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-ui: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-codice: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --raggio: 10px;
   --durata: 160ms;

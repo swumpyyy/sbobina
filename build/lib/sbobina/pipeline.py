@@ -21,7 +21,8 @@ from sbobina import audio, prompt
 from sbobina.archivio import Archivio, Lezione, leggi_json, scrivi_atomico, scrivi_json, unisci_termini
 from sbobina.config import Config
 from sbobina.esporta import esporta_html
-from sbobina.llm import ErroreClaude, ModelloLinguistico, Utilizzo
+from sbobina import impostazioni
+from sbobina.llm import FERMA, ErroreClaude, Fermata, ModelloLinguistico, Utilizzo
 from sbobina.materiali import Materiali, carica_materiali
 from sbobina.trascrizione.base import (
     Blocco,
@@ -115,12 +116,15 @@ class Elaborazione:
         self.archivio = archivio
         self.llm = llm
         self.motori = motori
+        self.imp = impostazioni.Impostazioni()
         self._lock = threading.Lock()
         self._ultimo_aggiornamento: tuple[float, str, str] = (0.0, "", "")
 
     # --- stato e avanzamento ----------------------------------------------
 
     def _avanza(self, id_lezione: str, fase: str, frazione: float, messaggio: str = "") -> None:
+        if FERMA.is_set():
+            raise Fermata()
         etichetta, inizio, fine = FASI[fase]
         progresso = round(inizio + (fine - inizio) * max(0.0, min(1.0, frazione)), 3)
         with self._lock:
@@ -148,14 +152,26 @@ class Elaborazione:
     # --- esecuzione -------------------------------------------------------
 
     def esegui(self, id_lezione: str) -> Lezione:
+        FERMA.clear()
+        self.imp = impostazioni.carica(self.config.cartella_dati)
         self.archivio.aggiorna(id_lezione, stato="in_elaborazione", errore="", messaggio="", avvisi=[])
+        inizio = time.monotonic()
+
+        def conta(lez: Lezione) -> None:
+            lez.secondi_elaborazione = round(lez.secondi_elaborazione + time.monotonic() - inizio, 1)
+
         try:
             self._esegui(id_lezione)
+        except Fermata:
+            # I blocchi già salvati restano: "Riprendi" riparte da lì.
+            self.archivio.modifica(id_lezione, conta)
+            return self.archivio.aggiorna(id_lezione, stato="fermata", messaggio="")
         except Exception as e:  # noqa: BLE001 - l'errore va mostrato all'utente, non perso
             log.exception("Elaborazione di %s non riuscita", id_lezione)
             return self.archivio.aggiorna(
                 id_lezione, stato="errore", errore=str(e) or type(e).__name__, messaggio=""
             )
+        self.archivio.modifica(id_lezione, conta)
         return self.archivio.aggiorna(
             id_lezione, stato="completata", fase="Completata", progresso=1.0, messaggio=""
         )
@@ -375,7 +391,7 @@ class Elaborazione:
         self._avanza(lezione.id, "appunti", 0.05, "Sto scrivendo gli appunti (qualche minuto)")
         testo, uso = self.llm.testo(
             system=prompt.SYSTEM_APPUNTI,
-            contenuto=[*base, {"type": "text", "text": prompt.ISTRUZIONI_APPUNTI}],
+            contenuto=[*base, {"type": "text", "text": prompt.istruzioni_appunti(self.imp)}],
             sforzo=self.config.sforzo_appunti,
             max_tokens=96000,
         )
@@ -386,7 +402,8 @@ class Elaborazione:
         return bozza
 
     def _fase_approfondimento(self, lezione: Lezione, f: File, base: list[dict], appunti: str) -> None:
-        if not f.approfondimento.is_file():
+        voluto = self.imp.sezione("approfondimento") or self.archivio.carica(lezione.id).approfondimento_richiesto
+        if not f.approfondimento.is_file() and voluto:
             self._avanza(lezione.id, "approfondimento", 0.05, "Sto scrivendo l'approfondimento (qualche minuto)")
             testo, uso = self.llm.testo(
                 system=prompt.SYSTEM_APPUNTI,
@@ -426,7 +443,7 @@ class Elaborazione:
         self._avanza(lezione.id, "verifica", 0.05, "Confronto degli appunti con la trascrizione")
         dati, uso = self.llm.json(
             system=prompt.SYSTEM_APPUNTI,
-            contenuto=[*base, {"type": "text", "text": prompt.istruzioni_verifica(bozza)}],
+            contenuto=[*base, {"type": "text", "text": prompt.istruzioni_verifica(bozza, self.imp)}],
             schema=prompt.SCHEMA_VERIFICA,
             sforzo=self.config.sforzo_appunti,
             max_tokens=48000,
@@ -446,7 +463,7 @@ class Elaborazione:
             self._avanza(lezione.id, "correzione", 0.05, f"Correzione di {len(problemi)} punti segnalati")
             testo, uso = self.llm.testo(
                 system=prompt.SYSTEM_APPUNTI,
-                contenuto=[*base, {"type": "text", "text": prompt.istruzioni_correzione(bozza, problemi)}],
+                contenuto=[*base, {"type": "text", "text": prompt.istruzioni_correzione(bozza, problemi, self.imp)}],
                 sforzo=self.config.sforzo_appunti,
                 max_tokens=96000,
             )

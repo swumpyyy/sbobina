@@ -9,11 +9,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Modelli che scrivono gli appunti (Ollama, famiglia Gemma 4: buon italiano, licenza aperta).
+# Modelli che scrivono gli appunti (famiglia Gemma 4: buon italiano, licenza aperta): tag Ollama e repo MLX equivalente.
 # "ram" è la memoria minima per usarli senza rallentare tutto il Mac; "gb" lo spazio su disco.
 MODELLI = (
     {
         "tag": "gemma4:e2b",
+        "mlx": "mlx-community/gemma-4-e2b-it-4bit",
         "nome": "Leggero",
         "gb": 4.6,
         "ram": 8,
@@ -23,6 +24,7 @@ MODELLI = (
     },
     {
         "tag": "gemma4:e4b",
+        "mlx": "mlx-community/gemma-4-e4b-it-4bit",
         "nome": "Equilibrato",
         "gb": 6.6,
         "ram": 16,
@@ -32,6 +34,7 @@ MODELLI = (
     },
     {
         "tag": "gemma4:12b",
+        "mlx": "mlx-community/gemma-4-12B-it-4bit",
         "nome": "Accurato",
         "gb": 7.7,
         "ram": 24,
@@ -41,6 +44,7 @@ MODELLI = (
     },
     {
         "tag": "gemma4:26b",
+        "mlx": "mlx-community/gemma-4-26b-a4b-it-4bit",
         "nome": "Massima qualità",
         "gb": 16.0,
         "ram": 32,
@@ -50,6 +54,7 @@ MODELLI = (
     },
     {
         "tag": "gemma4:31b",
+        "mlx": "mlx-community/gemma-4-31b-it-4bit",
         "nome": "Studio",
         "gb": 19.0,
         "ram": 64,

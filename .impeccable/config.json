@@ -20,6 +20,24 @@
         ],
         "createdAt": "2026-10-12T18:44:01.804Z",
         "reason": "direction contract: amber indicator lamp glow is the one 'live' signal; same exception already recorded for app.css"
+      },
+      {
+        "rule": "pulsing-dot",
+        "value": "*",
+        "files": [
+          "sbobina/static/index.html"
+        ],
+        "createdAt": "2026-10-13T11:54:31.427Z",
+        "reason": "assistant decision: dots animate only while the AI is actually processing or generating (live state), stop otherwise"
+      },
+      {
+        "rule": "radial-halo",
+        "value": "*",
+        "files": [
+          "sbobina/static/index.html"
+        ],
+        "createdAt": "2026-10-13T11:54:31.451Z",
+        "reason": "user brief: glassmorphism theme needs coloured blurred sky behind the frosted panels"
       }
     ]
   }

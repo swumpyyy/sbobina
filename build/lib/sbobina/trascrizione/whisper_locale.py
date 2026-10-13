@@ -51,7 +51,7 @@ def campioni_16k(audio: Path):
 class MotoreWhisper:
     nome = "whisper"
 
-    def __init__(self, modello: str = "large-v3", dispositivo: str = "auto"):
+    def __init__(self, modello: str = "large-v3-turbo", dispositivo: str = "auto"):
         self.modello = modello
         self.dispositivo = dispositivo
 
@@ -149,14 +149,18 @@ class MotoreWhisper:
         return Trascrizione(self.nome, parole, durata)
 
 
-# large-v3-turbo: qualità quasi uguale a large-v3, circa 6 volte più veloce.
-REPO_MLX = {"large-v3": "mlx-community/whisper-large-v3-turbo"}
+# large-v3-turbo: qualità quasi uguale a large-v3, circa 6 volte più veloce (il predefinito).
+REPO_MLX = {"large-v3-turbo": "mlx-community/whisper-large-v3-turbo"}
+
+
+def repo_hf(modello: str) -> str:
+    return REPO_MLX.get(modello, f"mlx-community/whisper-{modello}-mlx")
 MODELLI_LOCALI = Path.home() / "Library/Application Support/Sbobina/modelli"
 
 
 def repo_mlx(modello: str) -> str:
     """Cartella del modello già scaricato (verificato) se c'è, altrimenti il repo Hugging Face."""
-    repo = REPO_MLX.get(modello, f"mlx-community/whisper-{modello}-mlx")
+    repo = repo_hf(modello)
     cartella = MODELLI_LOCALI / repo.split("/")[1]
     pesi = (cartella / "weights.safetensors").exists() or (cartella / "weights.npz").exists()
     return str(cartella) if pesi and (cartella / "config.json").exists() else repo

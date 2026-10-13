@@ -17,18 +17,18 @@ colors:
   carta: "#ffffff"
 typography:
   titolo:
-    fontFamily: "Geist, system-ui, sans-serif"
+    fontFamily: "Schibsted Grotesk, system-ui, sans-serif"
     fontSize: "clamp(34px, 4.6vw, 60px)"
     fontWeight: 650
     lineHeight: 1.04
     letterSpacing: "-0.04em"
   sezione:
-    fontFamily: "Geist, system-ui, sans-serif"
+    fontFamily: "Schibsted Grotesk, system-ui, sans-serif"
     fontSize: "22px"
     fontWeight: 650
     letterSpacing: "-0.025em"
   ui:
-    fontFamily: "Geist, system-ui, sans-serif"
+    fontFamily: "Schibsted Grotesk, system-ui, sans-serif"
     fontSize: "15px"
     fontWeight: 400
   appunti:

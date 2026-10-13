@@ -67,7 +67,7 @@ class Config:
     sforzo_revisione: str = "medium"
     motori: tuple[str, ...] = ("whisper",)
     lingua: str = "it"
-    whisper_modello: str = "large-v3"
+    whisper_modello: str = "large-v3-turbo"
     whisper_dispositivo: str = "auto"
     minuti_per_blocco: float = 8.0
     richieste_parallele: int = 4
@@ -89,7 +89,7 @@ class Config:
             sforzo_revisione=_sforzo(env.get("SBOBINA_SFORZO_REVISIONE"), "medium"),
             motori=scegli_motori(env.get("SBOBINA_MOTORI", "auto"), env),
             lingua=env.get("SBOBINA_LINGUA", "it"),
-            whisper_modello=env.get("SBOBINA_WHISPER_MODELLO", "large-v3"),
+            whisper_modello=env.get("SBOBINA_WHISPER_MODELLO", "large-v3-turbo"),
             whisper_dispositivo=env.get("SBOBINA_WHISPER_DISPOSITIVO", "auto"),
             minuti_per_blocco=float(env.get("SBOBINA_MINUTI_PER_BLOCCO", "8")),
             richieste_parallele=max(1, int(env.get("SBOBINA_RICHIESTE_PARALLELE", parallele_predefinite))),
@@ -104,9 +104,7 @@ class Config:
 
     @property
     def llm_pronto(self) -> bool:
-        """Il modello che scrive gli appunti è utilizzabile: Ollama acceso con il modello scaricato, o chiave Claude."""
-        if self.locale:
-            from sbobina.llm import locale_pronto
+        """Il modello che scrive gli appunti è utilizzabile: Ollama o MLX con il modello scaricato, o chiave Claude."""
+        from sbobina.llm import pronto
 
-            return locale_pronto(self.modello)
-        return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
+        return pronto(self.modello)

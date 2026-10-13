@@ -194,7 +194,7 @@
         ? h("div", { class: "preparazione" },
             h("span", {}, p.messaggio),
             h("span", { class: "mini-meter", role: "progressbar", "aria-valuenow": Math.round((p.progresso || 0) * 100),
-              "aria-valuemin": 0, "aria-valuemax": 100 }, h("div", { style: `width:${percentuale(p.progresso || 0)}` })))
+              "aria-valuemin": 0, "aria-valuemax": 100 }, h("div", { style: `--p:${p.progresso || 0}` })))
         : h("div", { class: "preparazione" },
             p.errore ? h("span", { role: "alert" }, p.errore) : h("span", {}, info.motore === "mlx" ? "Una volta sola: Sbobina scarica il modello sul tuo Mac." : "Una volta sola: Sbobina avvia Ollama e scarica il modello."),
             h("button", { class: "tasto", type: "button", onclick: preparaAI }, p.errore ? "Riprova" : "Prepara l'AI"));
@@ -259,7 +259,7 @@
           ? h("span", { class: "sotto" },
               h("span", { class: "dati" }, l.stato === "in_coda" ? "in coda" : percentuale(l.progresso)),
               l.stima_secondi ? h("span", { class: "dati", title: "Tempo stimato" }, `~${formattaDurata(l.stima_secondi)}`) : null,
-              h("span", { class: "mini-meter", "aria-hidden": "true" }, h("div", { style: `width:${percentuale(l.progresso)}` })))
+              h("span", { class: "mini-meter", "aria-hidden": "true" }, h("div", { style: `--p:${l.progresso || 0}` })))
           : h("span", { class: "sotto" },
               h("span", {}, formattaData(l.data)),
               l.durata_secondi ? h("span", { class: "dati" }, formattaDurata(l.durata_secondi)) : null,
@@ -596,8 +596,11 @@
   function posizionaCursore(commutatore) {
     const attivo = commutatore.querySelector('[aria-selected="true"]');
     if (!attivo) return;
-    commutatore.style.setProperty("--x", `${attivo.offsetLeft}px`);
-    commutatore.style.setProperty("--w", `${attivo.offsetWidth}px`);
+    // Ritaglio del cursore (che parte dal padding di 5px): sinistra e destra della scheda attiva.
+    const interno = commutatore.scrollWidth - 10;
+    const sinistra = attivo.offsetLeft - 5;
+    commutatore.style.setProperty("--s", `${sinistra}px`);
+    commutatore.style.setProperty("--d", `${interno - sinistra - attivo.offsetWidth}px`);
   }
 
   /** Cambia scheda senza ridisegnare la pagina: il cursore scivola e cambia solo il foglio. */
@@ -1030,7 +1033,7 @@
     xhr.upload.onprogress = (e) => {
       if (!e.lengthComputable) return;
       const p = Math.round((e.loaded / e.total) * 100);
-      barra.style.width = `${p}%`;
+      barra.style.setProperty("--p", String(p / 100));
       testoCaricamento.textContent = `Caricamento ${p}%`;
     };
     xhr.upload.onload = () => { testoCaricamento.textContent = "Salvataggio…"; };
@@ -1154,7 +1157,7 @@
         return;
       }
       const c = carte[i];
-      const retro = h("div", { class: "retro" }, c.retro);
+      const retro = h("div", { class: "retro" }, h("div", {}, c.retro));
       const carta = h("button", { class: "carta", type: "button", "aria-label": "Gira la carta" },
         h("span", { class: "fronte" }, c.fronte), retro);
       const esiti = h("div", { class: "esiti", hidden: true },

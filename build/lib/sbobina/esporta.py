@@ -95,7 +95,7 @@ CSS_PDF = """
   @bottom-center { content: counter(page); font: 9pt system-ui, sans-serif; color: #9ca3af; } }
 @page :first { @bottom-center { content: none; } }
 html, body { background: #fff; }
-body { font: 10.8pt/1.6 "Saira", system-ui, -apple-system, sans-serif; color: #1f2937; }
+body { font: 10.8pt/1.6 "Geist", system-ui, -apple-system, sans-serif; color: #1f2937; }
 .copertina { height: 250mm; display: flex; flex-direction: column; justify-content: center; }
 .copertina .corso { font-size: 11pt; letter-spacing: .18em; text-transform: uppercase; color: var(--c); font-weight: 600; }
 .copertina h1 { font-size: 34pt; line-height: 1.12; margin: 6mm 0 4mm; color: #111827; letter-spacing: -0.02em; }
@@ -137,19 +137,21 @@ document.querySelectorAll('.appunti').forEach(function (radice) {
 
 
 def esporta_pdf_html(
-    *, titolo: str, corso: str, data: str, appunti: str, approfondimento: str | None, base: str | None = None
+    *, titolo: str, corso: str, data: str, appunti: str = "", approfondimento: str | None = None,
+    parti: list[tuple[str, str]] | None = None, durata: str = "", base: str | None = None,
 ) -> str:
-    """Pagina impaginata per il PDF: copertina con indice, poi appunti e approfondimento.
+    """Pagina impaginata per il PDF: copertina con indice, poi una sezione per parte.
 
+    `parti`: coppie (titolo, markdown); se manca, appunti e approfondimento.
     `base`: da dove caricare font e librerie ("/static" se servita dall'app; di default i file locali).
     """
     base = base or STATIC.as_uri()
     css = (STATIC / "appunti.css").read_text(encoding="utf-8")
     render_js = (STATIC / "render.js").read_text(encoding="utf-8")
-    font = f"{base}/fonts/Saira-Variable.woff2"
-    parti = [("appunti", "Appunti della lezione", appunti)]
-    if approfondimento:
-        parti.append(("approfondimento", "Approfondimento", approfondimento))
+    font = f"{base}/fonts/Geist-Variable.woff2"
+    if parti is None:
+        parti = [("Appunti della lezione", appunti)] + ([("Approfondimento", approfondimento)] if approfondimento else [])
+    parti = [(f"parte-{i}", nome, testo) for i, (nome, testo) in enumerate(parti)]
     indice = "".join(f"<li>{html.escape(nome)}</li>" for _, nome, _ in parti)
     sezioni = "".join(
         f'<section class="parte"><h1 class="titolo-parte">{html.escape(nome)}</h1>'
@@ -163,10 +165,10 @@ def esporta_pdf_html(
     return (
         "<!doctype html>\n<html lang=\"it\" data-tema=\"chiaro\">\n<head>\n<meta charset=\"utf-8\">\n"
         f"<title>{html.escape(titolo)} · {html.escape(corso)}</title>\n{librerie(base)}\n<style>\n"
-        f"@font-face {{ font-family: 'Saira'; src: url('{font}') format('woff2'); font-weight: 100 900; font-stretch: 50% 125%; }}\n"
+        f"@font-face {{ font-family: 'Geist'; src: url('{font}') format('woff2'); font-weight: 100 900; }}\n"
         f"{css}\n:root {{ --c: {colore_corso(corso)}; }}\n{CSS_PDF}\n</style>\n</head>\n<body>\n"
         f'<div class="copertina"><div class="corso">{html.escape(corso)}</div><h1>{html.escape(titolo)}</h1>'
-        f'<div class="data">{html.escape(data)}</div><div class="barra"></div><ol>{indice}</ol>'
+        f'<div class="data">{html.escape(" · ".join(x for x in (data, durata) if x))}</div><div class="barra"></div><ol>{indice}</ol>'
         '<div class="legenda"><span>⭐ indicato dal docente</span><span>Integrazione: oltre la lezione</span>'
         '<span><span class="q">da verificare</span> controlla sul libro</span></div></div>\n'
         f"{sezioni}\n<script>\n{render_js}\n</script>\n<script>\n{render}{MARCA_INCERTI}</script>\n"

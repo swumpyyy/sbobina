@@ -130,7 +130,7 @@
   function variabiliMermaid() {
     const scuro = temaScuro();
     return {
-      fontFamily: '"Geist", system-ui, sans-serif',
+      fontFamily: '"Schibsted Grotesk", system-ui, sans-serif',
       fontSize: "15px",
       background: "transparent",
       primaryColor: scuro ? "#2a303c" : "#eef1f6",
@@ -209,7 +209,7 @@
 
   function larghezzaTesto(testo, peso) {
     if (!righello) righello = document.createElement("canvas").getContext("2d");
-    righello.font = `${peso} 14px Geist, system-ui, sans-serif`;
+    righello.font = `${peso} 14px "Schibsted Grotesk", system-ui, sans-serif`;
     return righello.measureText(testo).width;
   }
 
