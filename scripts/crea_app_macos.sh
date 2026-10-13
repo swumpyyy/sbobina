@@ -75,8 +75,8 @@ if (( DMG )); then
   "${PIP[@]}" "${PROGETTO}[app]"
   # mlx-whisper senza torch (serve solo a convertire modelli, non a trascrivere): ~1 GB in meno.
   "${PIP[@]}" --no-deps "mlx-whisper>=0.4"
-  "${PIP[@]}" huggingface_hub mlx more-itertools numba numpy scipy tiktoken tqdm
-  "$R/python/bin/python3" -c "import sbobina.app, mlx_whisper, webview" || { echo "Import fallito nel bundle"; exit 1; }
+  "${PIP[@]}" huggingface_hub mlx more-itertools numba numpy scipy tiktoken tqdm "mlx-lm>=0.28"
+  "$R/python/bin/python3" -c "import sbobina.app, mlx_whisper, mlx_lm, webview" || { echo "Import fallito nel bundle"; exit 1; }
 
   cat > "$APP/Contents/MacOS/Sbobina" <<'LANCIO'
 #!/bin/zsh

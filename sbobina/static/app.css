@@ -9,71 +9,52 @@
 
 :root {
   --font-ui: "Geist", system-ui, -apple-system, sans-serif;
-  --campo: #edf2fa;
-  --nebbia-1: #9cc0ff;
-  --nebbia-2: #cfe0ff;
-  --nebbia-3: #6f9dff;
-  --vetro: rgba(255, 255, 255, 0.56);
-  --vetro-forte: rgba(255, 255, 255, 0.82);
-  --vetro-tenue: rgba(255, 255, 255, 0.34);
-  --filo: rgba(255, 255, 255, 0.85);
-  --filo-scuro: rgba(20, 44, 92, 0.09);
-  --inchiostro: #0e1a31;
-  --inchiostro-tenue: #475877;
-  --inchiostro-lieve: #63738f;
-  --blu: #1f66f2;
-  --blu-forte: #0d4fd6;
-  --blu-testo: #0c4bcc;
-  --blu-tenue: rgba(31, 102, 242, 0.1);
-  --blu-alone: rgba(31, 102, 242, 0.28);
-  --guasto: #c3321e;
-  --guasto-tenue: rgba(195, 50, 30, 0.09);
-  --carta: #ffffff;
-  --ombra-lieve: 0 1px 2px rgba(16, 40, 90, 0.05), 0 6px 18px -8px rgba(16, 40, 90, 0.16);
-  --ombra: 0 1px 2px rgba(16, 40, 90, 0.04), 0 18px 44px -18px rgba(16, 40, 90, 0.26);
-  --ombra-alta: 0 2px 6px rgba(16, 40, 90, 0.06), 0 30px 70px -24px rgba(16, 40, 90, 0.34);
-  --luce-interna: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --campo: light-dark(#edf2fa, #060c19);
+  --nebbia-1: light-dark(#9cc0ff, #123a8c);
+  --nebbia-2: light-dark(#cfe0ff, #0b2457);
+  --nebbia-3: light-dark(#6f9dff, #2152c4);
+  --vetro: light-dark(rgba(255, 255, 255, 0.56), rgba(20, 31, 56, 0.58));
+  --vetro-forte: light-dark(rgba(255, 255, 255, 0.82), rgba(28, 42, 74, 0.86));
+  --vetro-tenue: light-dark(rgba(255, 255, 255, 0.34), rgba(20, 31, 56, 0.36));
+  --filo: light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.1));
+  --filo-scuro: light-dark(rgba(20, 44, 92, 0.09), rgba(255, 255, 255, 0.07));
+  --inchiostro: light-dark(#0e1a31, #eaf1ff);
+  --inchiostro-tenue: light-dark(#475877, #a9b8d6);
+  --inchiostro-lieve: light-dark(#63738f, #8597b9);
+  --blu: light-dark(#1f66f2, #4b8bff);
+  --blu-forte: light-dark(#0d4fd6, #6fa2ff);
+  --blu-testo: light-dark(#0c4bcc, #94bbff);
+  --blu-tenue: light-dark(rgba(31, 102, 242, 0.1), rgba(75, 139, 255, 0.16));
+  --blu-alone: light-dark(rgba(31, 102, 242, 0.28), rgba(75, 139, 255, 0.35));
+  --guasto: light-dark(#c3321e, #ff8a7a);
+  --guasto-tenue: light-dark(rgba(195, 50, 30, 0.09), rgba(255, 138, 122, 0.12));
+  --carta: light-dark(#ffffff, #0f1830);
+  --ombra-lieve: light-dark(0 1px 2px rgba(16, 40, 90, 0.05), 0 6px 18px -8px rgba(16, 40, 90, 0.16), 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px -10px rgba(0, 0, 0, 0.5));
+  --ombra: light-dark(0 1px 2px rgba(16, 40, 90, 0.04), 0 18px 44px -18px rgba(16, 40, 90, 0.26), 0 1px 2px rgba(0, 0, 0, 0.3), 0 20px 48px -20px rgba(0, 0, 0, 0.6));
+  --ombra-alta: light-dark(0 2px 6px rgba(16, 40, 90, 0.06), 0 30px 70px -24px rgba(16, 40, 90, 0.34), 0 2px 6px rgba(0, 0, 0, 0.35), 0 32px 72px -24px rgba(0, 0, 0, 0.7));
+  --luce-interna: light-dark(inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.08));
   --molla: cubic-bezier(0.32, 0.72, 0, 1);
   --uscita: cubic-bezier(0.16, 1, 0.3, 1);
   --r-grande: 28px;
   --r-medio: 20px;
   --r-piccolo: 14px;
-  color-scheme: light;
+  color-scheme: light dark;
 }
+:root[data-tema="chiaro"] { color-scheme: light; }
+:root[data-tema="scuro"] { color-scheme: dark; }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --campo: #060c19;
-    --nebbia-1: #123a8c;
-    --nebbia-2: #0b2457;
-    --nebbia-3: #2152c4;
-    --vetro: rgba(20, 31, 56, 0.58);
-    --vetro-forte: rgba(28, 42, 74, 0.86);
-    --vetro-tenue: rgba(20, 31, 56, 0.36);
-    --filo: rgba(255, 255, 255, 0.1);
-    --filo-scuro: rgba(255, 255, 255, 0.07);
-    --inchiostro: #eaf1ff;
-    --inchiostro-tenue: #a9b8d6;
-    --inchiostro-lieve: #8597b9;
-    --blu: #4b8bff;
-    --blu-forte: #6fa2ff;
-    --blu-testo: #94bbff;
-    --blu-tenue: rgba(75, 139, 255, 0.16);
-    --blu-alone: rgba(75, 139, 255, 0.35);
-    --guasto: #ff8a7a;
-    --guasto-tenue: rgba(255, 138, 122, 0.12);
-    --carta: #0f1830;
-    --ombra-lieve: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px -10px rgba(0, 0, 0, 0.5);
-    --ombra: 0 1px 2px rgba(0, 0, 0, 0.3), 0 20px 48px -20px rgba(0, 0, 0, 0.6);
-    --ombra-alta: 0 2px 6px rgba(0, 0, 0, 0.35), 0 32px 72px -24px rgba(0, 0, 0, 0.7);
-    --luce-interna: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    color-scheme: dark;
-  }
-}
+/* Accenti alternativi scelti nelle Impostazioni. */
+:root[data-accento="indaco"] { --blu: light-dark(#5b4cf0, #8d82ff); --blu-forte: light-dark(#4535d6, #a59cff); --blu-testo: light-dark(#4031c8, #b3abff); --blu-tenue: light-dark(rgba(91,76,240,.1), rgba(141,130,255,.16)); --blu-alone: light-dark(rgba(91,76,240,.28), rgba(141,130,255,.35)); --nebbia-1: light-dark(#b9b0ff, #2b2380); --nebbia-3: light-dark(#8d82ff, #3b2fb8); }
+:root[data-accento="azzurro"] { --blu: light-dark(#0891d1, #38bdf8); --blu-forte: light-dark(#0675aa, #7dd3fc); --blu-testo: light-dark(#056a9b, #7dd3fc); --blu-tenue: light-dark(rgba(8,145,209,.1), rgba(56,189,248,.16)); --blu-alone: light-dark(rgba(8,145,209,.28), rgba(56,189,248,.35)); --nebbia-1: light-dark(#9fdcff, #0c4a6e); --nebbia-3: light-dark(#5ec4f5, #0369a1); }
+:root[data-accento="verde"] { --blu: light-dark(#0d9488, #2dd4bf); --blu-forte: light-dark(#0b766d, #5eead4); --blu-testo: light-dark(#0a6b63, #5eead4); --blu-tenue: light-dark(rgba(13,148,136,.1), rgba(45,212,191,.16)); --blu-alone: light-dark(rgba(13,148,136,.28), rgba(45,212,191,.35)); --nebbia-1: light-dark(#a7eee3, #134e4a); --nebbia-3: light-dark(#5fd3c4, #0f766e); }
+
+
+
 
 /* --- base -------------------------------------------------------------- */
 
 *, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 html { background: var(--campo); }
 
@@ -777,6 +758,154 @@ a { color: var(--blu-testo); text-underline-offset: 3px; }
 .spunti { display: flex; flex-wrap: wrap; gap: 8px; }
 .spunti .tasto { font-weight: 500; }
 
+/* --- impostazioni e primo avvio --------------------------------------- */
+
+.tasto.trasparente { background: transparent; border-color: transparent; box-shadow: none; }
+.tasto.trasparente:hover { background: var(--vetro-forte); border-color: var(--filo-scuro); }
+.intestazione .sottotitolo { margin: 8px 0 0; color: var(--inchiostro-tenue); }
+
+.pannello.imp { display: grid; gap: 18px; }
+.pannello.imp > h2 + p { margin: -8px 0 0; }
+.riga-imp {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 24px;
+}
+.riga-testo { display: grid; gap: 2px; max-width: 40ch; }
+.riga-testo strong { font-weight: 600; }
+.riga-testo small, .interruttore small { color: var(--inchiostro-tenue); font-size: 13px; }
+
+/* Pillole a scelta singola: il fondo bianco scivola sotto quella scelta. */
+.scelte {
+  display: inline-flex; flex-wrap: wrap; gap: 2px;
+  padding: 4px; border-radius: 999px;
+  background: var(--vetro-tenue); border: 1px solid var(--filo-scuro);
+}
+.scelta { position: relative; cursor: pointer; }
+.scelta input { position: absolute; opacity: 0; pointer-events: none; }
+.scelta span {
+  display: block; padding: 7px 14px; border-radius: 999px;
+  font-size: 14px; font-weight: 550; color: var(--inchiostro-tenue);
+  transition: background-color 380ms var(--molla), color 300ms var(--uscita), box-shadow 380ms var(--molla);
+}
+.scelta:hover span { color: var(--inchiostro); }
+.scelta input:checked + span { background: var(--carta); color: var(--blu-testo); box-shadow: var(--luce-interna), var(--ombra-lieve); }
+.scelta input:focus-visible + span { outline: 2px solid var(--blu); outline-offset: 2px; }
+
+/* Interruttori */
+.griglia-interruttori { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.interruttore {
+  position: relative;
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px;
+  padding: 14px 16px; border-radius: var(--r-piccolo);
+  background: var(--vetro-tenue); border: 1px solid var(--filo-scuro);
+  cursor: pointer;
+  transition: background-color 300ms var(--uscita);
+}
+.interruttore:hover { background: var(--vetro-forte); }
+.interruttore .testo { display: grid; gap: 2px; }
+.interruttore .testo > span { font-weight: 550; }
+.interruttore input { position: absolute; opacity: 0; pointer-events: none; }
+.levetta {
+  position: relative; width: 44px; height: 26px; border-radius: 99px;
+  background: var(--filo-scuro);
+  box-shadow: inset 0 1px 2px rgba(16, 40, 90, 0.15);
+  transition: background-color 380ms var(--uscita);
+}
+.levetta::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; box-shadow: 0 2px 6px rgba(16, 40, 90, 0.3);
+  transition: transform 460ms var(--molla);
+}
+.interruttore input:checked ~ .levetta { background: var(--blu); }
+.interruttore input:checked ~ .levetta::after { transform: translateX(18px); }
+.interruttore input:focus-visible ~ .levetta { outline: 2px solid var(--blu); outline-offset: 2px; }
+
+/* Schede dei modelli */
+.modelli { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.modello {
+  position: relative;
+  display: grid; gap: 6px; align-content: start;
+  padding: 16px; border-radius: var(--r-medio);
+  background: var(--vetro-tenue); border: 1.5px solid var(--filo-scuro);
+  cursor: pointer;
+  transition: border-color 300ms var(--uscita), background-color 300ms var(--uscita), transform 460ms var(--molla), box-shadow 460ms var(--molla);
+}
+.modello:hover { transform: translateY(-2px); background: var(--vetro-forte); }
+.modello:has(input:checked) { border-color: var(--blu); background: var(--vetro-forte); box-shadow: 0 0 0 4px var(--blu-tenue), var(--ombra-lieve); }
+.modello:has(input:focus-visible) { outline: 2px solid var(--blu); outline-offset: 3px; }
+.modello.inadatto { opacity: 0.5; cursor: not-allowed; transform: none; }
+.modello input { position: absolute; opacity: 0; pointer-events: none; }
+.modello-testa { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.modello-testa strong { font-size: 16px; font-weight: 620; margin-right: 4px; }
+.modello-dati { font-size: 12.5px; color: var(--inchiostro-lieve); font-variant-numeric: tabular-nums; }
+.modello small { color: var(--inchiostro-tenue); font-size: 13px; }
+.distintivo { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--blu-tenue); color: var(--blu-testo); }
+.distintivo.pieno { background: var(--blu); color: #fff; }
+.mac { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; color: var(--inchiostro-tenue); }
+.mac .icona { color: var(--blu); }
+
+.zona-ai { display: grid; gap: 18px; }
+.preparazione-box { display: grid; gap: 10px; padding: 18px; border-radius: var(--r-medio); background: var(--vetro-tenue); border: 1px solid var(--filo-scuro); }
+.preparazione-box .messaggio { margin: 0; color: var(--inchiostro-tenue); font-size: 14px; }
+.preparazione-box .azioni { display: flex; gap: 8px; }
+.preparazione-box.attiva .liquido::after {
+  content: ""; position: absolute; inset: 0; width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  transform: translateX(-100%); animation: riflesso 2.4s var(--molla) infinite;
+}
+
+.cursore-valore { display: flex; align-items: center; gap: 12px; min-width: 240px; }
+.cursore-valore input[type="range"] { flex: 1; accent-color: var(--blu); }
+.cursore-valore output { min-width: 44px; text-align: right; font-weight: 600; color: var(--blu-testo); }
+
+.accenti { display: flex; gap: 10px; }
+.campione {
+  position: relative; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 4px 10px -4px rgba(16, 40, 90, 0.35);
+  transition: transform 420ms var(--molla), box-shadow 420ms var(--molla);
+}
+.campione input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.campione.blu { background: #1f66f2; } .campione.indaco { background: #5b4cf0; }
+.campione.azzurro { background: #0891d1; } .campione.verde { background: #0d9488; }
+.campione:hover { transform: scale(1.08); }
+.campione:has(input:checked) { box-shadow: 0 0 0 3px var(--campo), 0 0 0 5px currentColor; color: var(--inchiostro); }
+.campione:has(input:focus-visible) { outline: 2px solid var(--blu); outline-offset: 4px; }
+
+.riga-dati { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.riga-dati code {
+  flex: 1; min-width: 0; overflow-wrap: anywhere;
+  padding: 10px 14px; border-radius: var(--r-piccolo);
+  background: var(--vetro-tenue); border: 1px solid var(--filo-scuro);
+  font: 13px/1.4 ui-monospace, "SF Mono", Menlo, monospace; color: var(--inchiostro-tenue);
+}
+.avanzate .campi { gap: 20px; }
+
+/* Avviso "Salvato" in basso: compare e scompare da solo. */
+.brindisi {
+  position: fixed; left: 50%; bottom: 24px; z-index: 40;
+  padding: 10px 18px; border-radius: 999px;
+  background: var(--inchiostro); color: var(--campo);
+  font-size: 14px; font-weight: 550;
+  box-shadow: var(--ombra-alta);
+  opacity: 0; transform: translate(-50%, 16px); pointer-events: none;
+}
+.brindisi.mostra { animation: brindisi 2.2s var(--uscita) both; }
+@keyframes brindisi {
+  0% { opacity: 0; transform: translate(-50%, 16px) scale(0.96); }
+  12%, 80% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, 6px); }
+}
+
+/* Primo avvio */
+.primo-avvio { display: grid; gap: 22px; padding: clamp(28px, 5vw, 56px); max-width: 920px; }
+.primo-avvio h1 { font-size: clamp(30px, 4vw, 48px); font-weight: 650; letter-spacing: -0.04em; line-height: 1.06; }
+.primo-avvio h1 em { font-style: normal; color: var(--blu-testo); }
+.primo-avvio .sottotitolo { margin: 0; font-size: 17px; color: var(--inchiostro-tenue); max-width: 60ch; }
+.passi { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.passi li { width: 28px; height: 5px; border-radius: 99px; background: var(--filo-scuro); transition: background-color 500ms var(--uscita), width 600ms var(--molla); }
+.passi li.fatto { background: var(--blu-alone); }
+.passi li.corrente { width: 52px; background: var(--blu); }
+
 /* --- schermi stretti ---------------------------------------------------- */
 
 @media (max-width: 860px) {
@@ -796,6 +925,9 @@ a { color: var(--blu-testo); text-underline-offset: 3px; }
   .problema dl { grid-template-columns: 1fr; }
 }
 
+:root[data-movimento="ridotto"] *, :root[data-movimento="ridotto"] *::before, :root[data-movimento="ridotto"] *::after {
+  animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important;
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 1ms !important;

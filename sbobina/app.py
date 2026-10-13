@@ -53,6 +53,44 @@ class Ponte:
         destinazione.write_bytes(risposta.content)
         return str(destinazione)
 
+    def badge(self, testo: str = "") -> None:
+        """Il numero sull'icona nel Dock (lezioni in elaborazione); vuoto per toglierlo."""
+        try:
+            from AppKit import NSApplication
+            from PyObjCTools import AppHelper
+        except ImportError:
+            return
+        AppHelper.callAfter(lambda: NSApplication.sharedApplication().dockTile().setBadgeLabel_(str(testo) or None))
+
+    def notifica(self, titolo: str, testo: str) -> None:
+        """Notifica di macOS a fine lezione. Nel bundle usa UserNotifications, altrimenti osascript."""
+        import subprocess
+
+        try:
+            from UserNotifications import (
+                UNMutableNotificationContent,
+                UNNotificationRequest,
+                UNUserNotificationCenter,
+            )
+
+            centro = UNUserNotificationCenter.currentNotificationCenter()
+            centro.requestAuthorizationWithOptions_completionHandler_(0b111, lambda *_: None)
+            contenuto = UNMutableNotificationContent.alloc().init()
+            contenuto.setTitle_(titolo)
+            contenuto.setBody_(testo)
+            richiesta = UNNotificationRequest.requestWithIdentifier_content_trigger_(str(time.time()), contenuto, None)
+            centro.addNotificationRequest_withCompletionHandler_(richiesta, None)
+        except Exception:  # noqa: BLE001 - fuori dal bundle .app UserNotifications non funziona
+            pulisci = lambda s: s.replace("\\", "").replace('"', "'")  # noqa: E731
+            subprocess.run(
+                ["osascript", "-e", f'display notification "{pulisci(testo)}" with title "{pulisci(titolo)}"'],
+                check=False, capture_output=True,
+            )
+
+    def tema(self, scuro: bool) -> None:
+        """La barra del titolo segue il tema scelto nell'app."""
+        _barra_titolo(self.finestra, scuro)
+
 
 def _identita_macos() -> None:
     """Nome e icona nel Dock: il processo è Python, quindi senza questo il Dock mostrerebbe "Python"."""
@@ -78,11 +116,13 @@ def main() -> None:
     import uvicorn
     import webview
 
+    from sbobina import impostazioni
     from sbobina.llm import avvia_ollama
     from sbobina.server import crea_app
 
     config = Config.da_ambiente()
-    if config.locale:  # Ollama parte con l'app: lo studente non deve aprirlo a mano
+    effettiva = impostazioni.carica(config.cartella_dati).applica(config)
+    if effettiva.locale and "/" not in effettiva.modello:  # Ollama parte con l'app (con MLX non serve)
         threading.Thread(target=avvia_ollama, daemon=True).start()
 
     porta = _porta_libera()
@@ -95,15 +135,15 @@ def main() -> None:
     _identita_macos()
     ponte = Ponte(indirizzo)
     ponte.finestra = webview.create_window(
-        "Sbobina", indirizzo, js_api=ponte, width=1280, height=840, min_size=(900, 620), background_color="#e3e7ee"
+        "Sbobina", indirizzo, js_api=ponte, width=1280, height=840, min_size=(900, 620), background_color="#edf2fa"
     )
-    ponte.finestra.events.shown += lambda: _barra_titolo_chiara(ponte.finestra)
+    ponte.finestra.events.shown += lambda: _barra_titolo(ponte.finestra, None)
     webview.start()
     server.should_exit = True
 
 
-def _barra_titolo_chiara(finestra) -> None:
-    """La barra del titolo prende il grigio del pannello invece del nero di sistema."""
+def _barra_titolo(finestra, scuro: bool | None) -> None:
+    """Barra del titolo trasparente sul cielo dell'app; None = segue il sistema."""
     try:
         from AppKit import NSAppearance, NSColor
         from PyObjCTools import AppHelper
@@ -112,9 +152,18 @@ def _barra_titolo_chiara(finestra) -> None:
 
     def applica() -> None:
         nativa = finestra.native
-        nativa.setAppearance_(NSAppearance.appearanceNamed_("NSAppearanceNameAqua"))
+        if scuro is None:
+            nativa.setAppearance_(None)
+            from AppKit import NSApplication
+
+            nome = NSApplication.sharedApplication().effectiveAppearance().name() or ""
+            buio = "Dark" in nome
+        else:
+            buio = scuro
+            nativa.setAppearance_(NSAppearance.appearanceNamed_("NSAppearanceNameDarkAqua" if buio else "NSAppearanceNameAqua"))
         nativa.setTitlebarAppearsTransparent_(True)
-        nativa.setBackgroundColor_(NSColor.colorWithSRGBRed_green_blue_alpha_(0xE3 / 255, 0xE7 / 255, 0xEE / 255, 1.0))
+        r, g, b = (0x06, 0x0C, 0x19) if buio else (0xED, 0xF2, 0xFA)
+        nativa.setBackgroundColor_(NSColor.colorWithSRGBRed_green_blue_alpha_(r / 255, g / 255, b / 255, 1.0))
 
     AppHelper.callAfter(applica)
 

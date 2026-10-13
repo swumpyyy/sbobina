@@ -16,17 +16,17 @@
 - [ ] "Esporta tutto il corso" in un unico PDF con indice
 
 ## 3. Menu iniziale / onboarding (richiesto)
-- [ ] Primo avvio guidato: benvenuto → università, corso, area di studio, anno → scelta modello in base alla RAM (`sistema.py`) → download Ollama + modello + Whisper con barra di avanzamento
-- [ ] Schermata iniziale nuova: zona "inserisci il nastro" per trascinare l'audio + contatori reali (lezioni, ore sbobinate)
+- [x] Primo avvio guidato: benvenuto → università, corso, area di studio, anno → scelta modello in base alla RAM (`sistema.py`) → download Ollama + modello + Whisper con barra di avanzamento
+- [x] Schermata iniziale nuova: zona "inserisci il nastro" per trascinare l'audio + contatori reali (lezioni, ore sbobinate)
 
 ## 4. Impostazioni (richiesto)
-- [ ] Pagina Impostazioni salvata in `impostazioni.json` (Application Support)
-- [ ] Appunti: lunghezza, stile, sezioni on/off (mappa, schemi, domande, glossario, approfondimento, verifica)
-- [ ] AI: modello locale o Claude (chiave API), modello Whisper
-- [ ] AI avanzate: scelta/scaricamento modello LLM, temperatura, lunghezza contesto, prompt personalizzabile per sezione
-- [ ] Aspetto: tema chiaro/scuro/sistema, animazioni ridotte, dimensione testo, colori/accento
+- [x] Pagina Impostazioni salvata in `impostazioni.json` (Application Support)
+- [x] Appunti: lunghezza, stile, sezioni on/off (mappa, schemi, domande, glossario, approfondimento, verifica)
+- [x] AI: modello locale o Claude (chiave API), modello Whisper
+- [x] AI avanzate: scelta/scaricamento modello LLM, temperatura, lunghezza contesto, prompt personalizzabile per sezione
+- [x] Aspetto: tema chiaro/scuro/sistema, animazioni ridotte, dimensione testo, colori/accento
 - [ ] LLM integrato senza Ollama: generare gli appunti in-process con `mlx-lm` (come già mlx-whisper), modello Gemma MLX scaricato da HF in Application Support. Tenere Ollama come opzione finché non è testato. Niente reverse engineering: Ollama è open source, non serve
-- [ ] Notifiche e suono a fine lezione; cartella dati
+- [x] Notifiche e suono a fine lezione; cartella dati
 
 ## 5. Animazioni più fluide (richiesto)
 - [x] Le schede Appunti/Trascrizione/Verifica non devono ricostruire tutto il DOM: cambiare solo il pannello e far scorrere l'indicatore
@@ -42,7 +42,7 @@
 - [ ] Ricerca in tutte le lezioni (testo degli appunti e trascrizioni)
 - [ ] Modifica degli appunti a mano, con salvataggio
 - [ ] Coda di più audio in fila, con stima del tempo rimanente
-- [ ] Badge sul Dock e notifica macOS a fine elaborazione
+- [x] Badge sul Dock e notifica macOS a fine elaborazione
 - [ ] Esportazione Markdown/Obsidian e Anki (.apkg)
 - [ ] Velocità di riproduzione audio (1x/1.5x/2x)
 

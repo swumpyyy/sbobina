@@ -76,6 +76,7 @@ class Lezione:
     motori: list[str] = field(default_factory=list)
     utilizzo: dict[str, dict[str, int]] = field(default_factory=dict)
     da_approfondire: list[str] = field(default_factory=list)
+    approfondimento_richiesto: bool = False
     creata: str = field(default_factory=adesso)
     aggiornata: str = field(default_factory=adesso)
 

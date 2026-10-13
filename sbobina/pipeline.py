@@ -21,6 +21,7 @@ from sbobina import audio, prompt
 from sbobina.archivio import Archivio, Lezione, leggi_json, scrivi_atomico, scrivi_json, unisci_termini
 from sbobina.config import Config
 from sbobina.esporta import esporta_html
+from sbobina import impostazioni
 from sbobina.llm import FERMA, ErroreClaude, Fermata, ModelloLinguistico, Utilizzo
 from sbobina.materiali import Materiali, carica_materiali
 from sbobina.trascrizione.base import (
@@ -115,6 +116,7 @@ class Elaborazione:
         self.archivio = archivio
         self.llm = llm
         self.motori = motori
+        self.imp = impostazioni.Impostazioni()
         self._lock = threading.Lock()
         self._ultimo_aggiornamento: tuple[float, str, str] = (0.0, "", "")
 
@@ -151,6 +153,7 @@ class Elaborazione:
 
     def esegui(self, id_lezione: str) -> Lezione:
         FERMA.clear()
+        self.imp = impostazioni.carica(self.config.cartella_dati)
         self.archivio.aggiorna(id_lezione, stato="in_elaborazione", errore="", messaggio="", avvisi=[])
         try:
             self._esegui(id_lezione)
@@ -381,7 +384,7 @@ class Elaborazione:
         self._avanza(lezione.id, "appunti", 0.05, "Sto scrivendo gli appunti (qualche minuto)")
         testo, uso = self.llm.testo(
             system=prompt.SYSTEM_APPUNTI,
-            contenuto=[*base, {"type": "text", "text": prompt.ISTRUZIONI_APPUNTI}],
+            contenuto=[*base, {"type": "text", "text": prompt.istruzioni_appunti(self.imp)}],
             sforzo=self.config.sforzo_appunti,
             max_tokens=96000,
         )
@@ -392,7 +395,8 @@ class Elaborazione:
         return bozza
 
     def _fase_approfondimento(self, lezione: Lezione, f: File, base: list[dict], appunti: str) -> None:
-        if not f.approfondimento.is_file():
+        voluto = self.imp.sezione("approfondimento") or self.archivio.carica(lezione.id).approfondimento_richiesto
+        if not f.approfondimento.is_file() and voluto:
             self._avanza(lezione.id, "approfondimento", 0.05, "Sto scrivendo l'approfondimento (qualche minuto)")
             testo, uso = self.llm.testo(
                 system=prompt.SYSTEM_APPUNTI,
@@ -432,7 +436,7 @@ class Elaborazione:
         self._avanza(lezione.id, "verifica", 0.05, "Confronto degli appunti con la trascrizione")
         dati, uso = self.llm.json(
             system=prompt.SYSTEM_APPUNTI,
-            contenuto=[*base, {"type": "text", "text": prompt.istruzioni_verifica(bozza)}],
+            contenuto=[*base, {"type": "text", "text": prompt.istruzioni_verifica(bozza, self.imp)}],
             schema=prompt.SCHEMA_VERIFICA,
             sforzo=self.config.sforzo_appunti,
             max_tokens=48000,
@@ -452,7 +456,7 @@ class Elaborazione:
             self._avanza(lezione.id, "correzione", 0.05, f"Correzione di {len(problemi)} punti segnalati")
             testo, uso = self.llm.testo(
                 system=prompt.SYSTEM_APPUNTI,
-                contenuto=[*base, {"type": "text", "text": prompt.istruzioni_correzione(bozza, problemi)}],
+                contenuto=[*base, {"type": "text", "text": prompt.istruzioni_correzione(bozza, problemi, self.imp)}],
                 sforzo=self.config.sforzo_appunti,
                 max_tokens=96000,
             )

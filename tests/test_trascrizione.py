@@ -117,10 +117,10 @@ def test_termini_e_slug():
 
 def test_repo_mlx_usa_cartella_locale_solo_se_completa(tmp_path, monkeypatch):
     monkeypatch.setattr(whisper_locale, "MODELLI_LOCALI", tmp_path)
-    assert whisper_locale.repo_mlx("large-v3") == "mlx-community/whisper-large-v3-turbo"
+    assert whisper_locale.repo_mlx("large-v3-turbo") == "mlx-community/whisper-large-v3-turbo"
     cartella = tmp_path / "whisper-large-v3-turbo"
     cartella.mkdir()
     (cartella / "config.json").write_text("{}")
-    assert whisper_locale.repo_mlx("large-v3") == "mlx-community/whisper-large-v3-turbo"  # pesi mancanti
+    assert whisper_locale.repo_mlx("large-v3-turbo") == "mlx-community/whisper-large-v3-turbo"  # pesi mancanti
     (cartella / "weights.safetensors").write_bytes(b"")
-    assert whisper_locale.repo_mlx("large-v3") == str(cartella)
+    assert whisper_locale.repo_mlx("large-v3-turbo") == str(cartella)

@@ -19,9 +19,9 @@ dependencies = [
 
 [project.optional-dependencies]
 # Trascrizione locale (gratuita, offline) con Whisper large-v3.
-locale = ["faster-whisper>=1.1", "mlx-whisper>=0.4; sys_platform == 'darwin' and platform_machine == 'arm64'"]
+locale = ["faster-whisper>=1.1", "mlx-whisper>=0.4; sys_platform == 'darwin' and platform_machine == 'arm64'", "mlx-lm>=0.28; sys_platform == 'darwin' and platform_machine == 'arm64'"]
 # App nativa per macOS (finestra propria invece del browser).
-app = ["pywebview>=6"]
+app = ["pywebview>=6", "pyobjc-framework-UserNotifications>=11; sys_platform == 'darwin'"]
 dev = ["pytest>=8", "httpx>=0.27"]
 
 [project.scripts]

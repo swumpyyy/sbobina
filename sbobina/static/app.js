@@ -172,7 +172,7 @@
     const pronta = info.llm;
     pillola.classList.toggle("spenta", !pronta);
     let testo;
-    if (info.locale) testo = pronta ? ["AI locale", h("span", { class: "testo-lungo" }, " · gratuita")] : ["AI non pronta"];
+    if (info.locale) testo = pronta ? [info.motore === "mlx" ? "AI integrata" : "AI locale", h("span", { class: "testo-lungo" }, " · gratuita")] : ["AI non pronta"];
     else testo = pronta ? ["Claude", h("span", { class: "testo-lungo" }, " · a pagamento")] : ["Manca la chiave di Claude"];
     pillola.append(h("span", { class: "lampadina", "aria-hidden": "true" }), h("span", {}, ...testo));
     pillola.title = info.modello;
@@ -195,7 +195,7 @@
             h("span", { class: "mini-meter", role: "progressbar", "aria-valuenow": Math.round((p.progresso || 0) * 100),
               "aria-valuemin": 0, "aria-valuemax": 100 }, h("div", { style: `width:${percentuale(p.progresso || 0)}` })))
         : h("div", { class: "preparazione" },
-            p.errore ? h("span", { role: "alert" }, p.errore) : h("span", {}, "Una volta sola: Sbobina avvia Ollama e scarica il modello (circa 8 GB)."),
+            p.errore ? h("span", { role: "alert" }, p.errore) : h("span", {}, info.motore === "mlx" ? "Una volta sola: Sbobina scarica il modello sul tuo Mac." : "Una volta sola: Sbobina avvia Ollama e scarica il modello."),
             h("button", { class: "tasto", type: "button", onclick: preparaAI }, p.errore ? "Riprova" : "Prepara l'AI"));
       avvisi.push(h("div", { class: "avviso", role: "status" }, icona("info"),
         h("strong", {}, "L'AI che scrive gli appunti non è ancora pronta."), corpo));
@@ -217,6 +217,7 @@
       const prima = stato.info && stato.info.llm;
       const preparava = stato.info && stato.info.preparazione && stato.info.preparazione.attiva;
       stato.info = await api("/api/stato");
+      applicaAspetto();
       mostraStatoAI();
       const prepara = stato.info.preparazione && stato.info.preparazione.attiva;
       if (stato.vista === "benvenuto" && ((prima === false && stato.info.llm) || prepara || preparava)) mostraBenvenuto();
@@ -805,6 +806,11 @@
     const precedenti = new Map(stato.lezioni.map((l) => [l.id, l]));
     stato.lezioni = await api("/api/lezioni");
     mostraElenco();
+    for (const l of stato.lezioni) {
+      const prima = precedenti.get(l.id);
+      if (prima && ATTIVI.has(prima.stato) && l.stato === "completata") lezionePronta(l);
+    }
+    aggiornaBadge();
     const attuale = stato.lezioni.find((l) => l.id === stato.selezionata);
     const prima = precedenti.get(stato.selezionata);
     if (attuale && prima && stato.dettaglio && stato.vista === "lezione") {
@@ -1000,10 +1006,397 @@
     area.focus();
   }
 
+  // --- impostazioni -------------------------------------------------------
+
+  const imp = () => (stato.info && stato.info.impostazioni) || {};
+
+  /** Tema, accento, dimensione del testo e movimento dalle impostazioni. */
+  function applicaAspetto(i = imp()) {
+    const radice = document.documentElement;
+    if (i.tema && i.tema !== "sistema") radice.dataset.tema = i.tema; else delete radice.dataset.tema;
+    if (i.accento && i.accento !== "blu") radice.dataset.accento = i.accento; else delete radice.dataset.accento;
+    if (i.animazioni_ridotte) radice.dataset.movimento = "ridotto"; else delete radice.dataset.movimento;
+    radice.style.fontSize = i.scala_testo && i.scala_testo !== 100 ? `${i.scala_testo}%` : "";
+    if (window.pywebview && window.pywebview.api.tema) {
+      const scuro = i.tema === "scuro" || (i.tema !== "chiaro" && matchMedia("(prefers-color-scheme: dark)").matches);
+      window.pywebview.api.tema(scuro);
+    }
+  }
+
+  async function salvaImpostazioni(modifiche) {
+    const salvate = await api("/api/impostazioni", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(modifiche),
+    });
+    if (stato.info) stato.info.impostazioni = salvate;
+    applicaAspetto(salvate);
+    return salvate;
+  }
+
+  /** Un gruppo di pillole a scelta singola (radio accessibili). */
+  function scelte(nome, opzioni, valore, onCambia) {
+    const gruppo = h("div", { class: "scelte", role: "radiogroup" });
+    for (const [chiave, etichetta, aiuto] of opzioni) {
+      const input = h("input", { type: "radio", name: nome, value: chiave, checked: chiave === valore });
+      input.addEventListener("change", () => input.checked && onCambia(chiave));
+      gruppo.append(h("label", { class: "scelta", title: aiuto || null }, input, h("span", {}, etichetta)));
+    }
+    return gruppo;
+  }
+
+  function interruttore(etichetta, valore, onCambia, aiuto) {
+    const input = h("input", { type: "checkbox", role: "switch", checked: !!valore });
+    input.addEventListener("change", () => onCambia(input.checked));
+    return h("label", { class: "interruttore" },
+      h("span", { class: "testo" }, h("span", {}, etichetta), aiuto ? h("small", {}, aiuto) : null),
+      input, h("span", { class: "levetta", "aria-hidden": "true" }));
+  }
+
+  function riga(titolo, aiuto, controllo) {
+    return h("div", { class: "riga-imp" },
+      h("div", { class: "riga-testo" }, h("strong", {}, titolo), aiuto ? h("small", {}, aiuto) : null),
+      controllo);
+  }
+
+  let avvisoSalvato = null;
+  function salvato(testo = "Salvato") {
+    if (!avvisoSalvato) {
+      avvisoSalvato = h("div", { class: "brindisi", role: "status", "aria-live": "polite" });
+      document.body.append(avvisoSalvato);
+    }
+    avvisoSalvato.textContent = testo;
+    avvisoSalvato.classList.remove("mostra");
+    void avvisoSalvato.offsetWidth;
+    avvisoSalvato.classList.add("mostra");
+  }
+
+  /** Salva subito una modifica e mostra "Salvato" (o l'errore). */
+  function cambia(modifiche, dopo) {
+    salvaImpostazioni(modifiche)
+      .then((s) => { salvato(); if (dopo) dopo(s); })
+      .catch((e) => salvato(e.message));
+  }
+
+  const ETICHETTE_SEZIONI = {
+    mappa: ["Mappa concettuale", "L'albero dei concetti all'inizio degli appunti"],
+    schemi: ["Schemi e diagrammi", "Flussi e classificazioni disegnati quando aiutano"],
+    domande: ["Domande di ripasso", "8-15 domande con risposta a scomparsa"],
+    glossario: ["Glossario", "I termini tecnici della lezione in tabella"],
+    indicazioni: ["Indicazioni del docente", "Esame, cose importanti, avvisi"],
+    approfondimento: ["Approfondimento automatico", "Spiegazioni più ampie, esempi ed esercizi (più tempo)"],
+    verifica: ["Verifica con l'audio", "Ricontrolla gli appunti frase per frase (più tempo, più precisione)"],
+  };
+  const NOMI_AREE = {
+    economia: "Economia", giurisprudenza: "Giurisprudenza", ingegneria: "Ingegneria", medicina: "Medicina",
+    umanistica: "Umanistica", scienze: "Scienze", altro: "Altro",
+  };
+
+  /** Le schede dei modelli adatti a questo Mac, con quello consigliato in evidenza. */
+  function schedeModelli(sistema, valore, onCambia) {
+    const gruppo = h("div", { class: "modelli", role: "radiogroup", "aria-label": "Modello che scrive gli appunti" });
+    for (const m of sistema.modelli) {
+      const input = h("input", { type: "radio", name: "modello", value: m.tag, checked: m.tag === valore, disabled: !m.adatto });
+      input.addEventListener("change", () => input.checked && onCambia(m.tag));
+      gruppo.append(h("label", { class: `modello${m.adatto ? "" : " inadatto"}` },
+        input,
+        h("span", { class: "modello-testa" },
+          h("strong", {}, m.nome),
+          m.consigliato ? h("span", { class: "distintivo" }, "Consigliato") : null,
+          m.installato ? h("span", { class: "distintivo pieno" }, "Scaricato") : null),
+        h("span", { class: "modello-dati" }, `${m.gb.toLocaleString("it-IT")} GB · da ${m.ram} GB di memoria`),
+        h("small", {}, m.adatto ? m.descrizione : `Serve un Mac con almeno ${m.ram} GB di memoria.`)));
+    }
+    return gruppo;
+  }
+
+  /** Avanzamento della preparazione dell'AI (download dei modelli), aggiornato da /api/stato. */
+  function pannelloPreparazione(onPronta) {
+    const barra = h("div", { class: "riempimento" });
+    const testo = h("p", { class: "messaggio" }, "");
+    const tasto = h("button", { class: "tasto grande", type: "button" }, icona("scarica"), "Scarica e prepara");
+    const box = h("div", { class: "preparazione-box" },
+      h("div", { class: "liquido" }, barra), testo, h("div", { class: "azioni" }, tasto));
+    let timer = null;
+    const aggiorna = async () => {
+      clearTimeout(timer);
+      try { stato.info = await api("/api/stato"); } catch (e) { return; }
+      const p = stato.info.preparazione || {};
+      barra.style.setProperty("--p", String(stato.info.llm && !p.attiva ? 1 : p.progresso || 0));
+      box.classList.toggle("attiva", !!p.attiva);
+      if (p.attiva) {
+        testo.textContent = p.messaggio || "Preparo…";
+        tasto.disabled = true;
+        timer = setTimeout(aggiorna, 900);
+      } else if (p.errore) {
+        testo.textContent = p.errore;
+        tasto.disabled = false;
+        tasto.replaceChildren(icona("ricarica"), "Riprova");
+      } else if (stato.info.llm) {
+        testo.textContent = "Tutto pronto: i modelli sono sul tuo Mac.";
+        tasto.hidden = true;
+        mostraStatoAI();
+        if (onPronta) onPronta();
+      } else {
+        testo.textContent = "Una volta sola: scarico i modelli sul tuo Mac. Puoi continuare a usare il computer.";
+        tasto.disabled = false;
+        tasto.hidden = false;
+      }
+    };
+    tasto.addEventListener("click", async () => {
+      tasto.disabled = true;
+      await api("/api/ai/prepara", { method: "POST" });
+      aggiorna();
+    });
+    aggiorna();
+    return box;
+  }
+
+  async function mostraImpostazioni() {
+    let sistema;
+    try {
+      [sistema, stato.info] = await Promise.all([api("/api/sistema"), api("/api/stato")]);
+    } catch (e) {
+      alert(e.message);
+      return;
+    }
+    stato.vista = "impostazioni";
+    const i = imp();
+    const sezione = (id, titolo, testo, ...figli) => h("section", { class: "pannello imp", "aria-labelledby": id },
+      h("h2", { id }, titolo), testo ? h("p", {}, testo) : null, ...figli);
+
+    // AI: motore, modello, chiave, Whisper
+    const zonaAI = h("div", { class: "zona-ai" });
+    const disegnaAI = () => {
+      const c = imp();
+      const mac = sistema.mac;
+      const pezzi = [
+        riga("Chi scrive gli appunti", "Integrato e Ollama sono gratuiti e restano sul Mac; Claude è a pagamento.",
+          scelte("motore", [
+            ["mlx", "Integrato", "Il modello gira dentro Sbobina, senza altri programmi"],
+            ["ollama", "Ollama", "Usa l'app Ollama installata sul Mac"],
+            ["claude", "Claude", "API di Anthropic, a pagamento"]], c.motore_llm,
+            (v) => cambia({ motore_llm: v }, disegnaAI))),
+      ];
+      if (c.motore_llm === "claude") {
+        const chiave = h("input", { type: "password", value: c.chiave_claude || "", placeholder: "sk-ant-…", autocomplete: "off", spellcheck: "false" });
+        chiave.addEventListener("change", () => cambia({ chiave_claude: chiave.value.trim() }));
+        pezzi.push(h("label", { class: "campo" }, h("span", {}, "Chiave API di Claude"), chiave,
+          h("small", {}, "Resta solo su questo Mac, nel file impostazioni.json.")));
+      } else {
+        pezzi.push(h("p", { class: "mac" }, icona("info"),
+          `${mac.chip} · ${mac.ram_gb} GB di memoria · ${mac.disco_libero_gb.toLocaleString("it-IT")} GB liberi`),
+        schedeModelli(sistema, c.modello || sistema.consigliato, (v) => cambia({ modello: v }, disegnaAI)));
+      }
+      pezzi.push(riga("Riconoscimento vocale", "Il modello Whisper che trascrive l'audio.",
+        scelte("whisper", sistema.whisper.map((w) => [w.id, w.nome, w.descrizione]), c.whisper || "large-v3-turbo",
+          (v) => cambia({ whisper: v }))));
+      pezzi.push(pannelloPreparazione());
+      zonaAI.replaceChildren(...pezzi);
+    };
+    disegnaAI();
+
+    const temperatura = h("input", { type: "range", min: "0", max: "1.2", step: "0.1", value: String(i.temperatura) });
+    const valoreTemp = h("output", { class: "dati" }, String(i.temperatura).replace(".", ","));
+    temperatura.addEventListener("input", () => { valoreTemp.textContent = temperatura.value.replace(".", ","); });
+    temperatura.addEventListener("change", () => cambia({ temperatura: Number(temperatura.value) }));
+    const istruzioni = h("textarea", { rows: "4", maxlength: "2000", placeholder: "es. Usa esempi tratti dal bilancio di aziende italiane. Scrivi le formule anche a parole." });
+    istruzioni.value = i.prompt_extra || "";
+    istruzioni.addEventListener("change", () => cambia({ prompt_extra: istruzioni.value }));
+
+    const scala = h("input", { type: "range", min: "80", max: "140", step: "5", value: String(i.scala_testo) });
+    const valoreScala = h("output", { class: "dati" }, `${i.scala_testo}%`);
+    scala.addEventListener("input", () => {
+      valoreScala.textContent = `${scala.value}%`;
+      document.documentElement.style.fontSize = `${scala.value}%`;
+    });
+    scala.addEventListener("change", () => cambia({ scala_testo: Number(scala.value) }));
+
+    const accenti = h("div", { class: "accenti", role: "radiogroup", "aria-label": "Colore di accento" },
+      [["blu", "Blu"], ["indaco", "Indaco"], ["azzurro", "Azzurro"], ["verde", "Verde acqua"]].map(([chiave, nome]) => {
+        const input = h("input", { type: "radio", name: "accento", value: chiave, checked: (i.accento || "blu") === chiave, "aria-label": nome });
+        input.addEventListener("change", () => input.checked && cambia({ accento: chiave }));
+        return h("label", { class: `campione ${chiave}`, title: nome }, input);
+      }));
+
+    const campoProfilo = (nome, etichetta, segnaposto) => {
+      const input = h("input", { value: i[nome] || "", placeholder: segnaposto, autocomplete: "off" });
+      input.addEventListener("change", () => cambia({ [nome]: input.value }));
+      return h("label", { class: "campo" }, h("span", {}, etichetta), input);
+    };
+
+    riempiPiastra([
+      h("header", { class: "intestazione" }, h("h1", {}, "Impostazioni"),
+        h("p", { class: "sottotitolo" }, "Ogni modifica si salva subito e vale dalla prossima lezione.")),
+      sezione("imp-appunti", "Appunti", "Come vuoi che siano scritti.",
+        riga("Lunghezza", null, scelte("lunghezza", [["essenziale", "Essenziale"], ["normale", "Normale"], ["dettagliata", "Dettagliata"]],
+          i.lunghezza, (v) => cambia({ lunghezza: v }))),
+        riga("Stile", null, scelte("stile", [["discorsivo", "Discorsivo"], ["schematico", "Schematico"]],
+          i.stile, (v) => cambia({ stile: v }))),
+        h("div", { class: "griglia-interruttori" },
+          Object.entries(ETICHETTE_SEZIONI).map(([chiave, [titolo, aiuto]]) =>
+            interruttore(titolo, (i.sezioni || {})[chiave] !== false, (v) => cambia({ sezioni: { [chiave]: v } }), aiuto)))),
+      sezione("imp-ai", "Intelligenza artificiale", null, zonaAI,
+        h("details", { class: "facoltativi avanzate" },
+          h("summary", {}, icona("freccia"), "Impostazioni avanzate"),
+          h("div", { class: "campi" },
+            riga("Creatività", "Bassa = più fedele alla lezione. Consigliato 0,3.", h("div", { class: "cursore-valore" }, temperatura, valoreTemp)),
+            riga("Memoria per lezione", "Quanta lezione il modello legge insieme. Automatica in base al tuo Mac.",
+              scelte("contesto", [["0", "Auto"], ["32768", "32 mila"], ["65536", "64 mila"], ["131072", "128 mila"]],
+                String(i.contesto || 0), (v) => cambia({ contesto: Number(v) }))),
+            h("label", { class: "campo" }, h("span", {}, "Istruzioni personali per gli appunti"), istruzioni,
+              h("small", {}, "Si aggiungono alle regole di Sbobina; la fedeltà alla lezione resta prioritaria."))))),
+      sezione("imp-profilo", "Il tuo profilo", "Aiuta l'AI a scrivere nel modo giusto per la tua materia.",
+        h("div", { class: "due" }, campoProfilo("nome", "Nome", "es. Leonardo"), campoProfilo("universita", "Università", "es. Università di Firenze")),
+        campoProfilo("corso_di_laurea", "Corso di laurea", "es. Economia aziendale"),
+        riga("Area di studio", null, scelte("area", sistema.aree.map((a) => [a, NOMI_AREE[a] || a]), i.area, (v) => cambia({ area: v }))),
+        riga("Anno", null, scelte("anno", sistema.anni.map((a) => [a, a]), i.anno, (v) => cambia({ anno: v })))),
+      sezione("imp-pdf", "PDF", "Cosa mettere nel PDF quando premi Scarica.",
+        scelte("pdf", [["appunti", "Solo appunti"], ["approfondimento", "Appunti + approfondimento"], ["trascrizione", "Con la trascrizione"]],
+          i.pdf, (v) => cambia({ pdf: v }))),
+      sezione("imp-aspetto", "Aspetto", null,
+        riga("Tema", null, scelte("tema", [["sistema", "Come il Mac"], ["chiaro", "Chiaro"], ["scuro", "Scuro"]], i.tema, (v) => cambia({ tema: v }))),
+        riga("Colore", null, accenti),
+        riga("Dimensione del testo", "Vale per appunti e trascrizioni.", h("div", { class: "cursore-valore" }, scala, valoreScala)),
+        interruttore("Riduci le animazioni", i.animazioni_ridotte, (v) => cambia({ animazioni_ridotte: v }), "Utile se il movimento ti distrae.")),
+      sezione("imp-fine", "Quando una lezione è pronta", null,
+        h("div", { class: "griglia-interruttori" },
+          interruttore("Notifica", i.notifiche, (v) => { cambia({ notifiche: v }); if (v) chiediPermessoNotifiche(); }, "Anche se Sbobina è in secondo piano."),
+          interruttore("Suono", i.suono, (v) => { cambia({ suono: v }); if (v) suonoFine(); }, "Un breve accordo."))),
+      sezione("imp-dati", "I tuoi dati", "Audio, trascrizioni e appunti restano in questa cartella, sul tuo Mac.",
+        h("div", { class: "riga-dati" },
+          h("code", {}, sistema.cartella_dati),
+          h("button", { class: "tasto", type: "button", onclick: () => api("/api/cartella-dati", { method: "POST" }) },
+            icona("graffetta"), "Mostra nel Finder"))),
+    ]);
+  }
+
+  // --- fine lezione: notifica, suono, badge -------------------------------
+
+  function chiediPermessoNotifiche() {
+    if (!window.pywebview && "Notification" in window && Notification.permission === "default") Notification.requestPermission();
+  }
+
+  /** Un accordo breve e morbido (do-mi-sol), generato: nessun file audio. */
+  function suonoFine() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [523.25, 659.25, 783.99].forEach((f, n) => {
+        const osc = ctx.createOscillator();
+        const vol = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = f;
+        const t0 = ctx.currentTime + n * 0.09;
+        vol.gain.setValueAtTime(0, t0);
+        vol.gain.linearRampToValueAtTime(0.12, t0 + 0.02);
+        vol.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.1);
+        osc.connect(vol).connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 1.2);
+      });
+    } catch (e) { /* audio non disponibile */ }
+  }
+
+  function lezionePronta(l) {
+    const i = imp();
+    if (i.suono !== false) suonoFine();
+    if (i.notifiche === false) return;
+    const titolo = "Appunti pronti";
+    const testo = `${l.titolo} · ${l.corso}`;
+    if (window.pywebview && window.pywebview.api.notifica) window.pywebview.api.notifica(titolo, testo);
+    else if ("Notification" in window && Notification.permission === "granted" && document.hidden) new Notification(titolo, { body: testo });
+  }
+
+  function aggiornaBadge() {
+    const attive = stato.lezioni.filter((l) => ATTIVI.has(l.stato)).length;
+    if (window.pywebview && window.pywebview.api.badge) window.pywebview.api.badge(attive ? String(attive) : "");
+    document.title = attive ? `(${attive}) Sbobina` : "Sbobina";
+  }
+
+  // --- primo avvio ----------------------------------------------------------
+
+  async function mostraPrimoAvvio(passo = 0) {
+    let sistema;
+    try { sistema = await api("/api/sistema"); } catch (e) { mostraBenvenuto(); return; }
+    stato.vista = "primo-avvio";
+    const i = imp();
+    const TOT = 4;
+    const avanti = (n) => mostraPrimoAvvio(n);
+    const punti = h("ol", { class: "passi", "aria-label": `Passo ${passo + 1} di ${TOT}` },
+      Array.from({ length: TOT }, (_, n) => h("li", { class: n < passo ? "fatto" : n === passo ? "corrente" : "" })));
+    const piede = (...tasti) => h("div", { class: "azioni-form" }, ...tasti);
+    const indietro = passo > 0 ? h("button", { class: "tasto", type: "button", onclick: () => avanti(passo - 1) }, "Indietro") : null;
+    let corpo;
+
+    if (passo === 0) {
+      corpo = [
+        h("h1", {}, "Ciao, sono ", h("em", {}, "Sbobina.")),
+        h("p", { class: "sottotitolo" }, "Trasformo le registrazioni delle lezioni in appunti chiari, con schemi, glossario e domande di ripasso. Lavoro tutto sul tuo Mac: gratis, senza account, e l'audio non esce dal computer."),
+        h("p", { class: "sottotitolo" }, "Ti faccio tre domande e preparo l'AI. Ci vogliono un paio di minuti più il download."),
+        piede(h("button", { class: "tasto grande", type: "button", onclick: () => avanti(1) }, icona("freccia"), "Iniziamo")),
+      ];
+    } else if (passo === 1) {
+      const nome = h("input", { value: i.nome || "", placeholder: "Come ti chiami?", autocomplete: "given-name" });
+      const uni = h("input", { value: i.universita || "", placeholder: "es. Università di Firenze" });
+      const cdl = h("input", { value: i.corso_di_laurea || "", placeholder: "es. Economia aziendale" });
+      let area = i.area || "economia";
+      let anno = i.anno || "1";
+      corpo = [
+        h("h1", {}, "Parlami dei tuoi studi"),
+        h("p", { class: "sottotitolo" }, "Così gli appunti usano il linguaggio giusto per la tua materia."),
+        h("div", { class: "due" },
+          h("label", { class: "campo" }, h("span", {}, "Nome"), nome),
+          h("label", { class: "campo" }, h("span", {}, "Università"), uni)),
+        h("label", { class: "campo" }, h("span", {}, "Corso di laurea"), cdl),
+        riga("Area di studio", null, scelte("area", sistema.aree.map((a) => [a, NOMI_AREE[a] || a]), area, (v) => { area = v; })),
+        riga("Anno", null, scelte("anno", sistema.anni.map((a) => [a, a]), anno, (v) => { anno = v; })),
+        piede(indietro, h("button", { class: "tasto grande", type: "button", onclick: async () => {
+          await salvaImpostazioni({ nome: nome.value, universita: uni.value, corso_di_laurea: cdl.value, area, anno });
+          avanti(2);
+        } }, icona("freccia"), "Avanti")),
+      ];
+    } else if (passo === 2) {
+      const mac = sistema.mac;
+      let motore = mac.apple_silicon ? "mlx" : "ollama";
+      let modello = sistema.consigliato;
+      corpo = [
+        h("h1", {}, "Scegliamo l'AI per il tuo Mac"),
+        h("p", { class: "mac" }, icona("info"), `${mac.chip} · ${mac.ram_gb} GB di memoria · ${mac.disco_libero_gb.toLocaleString("it-IT")} GB liberi`),
+        mac.apple_silicon
+          ? riga("Dove gira", "Integrato non richiede altri programmi. Ollama se lo usi già.",
+              scelte("motore", [["mlx", "Integrato (consigliato)"], ["ollama", "Ollama"]], motore, (v) => { motore = v; }))
+          : null,
+        schedeModelli(sistema, modello, (v) => { modello = v; }),
+        piede(indietro, h("button", { class: "tasto grande", type: "button", onclick: async () => {
+          await salvaImpostazioni({ motore_llm: motore, modello, whisper: "large-v3-turbo" });
+          avanti(3);
+        } }, icona("freccia"), "Avanti")),
+      ];
+    } else {
+      const fine = h("button", { class: "tasto grande", type: "button", disabled: true, onclick: async () => {
+        await salvaImpostazioni({ configurato: true });
+        mostraBenvenuto();
+      } }, icona("spunta"), "Inizia a usare Sbobina");
+      const prep = pannelloPreparazione(() => { fine.disabled = false; });
+      corpo = [
+        h("h1", {}, "Preparo l'AI"),
+        h("p", { class: "sottotitolo" }, "Scarico il modello che scrive gli appunti e quello che riconosce la voce. Succede una volta sola."),
+        prep,
+        piede(indietro,
+          h("button", { class: "tasto", type: "button", onclick: async () => { await salvaImpostazioni({ configurato: true }); mostraBenvenuto(); } }, "Lo faccio dopo"),
+          fine),
+      ];
+      // Parte da solo: lo studente ha già scelto tutto.
+      setTimeout(() => { const t = prep.querySelector(".tasto.grande"); if (t && !t.hidden && !t.disabled) t.click(); }, 400);
+    }
+    riempiPiastra([h("section", { class: "pannello primo-avvio" }, punti, ...corpo)]);
+  }
+
   // --- avvio --------------------------------------------------------------
 
   function collegaEventi() {
     $("#btn-nuova").addEventListener("click", () => mostraNuova());
+    $("#btn-impostazioni").addEventListener("click", mostraImpostazioni);
     $("#marchio").addEventListener("click", (e) => {
       e.preventDefault();
       stato.selezionata = null;
@@ -1039,7 +1432,9 @@
       return;
     }
     const daHash = location.hash.slice(1);
-    if (daHash && stato.lezioni.some((l) => l.id === daHash)) await apriLezione(daHash);
+    if (daHash === "impostazioni") mostraImpostazioni();
+    else if (daHash === "primo-avvio" || (!imp().configurato && !stato.lezioni.length)) mostraPrimoAvvio();
+    else if (daHash && stato.lezioni.some((l) => l.id === daHash)) await apriLezione(daHash);
     else mostraBenvenuto();
   }
 

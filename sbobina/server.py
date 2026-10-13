@@ -31,7 +31,8 @@ from sbobina.audio import ffmpeg_disponibile
 from sbobina.coda import ATTIVI, Coda
 from sbobina.config import Config
 from sbobina.esporta import LIBRERIE, crea_pdf, esporta_pdf_html
-from sbobina.llm import FERMA, PREPARAZIONE, costo_stimato, prepara_locale
+from sbobina import impostazioni, sistema
+from sbobina.llm import FERMA, PREPARAZIONE, costo_stimato, prepara
 from sbobina.pipeline import RIPARTENZE, Elaborazione, File, prepara_rielaborazione
 
 STATIC = Path(__file__).parent / "static"
@@ -95,7 +96,13 @@ def crea_app(
             from sbobina.llm import crea_modello
             from sbobina.trascrizione import crea_motori
 
-            return Elaborazione(config, archivio, crea_modello(config.modello), crea_motori(config))
+            imp = impostazioni.carica(config.cartella_dati)
+            effettiva = imp.applica(config)
+            modello = crea_modello(effettiva.modello, temperatura=imp.temperatura, contesto=imp.contesto_effettivo())
+            return Elaborazione(effettiva, archivio, modello, crea_motori(effettiva))
+
+    def effettiva() -> Config:
+        return impostazioni.carica(config.cartella_dati).applica(config)
 
     coda = Coda(archivio, crea_elaborazione)
 
@@ -123,22 +130,57 @@ def crea_app(
 
     @app.get("/api/stato")
     def stato() -> dict:
+        cfg = effettiva()
+        imp = impostazioni.carica(config.cartella_dati)
         return {
-            "modello": config.modello,
-            "motori": list(config.motori),
-            "locale": config.locale,
-            "llm": config.llm_pronto,
+            "modello": cfg.modello,
+            "motore": imp.motore_llm,
+            "motori": list(cfg.motori),
+            "locale": cfg.locale,
+            "llm": cfg.llm_pronto,
+            "impostazioni": imp.a_dict(),
             "preparazione": PREPARAZIONE,
             "ffmpeg": ffmpeg_disponibile(),
-            "verifica": config.verifica,
+            "verifica": cfg.verifica,
             "corsi": [{"nome": c.nome, "termini": len(c.glossario)} for c in archivio.corsi()],
         }
 
     @app.post("/api/ai/prepara")
     def prepara_ai() -> dict:
-        if config.locale:
-            threading.Thread(target=prepara_locale, args=(config.modello,), daemon=True).start()
+        cfg = effettiva()
+        if cfg.locale:
+            threading.Thread(target=prepara, args=(cfg.modello, cfg.whisper_modello), daemon=True).start()
         return PREPARAZIONE
+
+    @app.get("/api/sistema")
+    def info_sistema() -> dict:
+        from sbobina.llm import locale_pronto, mlx_pronto
+
+        dati = sistema.proposte()
+        for m in dati["modelli"]:
+            m["installato"] = mlx_pronto(m["mlx"]) or locale_pronto(m["tag"])
+        dati["cartella_dati"] = str(config.cartella_dati.resolve())
+        dati["aree"] = list(impostazioni.AREE)
+        dati["anni"] = list(impostazioni.ANNI)
+        return dati
+
+    @app.get("/api/impostazioni")
+    def leggi_impostazioni() -> dict:
+        return impostazioni.carica(config.cartella_dati).a_dict()
+
+    @app.put("/api/impostazioni", dependencies=protetto)
+    def salva_impostazioni(corpo: dict) -> dict:
+        try:
+            imp = impostazioni.Impostazioni.da_dict(corpo, impostazioni.carica(config.cartella_dati))
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
+        impostazioni.salva(config.cartella_dati, imp)
+        return imp.a_dict()
+
+    @app.post("/api/cartella-dati", dependencies=protetto)
+    def apri_cartella_dati() -> Response:
+        subprocess.run(["open", str(config.cartella_dati.resolve())], check=False)
+        return Response(status_code=204)
 
     @app.get("/api/lezioni")
     def elenco() -> list[dict]:
@@ -274,6 +316,7 @@ def crea_app(
         def aggiungi(lez: Lezione) -> None:
             if argomento and argomento not in lez.da_approfondire:
                 lez.da_approfondire.append(argomento)
+            lez.approfondimento_richiesto = True
             lez.stato, lez.fase, lez.progresso, lez.errore, lez.messaggio = "in_coda", "In coda", 0.0, "", ""
 
         lezione = archivio.modifica(id_lezione, aggiungi)
