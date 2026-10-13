@@ -63,7 +63,7 @@ code, kbd, .mono { font-family: var(--mono); font-size: .92em; }
 /* --- impaginazione -------------------------------------------------------------- */
 main { max-width: 1180px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px) 96px; }
 section { margin-top: 112px; scroll-margin-top: 80px; }
-.etichetta { font-family: var(--mono); font-size: 13px; color: var(--lieve); text-transform: uppercase; letter-spacing: .06em; }
+.etichetta { font-family: var(--mono); font-size: 14px; color: var(--lieve); letter-spacing: .02em; }
 h1, h2, h3 { margin: 0; }
 h1 { font-weight: 900; font-size: clamp(44px, 7.4vw, 96px); letter-spacing: -0.045em; line-height: .95; }
 h2 { font-weight: 900; font-size: clamp(32px, 4.6vw, 56px); letter-spacing: -0.04em; line-height: 1; margin: 10px 0 18px; }
@@ -75,10 +75,10 @@ p { max-width: 70ch; }
 /* --- finestre Lectio: barra nera, bordo 1px, ombra sfalsata, doppio filo -------- */
 .finestra { background: var(--finestra); border: 1px solid var(--inchiostro); box-shadow: var(--ombra); position: relative; }
 .finestra > .barra {
-  height: 30px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px;
+  min-height: 30px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; line-height: 1.2;
   background: var(--inchiostro); color: var(--carta); font-size: 13px; font-weight: 600;
 }
-.finestra > .barra .mono { font-weight: 400; opacity: .75; }
+.finestra > .barra .mono { font-weight: 400; opacity: .75; font-size: 13px; }
 .finestra > .corpo { padding: 22px; position: relative; }
 .finestra > .corpo::after { content: ""; position: absolute; inset: 4px; border: 1px solid var(--carta); pointer-events: none; }
 .finestra.carta { background: var(--carta); }
@@ -142,7 +142,7 @@ pre .p { color: #5b8cff; }
 }
 .tavola > div.buio { background: #1e1e1e; color: #ececec; }
 .tavola > div.grigio { background: #dedede; }
-.tavola .n { position: absolute; left: 14px; bottom: 10px; font: 12px var(--mono); opacity: .8; letter-spacing: .06em; }
+.tavola .n { position: absolute; left: 14px; bottom: 10px; font: 12px var(--mono); opacity: .8; letter-spacing: .02em; }
 .tavola .puntini { background: #fefefe radial-gradient(circle, #c4c4c4 1px, transparent 1.3px) 0 0 / 16px 16px; }
 .marchio { width: 96px; height: 96px; display: block; }
 .parola { font-weight: 900; font-size: 46px; letter-spacing: -0.05em; line-height: 1; margin-top: 14px; }
@@ -153,8 +153,8 @@ pre .p { color: #5b8cff; }
 .tipo { align-self: stretch; text-align: left; }
 .tipo b { display: block; font-weight: 900; font-size: 72px; letter-spacing: -0.05em; line-height: .9; }
 .tipo span { font: 15px var(--mono); display: block; margin-top: 10px; }
-.copertina-pdf { width: 46%; aspect-ratio: 210 / 297; background: #fefefe; border: 1px solid #1e1e1e; box-shadow: 6px 6px 0 #1e1e1e; padding: 10%; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
-.copertina-pdf i { font: normal 10px var(--mono); letter-spacing: .14em; color: #1f5bff; }
+.copertina-pdf { width: 46%; aspect-ratio: 210 / 297; background: #fefefe; border: 1px solid #1e1e1e; box-shadow: 6px 6px 0 #1e1e1e; padding: 18px 16px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+.copertina-pdf i { font: normal 11px var(--mono); letter-spacing: .04em; color: #1f5bff; }
 .copertina-pdf b { font-weight: 900; font-size: 17px; letter-spacing: -0.04em; line-height: 1; }
 .copertina-pdf s { display: block; width: 26%; height: 4px; background: #7fa8ff; text-decoration: none; margin-top: 4px; }
 .manifesto { background: #1e1e1e radial-gradient(circle, #ececec 1.6px, transparent 1.9px) 0 0 / 9px 9px !important; }

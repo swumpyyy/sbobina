@@ -38,6 +38,12 @@
         ],
         "createdAt": "2026-10-13T11:54:31.451Z",
         "reason": "user brief: glassmorphism theme needs coloured blurred sky behind the frosted panels"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "createdAt": "2026-10-13T21:45:33.974Z",
+        "reason": "Lectio brand font the user adopted for the app on 2026-10-13 (DESIGN.md, Lectio update); repo pages must match the app"
       }
     ]
   }
