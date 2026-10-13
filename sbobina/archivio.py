@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -23,13 +24,22 @@ ESTENSIONI_MATERIALI = {".pdf", ".txt", ".md", ".jpg", ".jpeg", ".png", ".webp"}
 
 STATI = ("in_coda", "in_elaborazione", "completata", "errore", "fermata")
 
-_scrittura = threading.Lock()
+_scrittura = threading.RLock()  # rientrante: aggiungi_al_glossario chiama salva_corso
 
 
 def slug(testo: str, lunghezza: int = 40) -> str:
     testo = unicodedata.normalize("NFKD", testo).encode("ascii", "ignore").decode()
     testo = re.sub(r"[^a-zA-Z0-9]+", "-", testo).strip("-").lower()
     return testo[:lunghezza].strip("-") or "lezione"
+
+
+def slug_corso(nome: str) -> str:
+    """Nome file del corso: "C" e "C++" darebbero entrambi "c", quindi i nomi con simboli ricevono un hash."""
+    base = slug(nome, 60)
+    pulito = " ".join(nome.split()).casefold()
+    if base.replace("-", " ") == pulito:
+        return base
+    return f"{base}-{hashlib.sha1(pulito.encode()).hexdigest()[:6]}"
 
 
 def adesso() -> str:
@@ -94,7 +104,7 @@ class Corso:
 
     @property
     def slug(self) -> str:
-        return slug(self.nome, 60)
+        return slug_corso(self.nome)
 
 
 def unisci_termini(*elenchi: list[str], massimo: int = 600) -> list[str]:
@@ -230,25 +240,39 @@ class Archivio:
     # --- corsi -----------------------------------------------------------
 
     def carica_corso(self, nome: str) -> Corso | None:
-        percorso = self.cartella_corsi / f"{slug(nome, 60)}.json"
-        if not percorso.is_file():
-            return None
-        dati = leggi_json(percorso)
-        return Corso(nome=dati.get("nome", nome), glossario=list(dati.get("glossario", [])))
+        pulito = " ".join(nome.split()).casefold()
+        # Il secondo percorso è il nome usato prima dell'hash: vale solo se è davvero lo stesso corso.
+        for percorso in (self.cartella_corsi / f"{slug_corso(nome)}.json", self.cartella_corsi / f"{slug(nome, 60)}.json"):
+            if percorso.is_file():
+                dati = leggi_json(percorso)
+                if " ".join(str(dati.get("nome", nome)).split()).casefold() == pulito:
+                    return Corso(nome=dati.get("nome", nome), glossario=list(dati.get("glossario", [])))
+        return None
 
     def salva_corso(self, corso: Corso) -> None:
         with _scrittura:
             scrivi_json(self.cartella_corsi / f"{corso.slug}.json", asdict(corso))
+            vecchio = self.cartella_corsi / f"{slug(corso.nome, 60)}.json"
+            if vecchio.name != f"{corso.slug}.json" and vecchio.is_file():
+                try:
+                    if " ".join(str(leggi_json(vecchio).get("nome")).split()).casefold() == " ".join(corso.nome.split()).casefold():
+                        vecchio.unlink()  # migrato al nome con hash
+                except (OSError, ValueError):
+                    pass
 
     def aggiungi_al_glossario(self, nome_corso: str, termini: list[str]) -> Corso:
-        corso = self.carica_corso(nome_corso) or Corso(nome=nome_corso)
-        corso.glossario = unisci_termini(corso.glossario, termini)
-        self.salva_corso(corso)
-        return corso
+        with _scrittura:
+            corso = self.carica_corso(nome_corso) or Corso(nome=nome_corso)
+            corso.glossario = unisci_termini(corso.glossario, termini)
+            self.salva_corso(corso)
+            return corso
 
     def corsi(self) -> list[Corso]:
         risultato = []
         for percorso in sorted(self.cartella_corsi.glob("*.json")):
-            dati = leggi_json(percorso)
-            risultato.append(Corso(nome=dati["nome"], glossario=list(dati.get("glossario", []))))
+            try:
+                dati = leggi_json(percorso)
+                risultato.append(Corso(nome=dati["nome"], glossario=list(dati.get("glossario", []))))
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
         return risultato

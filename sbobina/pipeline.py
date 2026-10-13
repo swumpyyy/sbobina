@@ -154,7 +154,17 @@ class Elaborazione:
     def esegui(self, id_lezione: str) -> Lezione:
         FERMA.clear()
         self.imp = impostazioni.carica(self.config.cartella_dati)
-        self.archivio.aggiorna(id_lezione, stato="in_elaborazione", errore="", messaggio="", avvisi=[])
+
+        def inizia(lez: Lezione) -> None:
+            # Controllo e scrittura nello stesso lock: uno "Stop" arrivato mentre era in coda vince.
+            if lez.stato == "fermata":
+                raise Fermata()
+            lez.stato, lez.errore, lez.messaggio, lez.avvisi = "in_elaborazione", "", "", []
+
+        try:
+            self.archivio.modifica(id_lezione, inizia)
+        except Fermata:
+            return self.archivio.carica(id_lezione)
         inizio = time.monotonic()
 
         def conta(lez: Lezione) -> None:

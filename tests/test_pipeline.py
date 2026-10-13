@@ -272,3 +272,19 @@ def test_blocco_in_loop_resta_trascrizione_originale(config, archivio, audio_pro
     risultato = Elaborazione(config, archivio, LLMInLoop(), [FintoMotore()]).esegui(lezione.id)
     assert risultato.stato == "completata"
     assert any("si ripeteva" in a for a in risultato.avvisi)
+
+
+def test_fermata_mentre_era_in_coda_non_parte(config, archivio, audio_prova):
+    # La coda ha già letto "in_coda", poi lo studente preme Stop: l'elaborazione non deve partire.
+    lezione = archivio.crea_lezione(audio=audio_prova, nome_audio=audio_prova.name, corso="X")
+    archivio.aggiorna(lezione.id, stato="fermata")
+    elaborazione = Elaborazione(config, archivio, None, {})
+    assert elaborazione.esegui(lezione.id).stato == "fermata"
+
+
+def test_glossario_senza_perdite_tra_thread(archivio):
+    import threading
+    fili = [threading.Thread(target=archivio.aggiungi_al_glossario, args=("Fisica", [f"t{i}"])) for i in range(30)]
+    [f.start() for f in fili]
+    [f.join() for f in fili]
+    assert len(archivio.carica_corso("Fisica").glossario) == 30

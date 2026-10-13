@@ -15,6 +15,7 @@ from typing import Callable
 from fastapi import Depends, FastAPI, File as CampoFile, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel
 
 from sbobina.archivio import (
@@ -144,6 +145,7 @@ def crea_app(
     config: Config,
     crea_elaborazione: Callable[[], Elaborazione] | None = None,
     avvia_coda: bool = True,
+    host_ammessi: tuple[str, ...] = ("127.0.0.1", "localhost"),
 ) -> FastAPI:
     archivio = Archivio(config.cartella_dati)
 
@@ -170,6 +172,8 @@ def crea_app(
         yield
 
     app = FastAPI(title="Sbobina", lifespan=ciclo_di_vita, docs_url=None, redoc_url=None, openapi_url=None)
+    # Contro il DNS rebinding: un sito esterno che punta a 127.0.0.1 arriva con un Host diverso.
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(host_ammessi))
     app.state.archivio = archivio
     app.state.coda = coda
     app.mount("/static", StaticFiles(directory=STATIC), name="static")

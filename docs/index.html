@@ -7,6 +7,8 @@
 <meta name="description" content="Sbobina trasforma le registrazioni delle lezioni universitarie in appunti accurati con schemi, glossario, domande di ripasso e PDF. Gratis, in locale, su Mac e Windows.">
 <link rel="icon" href="img/marchio.svg" type="image/svg+xml">
 <link rel="stylesheet" href="lectio.css">
+<link rel="alternate" hreflang="en" href="en/">
+<link rel="alternate" hreflang="it" href="./">
 </head>
 <body>
 
@@ -18,9 +20,11 @@
     <a href="#come">Come funziona</a>
     <a href="#studio">Per studiare</a>
     <a href="#computer">Mac e Windows</a>
-    <a href="#installa">Installa</a>
+    <a href="#schermate">Schermate</a>
+    <a href="#scarica">Scarica</a>
     <a href="#marchio">Brand kit</a>
   </nav>
+  <a class="lingua" href="en/" hreflang="en" lang="en">EN</a>
 </header>
 
 <main>
@@ -33,7 +37,8 @@
   </div>
   <p class="lead">Sbobina prende la registrazione della lezione (nota vocale del telefono, registratore, file di Teams o Zoom) oppure registra dal microfono, e la trasforma in appunti completi per studiare e preparare l'esame: trascrizione corretta, schemi, mappa concettuale, glossario, domande di ripasso e PDF da stampare. Tutto gira sul tuo Mac o PC: niente account, niente costi, l'audio non esce dal computer.</p>
   <div class="azioni">
-    <a class="tasto pieno" href="#installa">Installa Sbobina</a>
+    <a class="tasto pieno" href="https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-macOS.dmg">Scarica per Mac</a>
+    <a class="tasto pieno" href="https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-Windows.zip">Scarica per Windows</a>
     <a class="tasto" href="#come">Come funziona</a>
   </div>
   <div class="dati" aria-label="In breve">
@@ -47,9 +52,30 @@
     <div class="barra"><span>Sbobina 1.1</span><span class="mono">schermata iniziale</span></div>
     <picture>
       <source srcset="img/app-scuro.jpg" media="(prefers-color-scheme: dark)">
-      <img src="img/app-chiaro.jpg" width="2880" height="1800" alt="La schermata iniziale di Sbobina: elenco delle lezioni a sinistra, il titolo «Dalla registrazione agli appunti, sul tuo computer» e la zona dove trascinare la registrazione.">
+      <img src="img/app-chiaro.jpg" width="2880" height="1800" alt="La schermata iniziale di Sbobina: le lezioni divise per corso a sinistra, il titolo «Riprendi da dove eri, o aggiungi una lezione» e la zona dove trascinare la registrazione.">
     </picture>
   </figure>
+</section>
+
+<!-- ============================ SCHERMATE ============================ -->
+<section id="schermate" aria-labelledby="t-schermate">
+  <p class="etichetta">Dentro l'app</p>
+  <h2 id="t-schermate">Com'è, <span class="sotto">davvero</span>.</h2>
+  <p class="lead">Schermate dell'app vera, con due lezioni del primo anno elaborate sul Mac.</p>
+  <div class="galleria">
+    <figure class="finestra"><div class="barra"><span>Appunti</span><span class="mono">Matematica</span></div>
+      <img src="img/app-appunti.jpg" width="2880" height="1800" loading="lazy" alt="Gli appunti di una lezione di matematica: lettore audio, schede Appunti, Approfondimento, Trascrizione, Verifica, Ripasso e Chiedi, un riquadro «In sintesi» e la mappa concettuale.">
+      <figcaption>Appunti con sintesi, mappa concettuale e il minuto della registrazione accanto a ogni titolo.</figcaption></figure>
+    <figure class="finestra"><div class="barra"><span>Verifica</span><span class="mono">rapporto</span></div>
+      <img src="img/app-verifica.jpg" width="2880" height="1800" loading="lazy" alt="La scheda Verifica: il giudizio sugli appunti, nessun problema trovato e i termini aggiunti al glossario del corso; sotto, i pulsanti Scarica il PDF, Stampa, Markdown, Trascrizione, Rielabora e Glossario.">
+      <figcaption>Il controllo degli appunti contro la trascrizione e i termini aggiunti al glossario.</figcaption></figure>
+    <figure class="finestra"><div class="barra"><span>Registra</span><span class="mono">● REC</span></div>
+      <img src="img/app-registra.jpg" width="2880" height="1800" loading="lazy" alt="Il registratore: il livello del segnale, il tempo 0:00, i campi Corso e Titolo e il pulsante Inizia a registrare.">
+      <figcaption>Registra dal microfono: alla fine gli appunti partono da soli.</figcaption></figure>
+    <figure class="finestra"><div class="barra"><span>Impostazioni</span><span class="mono">appunti · AI</span></div>
+      <img src="img/app-impostazioni.jpg" width="2880" height="1800" loading="lazy" alt="Le impostazioni: lunghezza e stile degli appunti e gli interruttori per mappa, schemi, domande, glossario, indicazioni del docente, approfondimento e verifica.">
+      <figcaption>Scegli lunghezza, stile e quali sezioni scrivere.</figcaption></figure>
+  </div>
 </section>
 
 <!-- ============================ COSA ============================ -->
@@ -149,9 +175,17 @@
 
 <!-- ============================ INSTALLA ============================ -->
 <section id="installa" aria-labelledby="t-installa">
-  <p class="etichetta">05 · Installa</p>
-  <h2 id="t-installa">Una volta sola.</h2>
-  <div class="griglia" style="margin-top:28px">
+  <p class="etichetta">05 · Scarica</p>
+  <h2 id="t-installa">Scarica e apri.</h2>
+  <div class="scarica" id="scarica">
+    <a class="finestra download" href="https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-macOS.dmg"><div class="barra"><span>macOS</span><span class="mono">.dmg</span></div><div class="corpo">
+      <h3>Sbobina per Mac</h3><p>Mac con chip Apple (M1 o successivi), macOS 12 o più recente. Apri il .dmg e trascina Sbobina in Applicazioni.</p><span class="tasto pieno">Scarica per Mac</span></div></a>
+    <a class="finestra download" href="https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-Windows.zip"><div class="barra"><span>Windows</span><span class="mono">.zip</span></div><div class="corpo">
+      <h3>Sbobina per Windows</h3><p>Windows 10 o 11, consigliata una scheda NVIDIA. Estrai lo zip e fai doppio clic su <b>Installa Sbobina.bat</b>.</p><span class="tasto pieno">Scarica per Windows</span></div></a>
+  </div>
+  <p class="nota">Al primo avvio su Mac: tasto destro sull'app → <b>Apri</b>, perché l'app non è ancora firmata da Apple. Tutte le versioni sono nella pagina <a href="https://github.com/swumpyyy/sbobina/releases">Releases di GitHub</a>.</p>
+  <h3 style="margin-top:56px">Dal codice sorgente</h3>
+  <div class="griglia" style="margin-top:18px">
     <article class="finestra"><div class="barra"><span>Mac</span><span class="mono">zsh</span></div>
       <pre><span class="c"># Python 3.10+ e ffmpeg, poi:</span>
 git clone https://github.com/swumpyyy/sbobina.git
@@ -176,7 +210,7 @@ cd sbobina
 <section id="marchio" aria-labelledby="t-marchio">
   <p class="etichetta">06 · Brand kit</p>
   <h2 id="t-marchio">Carta, inchiostro, un accento.</h2>
-  <p class="lead">Il marchio è la voce che diventa testo: cinque barre d'onda in un quadrato d'inchiostro, quella centrale in rosa, come la frase che il docente dice «da esame». Tutto a 1 bit, come la carta su cui finiscono gli appunti.</p>
+  <p class="lead">Il marchio è la voce che diventa testo: cinque barre d'onda in un quadrato d'inchiostro, quella centrale in blu elettrico, come la frase che il docente dice «da esame». Tutto a 1 bit, come la carta su cui finiscono gli appunti.</p>
   <figure style="margin:32px 0 0"><a href="brandkit.html"><img src="img/brandkit.png" width="2400" height="1880" alt="Tavola del brand kit di Sbobina in nove riquadri: marchio, costruzione, app, frase guida, colori, caratteri, copertina PDF, manifesto a retino e componenti." style="width:100%;height:auto;display:block;border:1px solid var(--inchiostro);box-shadow:var(--ombra)"></a></figure>
 </section>
 

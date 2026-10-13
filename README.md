@@ -1,7 +1,13 @@
 <p align="center"><img src="docs/img/banner.png" alt="Sbobina: dalla lezione agli appunti, sul tuo computer" width="100%"></p>
 
 <p align="center"><code>SBOBINA.OS1</code> · <b>Mac</b> · <b>Windows</b> · gratis · in locale<br>
-<a href="docs/index.html"><b>Pagina del progetto</b></a> · <a href="docs/brandkit.html">Brand kit</a> · <a href="#installazione">Installa</a></p>
+<a href="https://sbobina.vercel.app"><b>Sito</b></a> · <a href="https://sbobina.vercel.app/en/"><b>English</b></a> · <a href="docs/brandkit.html">Brand kit</a> · <a href="#installazione">Installa</a></p>
+
+<p align="center">
+  <a href="https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-macOS.dmg"><img alt="Scarica per macOS" src="https://img.shields.io/badge/Scarica_per-macOS_(Apple_Silicon)-1e1e1e?style=for-the-badge&logo=apple&logoColor=white&labelColor=1f5bff"></a>
+  <a href="https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-Windows.zip"><img alt="Scarica per Windows" src="https://img.shields.io/badge/Scarica_per-Windows_10%2F11-1e1e1e?style=for-the-badge&logo=windows&logoColor=white&labelColor=1f5bff"></a>
+  <br><a href="https://github.com/swumpyyy/sbobina/releases"><img alt="Ultima versione" src="https://img.shields.io/github/v/release/swumpyyy/sbobina?style=flat-square&color=1f5bff&label=versione"></a>
+</p>
 
 # Sbobina
 
@@ -14,6 +20,27 @@ L'obiettivo è l'accuratezza: ogni passaggio è progettato per ridurre gli error
 per non far inventare nulla agli appunti.
 
 <p align="center"><img src="docs/img/app-chiaro.jpg" alt="La schermata iniziale di Sbobina" width="100%"></p>
+
+<table>
+<tr>
+<td><img src="docs/img/app-appunti.jpg" alt="Gli appunti di una lezione con sintesi e mappa concettuale"></td>
+<td><img src="docs/img/app-verifica.jpg" alt="Il rapporto di verifica degli appunti e i termini del glossario"></td>
+</tr>
+<tr>
+<td align="center"><sub>Appunti con sintesi e mappa concettuale</sub></td>
+<td align="center"><sub>Verifica degli appunti contro la trascrizione</sub></td>
+</tr>
+<tr>
+<td><img src="docs/img/app-registra.jpg" alt="Il registratore dal microfono"></td>
+<td><img src="docs/img/app-impostazioni.jpg" alt="Le impostazioni degli appunti"></td>
+</tr>
+<tr>
+<td align="center"><sub>Registra dal microfono</sub></td>
+<td align="center"><sub>Lunghezza, stile e sezioni degli appunti</sub></td>
+</tr>
+</table>
+
+> **English:** Sbobina turns lecture recordings into complete study notes (corrected transcript, outlines, concept map, glossary, review questions, PDF), fully on your own Mac or Windows PC, for free. The app and the notes are in Italian. [Read more in English →](https://sbobina.vercel.app/en/)
 
 ## Cosa ottieni per ogni lezione
 
@@ -64,6 +91,15 @@ riconoscere meglio le lezioni successive dello stesso corso. Puoi modificarlo da
 aggiungendo il nome del docente).
 
 ## Installazione
+
+**Il modo più semplice:** scarica l'app dalla pagina [Releases](https://github.com/swumpyyy/sbobina/releases/latest).
+
+| Sistema | Download | Come si installa |
+|---|---|---|
+| macOS 12+ (Apple Silicon) | [Sbobina-macOS.dmg](https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-macOS.dmg) | Apri il .dmg e trascina Sbobina in Applicazioni. Al primo avvio: tasto destro → **Apri** (l'app non è ancora firmata da Apple). |
+| Windows 10/11 | [Sbobina-Windows.zip](https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-Windows.zip) | Estrai lo zip e fai doppio clic su **Installa Sbobina.bat**: installa Python e i pacchetti e mette Sbobina sul Desktop. |
+
+Oppure dal codice sorgente:
 
 Ti servono **Python 3.10 o più recente** e **ffmpeg**. L'AI gratuita che scrive gli appunti gira sul tuo
 computer, direttamente dentro Sbobina (motore **Integrato**): **MLX** su un **Mac con Apple Silicon** (M1 o più
@@ -204,7 +240,7 @@ Il server ascolta solo su `localhost`.
 ## Brand kit
 
 Tema **Lectio**: carta e inchiostro a 1 bit, finestre con la barra del titolo nera, griglia a puntini, un solo
-accento rosa. Il marchio è la voce che diventa testo: cinque barre d'onda, la centrale in rosa.
+accento blu elettrico. Il marchio è la voce che diventa testo: cinque barre d'onda, la centrale in blu elettrico.
 
 <p align="center"><img src="docs/img/brandkit.png" alt="Brand kit di Sbobina" width="100%"></p>
 
