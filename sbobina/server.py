@@ -24,14 +24,16 @@ from sbobina.archivio import (
     Lezione,
     dividi_termini,
     leggi_json,
+    scrivi_atomico,
     slug,
     unisci_termini,
 )
 from sbobina.audio import ffmpeg_disponibile
 from sbobina.coda import ATTIVI, Coda
 from sbobina.config import Config
-from sbobina.esporta import LIBRERIE, crea_pdf, esporta_pdf_html
-from sbobina import impostazioni, sistema
+from sbobina.esporta import LIBRERIE, crea_pdf, esporta_html, esporta_pdf_html
+from sbobina import impostazioni, sistema, studio
+from sbobina.registrazione import Registratore
 from sbobina.llm import FERMA, PREPARAZIONE, costo_stimato, prepara
 from sbobina.pipeline import RIPARTENZE, Elaborazione, File, prepara_rielaborazione
 
@@ -56,6 +58,25 @@ class Approfondimento(BaseModel):
     argomento: str = ""
 
 
+class Domanda(BaseModel):
+    domanda: str
+
+
+class Testo(BaseModel):
+    testo: str
+
+
+class Esito(BaseModel):
+    id: str
+    giusta: bool
+
+
+class NuovaRegistrazione(BaseModel):
+    corso: str
+    titolo: str = ""
+    data: str = ""
+
+
 class Glossario(BaseModel):
     corso: str
     termini: list[str]
@@ -78,6 +99,22 @@ def durata_leggibile(secondi: float | None) -> str:
         return ""
     minuti = round(secondi / 60)
     return f"{minuti} min" if minuti < 60 else f"{minuti // 60} h {minuti % 60:02d} min"
+
+
+def stime(lezioni: list[Lezione]) -> dict[str, float]:
+    """Secondi che mancano a ogni lezione in coda o in corso, dal ritmo delle lezioni già fatte."""
+    fatte = [l.secondi_elaborazione / l.durata_secondi for l in lezioni
+             if l.stato == "completata" and l.secondi_elaborazione and l.durata_secondi]
+    ritmo = sorted(fatte)[len(fatte) // 2] if fatte else 1.5  # senza storia: 1,5 volte la durata dell'audio
+    attese: dict[str, float] = {}
+    accumulato = 0.0
+    attive = sorted((l for l in lezioni if l.stato in ATTIVI), key=lambda l: (l.stato != "in_elaborazione", l.creata))
+    for l in attive:
+        totale = (l.durata_secondi or 3600) * ritmo
+        resto = totale * (1 - l.progresso) if l.stato == "in_elaborazione" else totale
+        accumulato += resto
+        attese[l.id] = round(accumulato)
+    return attese
 
 
 def riassunto(lezione: Lezione) -> dict:
@@ -203,7 +240,9 @@ def crea_app(
 
     @app.get("/api/lezioni")
     def elenco() -> list[dict]:
-        return [riassunto(lezione) for lezione in archivio.elenco()]
+        lezioni = archivio.elenco()
+        attese = stime(lezioni)
+        return [{**riassunto(l), "stima_secondi": attese.get(l.id)} for l in lezioni]
 
     @app.post("/api/lezioni", dependencies=protetto)
     def nuova(
@@ -406,6 +445,160 @@ def crea_app(
         if lezione.stato == "in_elaborazione":
             raise HTTPException(409, "Attendi la fine dell'elaborazione prima di eliminare la lezione.")
         archivio.elimina(id_lezione)
+        return Response(status_code=204)
+
+    # --- studio: ricerca, modifica, quiz, flashcard, domande, esportazioni -------
+
+    ripasso = studio.Ripasso(archivio)
+    registratore = Registratore(config.cartella_dati / "registrazioni")
+
+    def modello_interattivo():
+        """Il modello per le richieste dallo studente; con un modello locale aspetta la fine delle lezioni."""
+        from sbobina.llm import crea_modello
+
+        imp = impostazioni.carica(config.cartella_dati)
+        cfg = imp.applica(config)
+        if not cfg.llm_pronto:
+            raise HTTPException(409, "L'AI non è pronta: preparala dalle Impostazioni.")
+        if cfg.locale and any(l.stato == "in_elaborazione" for l in archivio.elenco()):
+            raise HTTPException(409, "L'AI sta scrivendo gli appunti di una lezione: riprova quando ha finito.")
+        return crea_modello(cfg.modello, temperatura=imp.temperatura, contesto=imp.contesto_effettivo())
+
+    def genera(funzione, *argomenti):
+        if not studio.OCCUPATO.acquire(blocking=False):
+            raise HTTPException(409, "Sto già rispondendo a un'altra richiesta: un attimo.")
+        try:
+            return funzione(*argomenti)
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from e
+        except Exception as e:  # noqa: BLE001 - ErroreClaude, rete, memoria: il messaggio va allo studente
+            raise HTTPException(503, str(e)) from e
+        finally:
+            studio.OCCUPATO.release()
+
+    @app.get("/api/cerca")
+    def cerca(q: str = "") -> list[dict]:
+        return studio.cerca(archivio, q[:200])
+
+    @app.put("/api/lezioni/{id_lezione}/appunti", dependencies=protetto)
+    def modifica_appunti(id_lezione: str, corpo: Testo) -> dict:
+        lezione = trova(id_lezione)
+        if lezione.stato in ATTIVI:
+            raise HTTPException(409, "Aspetta la fine dell'elaborazione prima di modificare gli appunti.")
+        if not corpo.testo.strip() or len(corpo.testo) > 2_000_000:
+            raise HTTPException(400, "Il testo degli appunti è vuoto o troppo lungo.")
+        f = File(archivio.cartella(id_lezione))
+        originali = f.cartella / "appunti_originali.md"
+        if f.appunti.is_file() and not originali.is_file():
+            shutil.copy2(f.appunti, originali)  # la versione dell'AI resta, per tornare indietro
+        testo = corpo.testo.rstrip() + "\n"
+        scrivi_atomico(f.appunti, testo)
+        scrivi_atomico(f.html, esporta_html(titolo=lezione.titolo, corso=lezione.corso, data=lezione.data, appunti=testo))
+        for vecchio in f.cartella.glob("appunti*.pdf"):
+            vecchio.unlink(missing_ok=True)
+        return {"appunti": testo, "originali": originali.is_file()}
+
+    @app.post("/api/lezioni/{id_lezione}/appunti/ripristina", dependencies=protetto)
+    def ripristina_appunti(id_lezione: str) -> dict:
+        lezione = trova(id_lezione)
+        f = File(archivio.cartella(id_lezione))
+        originali = f.cartella / "appunti_originali.md"
+        if not originali.is_file():
+            raise HTTPException(404, "Gli appunti non sono mai stati modificati.")
+        return modifica_appunti(lezione.id, Testo(testo=originali.read_text(encoding="utf-8")))
+
+    @app.get("/api/lezioni/{id_lezione}/studio")
+    def stato_studio(id_lezione: str) -> dict:
+        lezione = trova(id_lezione)
+        cartella = archivio.cartella(id_lezione)
+        leggi = lambda nome, vuoto: leggi_json(cartella / nome) if (cartella / nome).is_file() else vuoto  # noqa: E731
+        return {
+            "quiz": leggi("quiz.json", None),
+            "carte": leggi("flashcard.json", {"carte": []})["carte"],
+            "da_ripassare": ripasso.da_ripassare(lezione=lezione.id),
+            "chat": leggi("chat.json", []),
+        }
+
+    @app.post("/api/lezioni/{id_lezione}/quiz", dependencies=protetto)
+    def crea_quiz(id_lezione: str) -> dict:
+        return genera(studio.genera_quiz, archivio, trova(id_lezione), modello_interattivo())
+
+    @app.post("/api/lezioni/{id_lezione}/flashcard", dependencies=protetto)
+    def crea_carte(id_lezione: str) -> dict:
+        return genera(studio.genera_carte, archivio, trova(id_lezione), modello_interattivo())
+
+    @app.post("/api/lezioni/{id_lezione}/chiedi", dependencies=protetto)
+    def chiedi_alla_lezione(id_lezione: str, corpo: Domanda) -> list[dict]:
+        domanda = " ".join(corpo.domanda.split())[:1000]
+        if not domanda:
+            raise HTTPException(400, "Scrivi una domanda.")
+        return genera(studio.chiedi, archivio, trova(id_lezione), modello_interattivo(), domanda)
+
+    @app.delete("/api/lezioni/{id_lezione}/chat", dependencies=protetto)
+    def cancella_chat(id_lezione: str) -> Response:
+        (archivio.cartella(trova(id_lezione).id) / "chat.json").unlink(missing_ok=True)
+        return Response(status_code=204)
+
+    @app.get("/api/ripasso")
+    def da_ripassare(lezione: str = "") -> list[dict]:
+        return ripasso.da_ripassare(lezione=lezione or None)
+
+    @app.post("/api/ripasso/esito", dependencies=protetto)
+    def esito_ripasso(corpo: Esito) -> dict:
+        return ripasso.esito(corpo.id, corpo.giusta)
+
+    @app.get("/api/lezioni/{id_lezione}/anki")
+    def anki(id_lezione: str) -> Response:
+        lezione = trova(id_lezione)
+        try:
+            testo = studio.esporta_anki(archivio, lezione)
+        except ValueError as e:
+            raise HTTPException(404, str(e)) from e
+        nome = slug(f"{lezione.corso} {lezione.titolo}", 80)
+        return Response(testo, media_type="text/plain; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{nome}-anki.txt"'})
+
+    @app.get("/api/corsi/obsidian")
+    def obsidian(corso: str) -> Response:
+        try:
+            dati = studio.esporta_obsidian(archivio, corso)
+        except ValueError as e:
+            raise HTTPException(404, str(e)) from e
+        return Response(dati, media_type="application/zip",
+                        headers={"Content-Disposition": f'attachment; filename="{slug(corso, 60)}-obsidian.zip"'})
+
+    @app.post("/api/registrazione/avvia", dependencies=protetto)
+    def avvia_registrazione() -> dict:
+        if not ffmpeg_disponibile():
+            raise HTTPException(503, "Manca ffmpeg, che serve per registrare.")
+        try:
+            registratore.avvia()
+        except RuntimeError as e:
+            raise HTTPException(409, str(e)) from e
+        return registratore.stato()
+
+    @app.get("/api/registrazione")
+    def stato_registrazione() -> dict:
+        return registratore.stato()
+
+    @app.post("/api/registrazione/ferma", dependencies=protetto)
+    def ferma_registrazione(corpo: NuovaRegistrazione) -> dict:
+        if not corpo.corso.strip():
+            raise HTTPException(400, "Indica il corso.")
+        try:
+            file = registratore.ferma()
+        except RuntimeError as e:
+            raise HTTPException(409, str(e)) from e
+        lezione = archivio.crea_lezione(
+            audio=file, nome_audio=file.name, corso=corpo.corso, titolo=corpo.titolo,
+            data_lezione=corpo.data, sposta=True,
+        )
+        coda.accoda(lezione.id)
+        return riassunto(lezione)
+
+    @app.post("/api/registrazione/annulla", dependencies=protetto)
+    def annulla_registrazione() -> Response:
+        registratore.annulla()
         return Response(status_code=204)
 
     @app.get("/api/glossario")

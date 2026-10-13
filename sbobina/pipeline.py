@@ -155,16 +155,23 @@ class Elaborazione:
         FERMA.clear()
         self.imp = impostazioni.carica(self.config.cartella_dati)
         self.archivio.aggiorna(id_lezione, stato="in_elaborazione", errore="", messaggio="", avvisi=[])
+        inizio = time.monotonic()
+
+        def conta(lez: Lezione) -> None:
+            lez.secondi_elaborazione = round(lez.secondi_elaborazione + time.monotonic() - inizio, 1)
+
         try:
             self._esegui(id_lezione)
         except Fermata:
             # I blocchi già salvati restano: "Riprendi" riparte da lì.
+            self.archivio.modifica(id_lezione, conta)
             return self.archivio.aggiorna(id_lezione, stato="fermata", messaggio="")
         except Exception as e:  # noqa: BLE001 - l'errore va mostrato all'utente, non perso
             log.exception("Elaborazione di %s non riuscita", id_lezione)
             return self.archivio.aggiorna(
                 id_lezione, stato="errore", errore=str(e) or type(e).__name__, messaggio=""
             )
+        self.archivio.modifica(id_lezione, conta)
         return self.archivio.aggiorna(
             id_lezione, stato="completata", fase="Completata", progresso=1.0, messaggio=""
         )

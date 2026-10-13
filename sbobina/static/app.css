@@ -568,6 +568,17 @@ a { color: var(--blu-testo); text-underline-offset: 3px; }
 .sintonia:active::-webkit-slider-thumb { transform: scale(1.2); }
 .sintonia::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 1px solid var(--filo-scuro); }
 
+.tasto.velocita { min-width: 52px; min-height: 34px; padding: 4px 10px; font-size: 13px; font-variant-numeric: tabular-nums; box-shadow: none; }
+
+/* Trascrizione che segue l'audio */
+.appunti .battuta {
+  margin-left: -12px; margin-right: -12px; padding: 6px 12px; border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 420ms var(--uscita), box-shadow 420ms var(--uscita);
+}
+.appunti .battuta:hover { background: var(--blu-tenue); }
+.appunti .battuta.in-ascolto { background: var(--blu-tenue); }
+
 /* --- commutatore delle schede: il cursore scivola, il pannello si scambia - */
 
 .commutatore {

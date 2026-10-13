@@ -455,6 +455,16 @@
     const tastoPlay = h("button", { class: "tasto tondo grande", type: "button", "aria-label": "Riproduci" }, icona("play"));
     const scala = h("input", { class: "sintonia", type: "range", min: "0", max: "1000", value: "0", step: "1", "aria-label": "Posizione nella registrazione" });
     const letto = h("span", { class: "tempo-letto" }, "0:00");
+    const VELOCITA = [1, 1.25, 1.5, 2];
+    const velocita = h("button", { class: "tasto velocita", type: "button", title: "Velocità di riproduzione" });
+    const impostaVelocita = (v) => {
+      audio.playbackRate = v;
+      velocita.textContent = `${String(v).replace(".", ",")}×`;
+      velocita.setAttribute("aria-label", `Velocità ${String(v).replace(".", ",")} per`);
+      try { localStorage.setItem("sbobina-velocita", String(v)); } catch (e) { /* storage pieno */ }
+    };
+    velocita.addEventListener("click", () => impostaVelocita(VELOCITA[(VELOCITA.indexOf(audio.playbackRate) + 1) % VELOCITA.length] || 1));
+    impostaVelocita(Number(localStorage.getItem("sbobina-velocita")) || 1);
     const salto = (delta, nome, etichetta) => h("button", {
       class: "tasto tondo salto", type: "button", "aria-label": etichetta, title: etichetta,
       onclick: () => { audio.currentTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + delta)); },
@@ -472,7 +482,7 @@
       tastoPlay.setAttribute("aria-label", fermo ? "Riproduci" : "Pausa");
     };
     // Proprietà, non listener: lo stesso <audio> viene riusato tra un ridisegno e l'altro.
-    audio.ontimeupdate = aggiorna;
+    audio.ontimeupdate = () => { aggiorna(); seguiTrascrizione(audio.currentTime); };
     audio.onloadedmetadata = aggiorna;
     audio.onplay = statoPlay;
     audio.onpause = statoPlay;
@@ -484,7 +494,7 @@
     statoPlay();
     aggiorna();
     return h("div", { class: "trasporto", role: "group", "aria-label": "Registrazione" },
-      audio, tastoPlay, salto(-15, "indietro", "Indietro di 15 secondi"), salto(15, "avanti", "Avanti di 15 secondi"), scala, letto);
+      audio, tastoPlay, salto(-15, "indietro", "Indietro di 15 secondi"), salto(15, "avanti", "Avanti di 15 secondi"), scala, letto, velocita);
   }
 
   function mostraDettaglio({ conservaAudio = false, anima = !conservaAudio } = {}) {
@@ -581,6 +591,25 @@
     area.classList.remove("cambia");
     void area.offsetWidth;
     area.classList.add("cambia");
+  }
+
+  /** Illumina il paragrafo della trascrizione che si sta ascoltando. */
+  function seguiTrascrizione(secondi, radice = document.querySelector(".appunti.trascrizione")) {
+    if (!radice) return;
+    let corrente = null;
+    for (const par of radice.querySelectorAll(".battuta")) {
+      if (Number(par.dataset.secondi) <= secondi + 0.3) corrente = par; else break;
+    }
+    const prima = radice.querySelector(".battuta.in-ascolto");
+    if (prima === corrente) return;
+    if (prima) prima.classList.remove("in-ascolto");
+    if (!corrente) return;
+    corrente.classList.add("in-ascolto");
+    const audio = $("#lettore-audio");
+    const r = corrente.getBoundingClientRect();
+    if (audio && !audio.paused && (r.top < 160 || r.bottom > innerHeight - 40)) {
+      corrente.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    }
   }
 
   function nota(testo) {
@@ -703,10 +732,24 @@
       foglio.append(h("p", { class: "segnaposto" }, "La trascrizione revisionata compare qui dopo la fase di revisione."));
       return;
     }
-    foglio.append(nota("Fedele a ciò che è stato detto, con i termini corretti. [incerto] e [incomprensibile] segnano i punti da riascoltare."));
-    const articolo = h("article", { class: "appunti" });
+    foglio.append(nota(d.audio
+      ? "Fedele a ciò che è stato detto. Clicca un paragrafo per riascoltarlo: mentre l'audio va, il paragrafo in corso si illumina."
+      : "Fedele a ciò che è stato detto, con i termini corretti. [incerto] e [incomprensibile] segnano i punti da riascoltare."));
+    const articolo = h("article", { class: "appunti trascrizione" });
     foglio.append(articolo);
     window.Sbobina.render(articolo, d.trascrizione, { onTempo: d.audio ? vaiA : null });
+    if (!d.audio) return;
+    // Ogni paragrafo che inizia con un tempo diventa un punto dell'audio.
+    for (const par of articolo.querySelectorAll("p")) {
+      const tempo = par.querySelector(".tempo");
+      if (!tempo || par.firstElementChild !== tempo) continue;
+      const [a, b, c] = tempo.textContent.replace(/[^\d:]/g, "").split(":").map(Number);
+      par.dataset.secondi = String(c === undefined ? a * 60 + b : a * 3600 + b * 60 + c);
+      par.classList.add("battuta");
+      par.addEventListener("click", (e) => { if (!e.target.closest("a")) vaiA(Number(par.dataset.secondi)); });
+    }
+    const audio = $("#lettore-audio");
+    if (audio) seguiTrascrizione(audio.currentTime, articolo);
   }
 
   function mostraVerifica(foglio, d) {
