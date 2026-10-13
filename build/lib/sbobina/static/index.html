@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="it" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#e3e7ee">
+<title>Sbobina</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23e3e7ee'/%3E%3Cg fill='%231d2330'%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3Ccircle cx='16' cy='10' r='2'/%3E%3Ccircle cx='22' cy='10' r='2'/%3E%3Ccircle cx='10' cy='16' r='2'/%3E%3Ccircle cx='16' cy='16' r='2'/%3E%3Ccircle cx='22' cy='16' r='2'/%3E%3Ccircle cx='10' cy='22' r='2'/%3E%3Ccircle cx='16' cy='22' r='2'/%3E%3C/g%3E%3Ccircle cx='22' cy='22' r='2.6' fill='%23ff6a13'/%3E%3C/svg%3E">
+<link rel="preload" href="/static/fonts/Saira-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/static/appunti.css">
+<link rel="stylesheet" href="/static/app.css">
+<!-- LIBRERIE -->
+<script src="/static/render.js"></script>
+</head>
+<body>
+<header class="testata">
+  <a class="marchio" href="/" id="marchio">
+    <span class="griglia-altoparlante" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.7"/><circle cx="12" cy="6" r="1.7"/><circle cx="18" cy="6" r="1.7"/><circle cx="6" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18" cy="12" r="1.7"/><circle cx="6" cy="18" r="1.7"/><circle cx="12" cy="18" r="1.7"/><circle cx="18" cy="18" r="2.2" fill="#ff6a13"/></svg>
+    </span>
+    <strong>Sbobina</strong>
+  </a>
+  <span class="stato-ai" id="stato-ai" role="status"></span>
+  <span class="spazio"></span>
+  <button class="tasto grande" id="btn-nuova" type="button">
+    <svg class="icona" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    <span>Nuova <span class="etichetta-lunga">lezione</span></span>
+  </button>
+</header>
+
+<div class="apparecchio">
+  <aside class="rastrelliera" aria-label="Le tue lezioni">
+    <label class="cerca">
+      <svg class="icona" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+      <span class="solo-lettori">Cerca tra le lezioni</span>
+      <input type="search" id="cerca" placeholder="Cerca per titolo o corso" autocomplete="off">
+    </label>
+    <div class="moduli" id="elenco"></div>
+  </aside>
+  <main class="piastra" id="contenuto"></main>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

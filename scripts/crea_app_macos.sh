@@ -25,7 +25,7 @@ scarica() {  # url sha destinazione
 }
 
 [[ -x "$PROGETTO/.venv/bin/sbobina" ]] || { echo "Manca $PROGETTO/.venv: crea prima l'ambiente (vedi README)."; exit 1; }
-(( DMG )) || "$PROGETTO/.venv/bin/python" -c "import webview" 2>/dev/null || "$PROGETTO/.venv/bin/pip" install -q -e "$PROGETTO[app,locale]"
+(( DMG )) || "$PROGETTO/.venv/bin/python" -c "import webview" 2>/dev/null || "$PROGETTO/.venv/bin/pip" install -q -e "${PROGETTO}[app,locale]"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -72,7 +72,7 @@ if (( DMG )); then
   # ffmpeg statico già usato in sviluppo (pacchetto static-ffmpeg del .venv).
   cp "${PROGETTO}/.venv/bin/ffmpeg"(:A) "${PROGETTO}/.venv/bin/ffprobe"(:A) "$R/bin/"
   PIP=("$R/python/bin/python3" -m pip install -q --no-compile --disable-pip-version-check)
-  "${PIP[@]}" "$PROGETTO[app]"
+  "${PIP[@]}" "${PROGETTO}[app]"
   # mlx-whisper senza torch (serve solo a convertire modelli, non a trascrivere): ~1 GB in meno.
   "${PIP[@]}" --no-deps "mlx-whisper>=0.4"
   "${PIP[@]}" huggingface_hub mlx more-itertools numba numpy scipy tiktoken tqdm

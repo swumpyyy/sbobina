@@ -1,9 +1,9 @@
 # Sbobina: da fare (12/10/2026)
 
 ## 0. Da riprendere (lavoro interrotto)
-- [ ] Finire il test e2e: `sbobina rielabora --da riprendi test-e2e-lezione-5-63488c` (fermo al 75%, appunti)
-- [ ] Rifare la build: `zsh scripts/crea_app_macos.sh --dmg`, poi aprire il DMG e provarlo
-- [ ] Commit di tutto il lavoro non salvato (vendor, sistema.py, fix think, repo_mlx, --dmg)
+- [x] Finire il test e2e: `sbobina rielabora --da riprendi test-e2e-lezione-5-63488c` (fermo al 75%, appunti)
+- [x] Rifare la build: `zsh scripts/crea_app_macos.sh --dmg`, poi aprire il DMG e provarlo
+- [x] Commit di tutto il lavoro non salvato (vendor, sistema.py, fix think, repo_mlx, --dmg)
 
 ## 1. Stop dell'AI (richiesto)
 - [ ] Pulsante "Ferma" visibile durante trascrizione, revisione, appunti, verifica
