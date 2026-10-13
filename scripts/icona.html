@@ -1,23 +1,10 @@
 <!doctype html>
-<!-- Icona dell'app: lastra di vetro blu con l'onda sonora bianca. Resa a 1024×1024 da crea_app_macos.sh. -->
+<!-- Icona dell'app: il marchio di Sbobina (quadrato d'inchiostro, cinque barre, la centrale blu elettrico). Resa a 1024×1024 da crea_app_macos.sh. -->
 <html><head><meta charset="utf-8"><style>
   html, body { margin: 0; width: 1024px; height: 1024px; background: transparent; }
-  .lastra {
-    position: absolute; left: 100px; top: 100px; width: 824px; height: 824px; border-radius: 185px; overflow: hidden;
-    background: linear-gradient(150deg, #8db6ff 0%, #3c7cff 45%, #0b46c4 100%);
-    box-shadow: 0 22px 48px rgba(13, 50, 130, .38), inset 0 3px 0 rgba(255,255,255,.55), inset 0 -10px 30px rgba(5, 30, 100, .35);
-  }
-  /* riflesso del vetro in alto */
-  .lastra::before {
-    content: ""; position: absolute; left: -10%; top: -45%; width: 120%; height: 85%; border-radius: 50%;
-    background: linear-gradient(180deg, rgba(255,255,255,.42), rgba(255,255,255,0));
-  }
-  .lastra::after {
-    content: ""; position: absolute; inset: 0; border-radius: inherit; border: 3px solid rgba(255,255,255,.35);
-  }
-  svg { position: absolute; left: 100px; top: 100px; width: 824px; height: 824px; filter: drop-shadow(0 10px 18px rgba(5, 30, 100, .35)); }
+  /* griglia delle icone macOS: corpo 824 px centrato; angoli vivi come tutto il marchio */
+  svg { position: absolute; left: 100px; top: 100px; width: 824px; height: 824px; filter: drop-shadow(0 18px 28px rgba(0, 0, 0, .35)); }
 </style></head><body>
-<div class="lastra"></div>
-<svg viewBox="0 0 32 32"><g stroke="#fff" stroke-width="2.6" stroke-linecap="round" fill="none">
-  <path d="M8.5 13.5v5M12.5 10.5v11M16.5 7.5v17M20.5 11v10M24.5 14v4"/></g></svg>
+<svg viewBox="0 0 32 32"><rect width="32" height="32" fill="#1e1e1e"/><g stroke-width="2.6" stroke-linecap="square" fill="none">
+  <path stroke="#fefefe" d="M8.5 13.5v5M12.5 10.5v11M20.5 11v10M24.5 14v4"/><path stroke="#7fa8ff" d="M16.5 7.5v17"/></g></svg>
 </body></html>

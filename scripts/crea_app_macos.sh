@@ -28,7 +28,7 @@ scarica() {  # url sha destinazione
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-# Icona: la manopola del pannello hi-fi, resa da scripts/icona.html.
+# Icona: il marchio di Sbobina, reso da scripts/icona.html.
 "$CHROME" --headless=new --disable-gpu --hide-scrollbars --default-background-color=00000000 \
   --window-size=1024,1024 --screenshot="$LAVORO/icona.png" "file://$PROGETTO/scripts/icona.html" 2>/dev/null
 mkdir "$LAVORO/Sbobina.iconset"
