@@ -1,0 +1,3 @@
+# minified third-party libs: they drown the app in the graph
+sbobina/static/vendor/
+sbobina/static/fonts/OFL.txt

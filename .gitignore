@@ -5,3 +5,5 @@ __pycache__/
 .env
 dati/
 .DS_Store
+graphify-out/
+dist/

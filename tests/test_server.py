@@ -46,8 +46,10 @@ def _carica(client, audio_prova, **campi):
 def test_pagina_principale_con_librerie(client):
     risposta = client.get("/")
     assert risposta.status_code == 200
-    assert "mermaid@11.17.2" in risposta.text and "<!-- LIBRERIE -->" not in risposta.text
-    assert client.get("/static/render.js").status_code == 200
+    assert "/static/vendor/mermaid.min.js" in risposta.text and "<!-- LIBRERIE -->" not in risposta.text
+    assert "cdn.jsdelivr" not in risposta.text  # niente rete: gli appunti si vedono anche offline
+    for percorso in ("/static/render.js", "/static/vendor/mermaid.min.js", "/static/vendor/katex/katex.min.css"):
+        assert client.get(percorso).status_code == 200
 
 
 def test_stato(client):

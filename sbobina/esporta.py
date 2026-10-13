@@ -11,15 +11,23 @@ from pathlib import Path
 
 STATIC = Path(__file__).parent / "static"
 
-# Librerie per il rendering (versioni fissate). Usate sia dall'app sia dalle pagine esportate.
-LIBRERIE = """\
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.47/dist/katex.min.css">
-<script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.15/dist/purify.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16.47/dist/katex.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js"></script>
-<script>window.markmap = { autoLoader: { manual: true, toolbar: false } };</script>
-<script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@0.18.12/dist/index.js"></script>"""
+# Librerie per il rendering, incluse nel progetto (static/vendor): gli appunti si vedono anche offline.
+# marked 15.0.12, DOMPurify 3.4.15, KaTeX 0.16.47, Mermaid 11.17.2 (licenze in static/vendor/LICENZE.txt).
+
+
+def librerie(base: str = "/static") -> str:
+    """Tag delle librerie; `base` è "/static" per le pagine servite dall'app, un URI file:// per il PDF."""
+    v = f"{base}/vendor"
+    return (
+        f'<link rel="stylesheet" href="{v}/katex/katex.min.css">\n'
+        f'<script src="{v}/marked.min.js"></script>\n'
+        f'<script src="{v}/purify.min.js"></script>\n'
+        f'<script src="{v}/katex/katex.min.js"></script>\n'
+        f'<script src="{v}/mermaid.min.js"></script>'
+    )
+
+
+LIBRERIE = librerie()
 
 
 def _json_in_script(valore) -> str:
@@ -31,7 +39,7 @@ def esporta_html(*, titolo: str, corso: str, data: str, appunti: str) -> str:
     css = (STATIC / "appunti.css").read_text(encoding="utf-8")
     render_js = (STATIC / "render.js").read_text(encoding="utf-8")
     return (
-        "<!doctype html>\n<html lang=\"it\">\n<head>\n<meta charset=\"utf-8\">\n"
+        "<!doctype html>\n<html lang=\"it\" data-tema=\"chiaro\">\n<head>\n<meta charset=\"utf-8\">\n"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
         f"<title>{html.escape(titolo)} · {html.escape(corso)}</title>\n"
         f"{LIBRERIE}\n<style>\n{css}\n"
@@ -128,11 +136,17 @@ document.querySelectorAll('.appunti').forEach(function (radice) {
 """
 
 
-def esporta_pdf_html(*, titolo: str, corso: str, data: str, appunti: str, approfondimento: str | None) -> str:
-    """Pagina impaginata per il PDF: copertina con indice, poi appunti e approfondimento."""
+def esporta_pdf_html(
+    *, titolo: str, corso: str, data: str, appunti: str, approfondimento: str | None, base: str | None = None
+) -> str:
+    """Pagina impaginata per il PDF: copertina con indice, poi appunti e approfondimento.
+
+    `base`: da dove caricare font e librerie ("/static" se servita dall'app; di default i file locali).
+    """
+    base = base or STATIC.as_uri()
     css = (STATIC / "appunti.css").read_text(encoding="utf-8")
     render_js = (STATIC / "render.js").read_text(encoding="utf-8")
-    font = (STATIC / "fonts" / "Saira-Variable.woff2").as_uri()
+    font = f"{base}/fonts/Saira-Variable.woff2"
     parti = [("appunti", "Appunti della lezione", appunti)]
     if approfondimento:
         parti.append(("approfondimento", "Approfondimento", approfondimento))
@@ -142,14 +156,14 @@ def esporta_pdf_html(*, titolo: str, corso: str, data: str, appunti: str, approf
         f'<article id="{chiave}" class="appunti"></article></section>'
         for chiave, nome, _ in parti
     )
-    render = "".join(
-        f"Sbobina.render(document.getElementById('{chiave}'), {_json_in_script(testo)});\n"
+    render = "Sbobina.pronto([" + ",".join(
+        f"Sbobina.render(document.getElementById('{chiave}'), {_json_in_script(testo)})"
         for chiave, _, testo in parti
-    )
+    ) + "]);\n"
     return (
-        "<!doctype html>\n<html lang=\"it\">\n<head>\n<meta charset=\"utf-8\">\n"
-        f"<title>{html.escape(titolo)} · {html.escape(corso)}</title>\n{LIBRERIE}\n<style>\n"
-        f"@font-face {{ font-family: 'Saira'; src: url('{font}') format('woff2'); font-weight: 100 900; }}\n"
+        "<!doctype html>\n<html lang=\"it\" data-tema=\"chiaro\">\n<head>\n<meta charset=\"utf-8\">\n"
+        f"<title>{html.escape(titolo)} · {html.escape(corso)}</title>\n{librerie(base)}\n<style>\n"
+        f"@font-face {{ font-family: 'Saira'; src: url('{font}') format('woff2'); font-weight: 100 900; font-stretch: 50% 125%; }}\n"
         f"{css}\n:root {{ --c: {colore_corso(corso)}; }}\n{CSS_PDF}\n</style>\n</head>\n<body>\n"
         f'<div class="copertina"><div class="corso">{html.escape(corso)}</div><h1>{html.escape(titolo)}</h1>'
         f'<div class="data">{html.escape(data)}</div><div class="barra"></div><ol>{indice}</ol>'

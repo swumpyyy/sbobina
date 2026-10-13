@@ -130,7 +130,7 @@ class MotoreWhisper:
         try:
             risultato = mlx_whisper.transcribe(
                 campioni,
-                path_or_hf_repo=REPO_MLX.get(self.modello, f"mlx-community/whisper-{self.modello}-mlx"),
+                path_or_hf_repo=repo_mlx(self.modello),
                 language=lingua,
                 word_timestamps=True,
                 condition_on_previous_text=False,
@@ -151,6 +151,15 @@ class MotoreWhisper:
 
 # large-v3-turbo: qualità quasi uguale a large-v3, circa 6 volte più veloce.
 REPO_MLX = {"large-v3": "mlx-community/whisper-large-v3-turbo"}
+MODELLI_LOCALI = Path.home() / "Library/Application Support/Sbobina/modelli"
+
+
+def repo_mlx(modello: str) -> str:
+    """Cartella del modello già scaricato (verificato) se c'è, altrimenti il repo Hugging Face."""
+    repo = REPO_MLX.get(modello, f"mlx-community/whisper-{modello}-mlx")
+    cartella = MODELLI_LOCALI / repo.split("/")[1]
+    pesi = (cartella / "weights.safetensors").exists() or (cartella / "weights.npz").exists()
+    return str(cartella) if pesi and (cartella / "config.json").exists() else repo
 
 
 def mlx_disponibile() -> bool:

@@ -225,6 +225,8 @@ class Locale:
             "model": self.modello,
             "stream": False,
             "messages": [{"role": "system", "content": system}, utente],
+            # gemma4 ragiona ad alta voce per default: su un blocco lungo esaurisce num_predict e la risposta viene troncata.
+            "think": False,
             "options": {"num_ctx": self.contesto, "num_predict": max_tokens},
         }
         if schema is not None:

@@ -29,55 +29,56 @@
   color-scheme: light;
 }
 
+/* Tema scuro: scelto nelle impostazioni (data-tema) oppure, nelle pagine esportate, dal sistema. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --sfondo: #0f1514;
-    --superficie: #161e1d;
-    --superficie-2: #1e2827;
-    --testo: #e6eeec;
-    --testo-tenue: #9fb0ad;
-    --bordo: #2b3735;
-    --accento: #2dd4bf;
-    --accento-forte: #5eead4;
-    --su-accento: #04201d;
-    --accento-tenue: #11302c;
-    --definizione: #7aa2ff;
-    --definizione-sfondo: #172238;
-    --teorema: #b69cff;
-    --teorema-sfondo: #221c36;
-    --integrazione: #e6b04f;
-    --integrazione-sfondo: #2c2414;
-    --sintesi: #9ad46f;
-    --sintesi-sfondo: #1a2914;
-    --attenzione: #f08a5d;
-    --attenzione-sfondo: #2f1d14;
-    --errore: #f97066;
+  :root:not([data-tema]) {
+    --sfondo: #1d212a;
+    --superficie: #262b35;
+    --superficie-2: #2e3440;
+    --testo: #e8ebf1;
+    --testo-tenue: #aab3c3;
+    --bordo: #3a4150;
+    --accento: #ff9a52;
+    --accento-forte: #ffb27d;
+    --su-accento: #1d212a;
+    --accento-tenue: #3a2a1f;
+    --definizione: #8fb3ff;
+    --definizione-sfondo: #1f2a40;
+    --teorema: #c0a6ff;
+    --teorema-sfondo: #2a2340;
+    --integrazione: #e8b65a;
+    --integrazione-sfondo: #352c19;
+    --sintesi: #a5d47a;
+    --sintesi-sfondo: #23301a;
+    --attenzione: #ff9a6b;
+    --attenzione-sfondo: #3a2419;
+    --errore: #ff8a80;
     color-scheme: dark;
   }
 }
 
-:root[data-theme="dark"] {
-  --sfondo: #0f1514;
-  --superficie: #161e1d;
-  --superficie-2: #1e2827;
-  --testo: #e6eeec;
-  --testo-tenue: #9fb0ad;
-  --bordo: #2b3735;
-  --accento: #2dd4bf;
-  --accento-forte: #5eead4;
-  --su-accento: #04201d;
-  --accento-tenue: #11302c;
-  --definizione: #7aa2ff;
-  --definizione-sfondo: #172238;
-  --teorema: #b69cff;
-  --teorema-sfondo: #221c36;
-  --integrazione: #e6b04f;
-  --integrazione-sfondo: #2c2414;
-  --sintesi: #9ad46f;
-  --sintesi-sfondo: #1a2914;
-  --attenzione: #f08a5d;
-  --attenzione-sfondo: #2f1d14;
-  --errore: #f97066;
+:root[data-tema="scuro"] {
+  --sfondo: #1d212a;
+  --superficie: #262b35;
+  --superficie-2: #2e3440;
+  --testo: #e8ebf1;
+  --testo-tenue: #aab3c3;
+  --bordo: #3a4150;
+  --accento: #ff9a52;
+  --accento-forte: #ffb27d;
+  --su-accento: #1d212a;
+  --accento-tenue: #3a2a1f;
+  --definizione: #8fb3ff;
+  --definizione-sfondo: #1f2a40;
+  --teorema: #c0a6ff;
+  --teorema-sfondo: #2a2340;
+  --integrazione: #e8b65a;
+  --integrazione-sfondo: #352c19;
+  --sintesi: #a5d47a;
+  --sintesi-sfondo: #23301a;
+  --attenzione: #ff9a6b;
+  --attenzione-sfondo: #3a2419;
+  --errore: #ff8a80;
   color-scheme: dark;
 }
 
@@ -173,23 +174,30 @@ body {
 .appunti .schema svg { max-width: 100%; height: auto; }
 
 .appunti .mappa {
-  height: 460px;
-  margin: 1em 0;
-  background: var(--superficie);
-  border: 1px solid var(--bordo);
-  border-radius: 10px;
-  color: var(--testo);
-  overflow: hidden;
+  margin: 1.2em 0;
+  padding: 20px;
+  background: var(--superficie-2);
+  border-radius: 14px;
+  overflow-x: auto;
 }
-.appunti .mappa > svg { display: block; width: 100%; height: 100%; }
-/* markmap usa colori fissi per il tema chiaro: li allineiamo ai colori della pagina. */
-.appunti .mappa .markmap {
-  --markmap-text-color: var(--testo);
-  --markmap-circle-open-bg: var(--superficie);
-  --markmap-code-bg: var(--superficie-2);
-  --markmap-code-color: var(--testo);
-  --markmap-font: 400 15px/20px var(--font-ui);
+.appunti .mappa svg { display: block; max-width: none; height: auto; margin: 0 auto; overflow: visible; }
+.appunti .mappa .collegamenti path { fill: none; stroke: var(--testo-tenue); stroke-width: 1.6; stroke-linecap: round; opacity: 0.75; }
+.appunti .mappa .nodo rect { fill: var(--superficie); stroke: var(--bordo); stroke-width: 1.2; }
+.appunti .mappa .nodo text { fill: var(--testo); font: 450 14px var(--font-ui); }
+.appunti .mappa .livello-0 rect { fill: var(--testo); stroke: none; }
+.appunti .mappa .livello-0 text { fill: var(--superficie); font-weight: 650; }
+.appunti .mappa .livello-1 rect { fill: var(--accento-tenue); stroke: var(--accento); }
+.appunti .mappa .livello-1 text { fill: var(--accento-forte); font-weight: 600; }
+@media screen and (prefers-reduced-motion: no-preference) {
+  .appunti .mappa .collegamenti path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: traccia 700ms var(--ritardo, 0ms) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .appunti .mappa .nodo { opacity: 0; animation: compare 480ms var(--ritardo, 0ms) cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 }
+@keyframes traccia { to { stroke-dashoffset: 0; } }
+@keyframes compare { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
 
 .appunti details {
   margin: 0.3em 0 1em;
@@ -230,7 +238,8 @@ body {
   .appunti { font-size: 11pt; }
   .appunti h2 { break-after: avoid; }
   .appunti h3, .appunti h4 { break-after: avoid; }
-  .appunti blockquote, .appunti .schema, .appunti table, .appunti .mappa { break-inside: avoid; }
+  .appunti blockquote, .appunti .schema, .appunti table, 
   .appunti details { display: block; }
   .appunti details > :not(summary) { display: block; }
+  .appunti .mappa svg { width: 100%; }
 }

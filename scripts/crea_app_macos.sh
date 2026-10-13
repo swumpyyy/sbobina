@@ -1,16 +1,31 @@
 #!/bin/zsh
-# Crea Sbobina.app (icona nel Dock, doppio clic per aprire) e la installa in ~/Applications.
-# shortcut: l'app avvia il .venv di questa cartella, quindi non va spostata; per distribuirla ai compagni serve un bundle autonomo (py2app/briefcase).
+# Crea Sbobina.app (icona nel Dock, doppio clic per aprire).
+#   senza argomenti: app di sviluppo in ~/Applications che avvia il .venv di questa cartella (non va spostata).
+#   --dmg: app autonoma (Python, ffmpeg e Ollama dentro il bundle) in dist/Sbobina.dmg, da dare a chiunque.
 set -euo pipefail
 
 PROGETTO="${0:A:h:h}"
-APP="$HOME/Applications/Sbobina.app"
+DMG=0; [[ "${1:-}" == "--dmg" ]] && DMG=1
+APP="$HOME/Applications/Sbobina.app"; (( DMG )) && APP="$PROGETTO/dist/Sbobina.app"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 LAVORO="$(mktemp -d)"
 trap 'rm -rf "$LAVORO"' EXIT
 
+# Ingredienti del bundle autonomo, scaricati una volta sola e verificati (sha256).
+CACHE="$HOME/Library/Caches/sbobina-build"
+PY_URL="https://github.com/astral-sh/python-build-standalone/releases/download/20261009/cpython-3.14.8+20261009-aarch64-apple-darwin-install_only.tar.gz"
+PY_SHA="ff8e1ddc02a9df3190b62d5af475cb642a02cfc77901ef780f9826cc23b51934"
+OLLAMA_URL="https://github.com/ollama/ollama/releases/download/v0.40.3/ollama-darwin.tgz"
+OLLAMA_SHA="a2d1d906a2c8febd9cb18f5c183854d0a6db5dc522940d68b0c0ed048e8dfdea"
+
+scarica() {  # url sha destinazione
+  [[ -f "$3" ]] || curl -fL --progress-bar -o "$3.part" "$1"
+  [[ -f "$3" ]] || mv "$3.part" "$3"
+  [[ "$(shasum -a 256 "$3" | cut -c1-64)" == "$2" ]] || { echo "Checksum errato per $3: cancellalo e riprova."; exit 1; }
+}
+
 [[ -x "$PROGETTO/.venv/bin/sbobina" ]] || { echo "Manca $PROGETTO/.venv: crea prima l'ambiente (vedi README)."; exit 1; }
-"$PROGETTO/.venv/bin/python" -c "import webview" 2>/dev/null || "$PROGETTO/.venv/bin/pip" install -q -e "$PROGETTO[app,locale]"
+(( DMG )) || "$PROGETTO/.venv/bin/python" -c "import webview" 2>/dev/null || "$PROGETTO/.venv/bin/pip" install -q -e "$PROGETTO[app,locale]"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -45,6 +60,59 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSApplicationCategoryType</key><string>public.app-category.education</string>
 </dict></plist>
 PLIST
+
+if (( DMG )); then
+  R="$APP/Contents/Resources"
+  mkdir -p "$CACHE" "$R/bin"
+  scarica "$PY_URL" "$PY_SHA" "$CACHE/python.tar.gz"
+  scarica "$OLLAMA_URL" "$OLLAMA_SHA" "$CACHE/ollama-darwin.tgz"
+  tar xzf "$CACHE/python.tar.gz" -C "$R"
+  mkdir "$R/ollama" && tar xzf "$CACHE/ollama-darwin.tgz" -C "$R/ollama"
+  ln -s ../ollama/ollama "$R/bin/ollama"
+  # ffmpeg statico già usato in sviluppo (pacchetto static-ffmpeg del .venv).
+  cp "${PROGETTO}/.venv/bin/ffmpeg"(:A) "${PROGETTO}/.venv/bin/ffprobe"(:A) "$R/bin/"
+  PIP=("$R/python/bin/python3" -m pip install -q --no-compile --disable-pip-version-check)
+  "${PIP[@]}" "$PROGETTO[app]"
+  # mlx-whisper senza torch (serve solo a convertire modelli, non a trascrivere): ~1 GB in meno.
+  "${PIP[@]}" --no-deps "mlx-whisper>=0.4"
+  "${PIP[@]}" huggingface_hub mlx more-itertools numba numpy scipy tiktoken tqdm
+  "$R/python/bin/python3" -c "import sbobina.app, mlx_whisper, webview" || { echo "Import fallito nel bundle"; exit 1; }
+
+  cat > "$APP/Contents/MacOS/Sbobina" <<'LANCIO'
+#!/bin/zsh
+# Tutto dal bundle; i dati dello studente in Application Support (il bundle è di sola lettura).
+R="${0:A:h:h}/Resources"
+SUPPORTO="$HOME/Library/Application Support/Sbobina"
+export PATH="$R/bin:$PATH" SBOBINA_ICONA="$R/icona.png" SBOBINA_DATI="$SUPPORTO/dati"
+mkdir -p "$SBOBINA_DATI" "$HOME/Library/Logs"
+cd "$SUPPORTO"
+exec "$R/python/bin/python3" -m sbobina.cli app >>"$HOME/Library/Logs/Sbobina.log" 2>&1
+LANCIO
+  chmod +x "$APP/Contents/MacOS/Sbobina"
+  # Firma ad hoc di tutto il bundle: senza, macOS su Apple Silicon rifiuta i binari copiati.
+  codesign --force --deep --sign - "$APP"
+
+  rm -rf "$LAVORO/dmg" "$PROGETTO/dist/Sbobina.dmg"
+  mkdir "$LAVORO/dmg"
+  cp -R "$APP" "$LAVORO/dmg/"
+  ln -s /Applications "$LAVORO/dmg/Applicazioni"
+  cat > "$LAVORO/dmg/LEGGIMI.txt" <<'TESTO'
+Installare Sbobina
+
+1. Trascina Sbobina nella cartella Applicazioni.
+2. Apri Sbobina dalla cartella Applicazioni.
+3. Se macOS dice che non può verificare lo sviluppatore:
+   Impostazioni di Sistema → Privacy e sicurezza → in fondo, "Apri comunque".
+   Serve solo la prima volta.
+4. Al primo avvio Sbobina scarica l'AI per gli appunti (circa 8 GB) e Whisper (1,6 GB).
+   Poi funziona anche offline.
+
+Requisiti: Mac con chip Apple (M1 o successivi), macOS 12 o successivo, 16 GB di RAM consigliati.
+TESTO
+  hdiutil create -quiet -volname Sbobina -srcfolder "$LAVORO/dmg" -ov -format ULFO "$PROGETTO/dist/Sbobina.dmg"
+  echo "Creato $PROGETTO/dist/Sbobina.dmg ($(du -h "$PROGETTO/dist/Sbobina.dmg" | cut -f1))"
+  exit 0
+fi
 
 cat > "$APP/Contents/MacOS/Sbobina" <<LANCIO
 #!/bin/zsh

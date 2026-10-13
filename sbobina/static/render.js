@@ -1,4 +1,4 @@
-/* Rendering degli appunti: Markdown + formule (KaTeX) + schemi (Mermaid) + mappe concettuali (markmap)
+/* Rendering degli appunti: Markdown + formule (KaTeX) + schemi (Mermaid) + mappe concettuali (SVG proprio)
    + tempi cliccabili. Usato sia dall'app sia dalle pagine HTML esportate. */
 (function () {
   "use strict";
@@ -120,13 +120,51 @@
     });
   }
 
+  function temaScuro() {
+    const tema = document.documentElement.dataset.tema;
+    if (tema) return tema === "scuro";
+    return Boolean(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  }
+
+  // Gli schemi Mermaid prendono i colori del pannello invece della tavolozza predefinita.
+  function variabiliMermaid() {
+    const scuro = temaScuro();
+    return {
+      fontFamily: '"Saira", system-ui, sans-serif',
+      fontSize: "15px",
+      background: "transparent",
+      primaryColor: scuro ? "#2a303c" : "#eef1f6",
+      primaryTextColor: scuro ? "#e8ebf1" : "#1d2330",
+      primaryBorderColor: scuro ? "#8792a6" : "#1d2330",
+      secondaryColor: scuro ? "#323947" : "#fbe6d8",
+      secondaryBorderColor: scuro ? "#ff8a3d" : "#a8420a",
+      tertiaryColor: scuro ? "#20252f" : "#f6f8fb",
+      lineColor: scuro ? "#aab3c3" : "#4f596d",
+      textColor: scuro ? "#e8ebf1" : "#1d2330",
+      edgeLabelBackground: scuro ? "#20252f" : "#fbfcfe",
+      clusterBkg: scuro ? "#232833" : "#f3f5f9",
+      clusterBorder: scuro ? "#4f596d" : "#c4ccd9",
+      noteBkgColor: scuro ? "#3a2a1f" : "#fff4ea",
+      noteBorderColor: scuro ? "#ff8a3d" : "#a8420a",
+      actorBkg: scuro ? "#2a303c" : "#eef1f6",
+      actorBorder: scuro ? "#8792a6" : "#1d2330",
+      signalColor: scuro ? "#aab3c3" : "#4f596d",
+    };
+  }
+
   async function rendiSchemi(radice) {
     const blocchi = radice.querySelectorAll("pre > code.language-mermaid");
     if (!blocchi.length || !window.mermaid) return;
-    if (!mermaidPronto) {
-      const scuro = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-      window.mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: scuro ? "dark" : "default" });
-      mermaidPronto = true;
+    const tema = temaScuro() ? "scuro" : "chiaro";
+    if (mermaidPronto !== tema) {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: "strict",
+        theme: "base",
+        themeVariables: variabiliMermaid(),
+        flowchart: { curve: "basis", padding: 14 },
+      });
+      mermaidPronto = tema;
     }
     for (const code of blocchi) {
       const pre = code.parentElement;
@@ -146,28 +184,139 @@
     }
   }
 
-  async function rendiMappe(radice) {
-    const blocchi = radice.querySelectorAll("pre > code.language-mappa");
-    const loader = window.markmap && window.markmap.autoLoader;
-    if (!blocchi.length || !loader || !loader.ready) return;
-    try {
-      await loader.ready;
-    } catch (e) {
-      return;
+  // --- Mappa concettuale: albero orizzontale disegnato in SVG, senza librerie esterne ---------
+
+  const SVG = "http://www.w3.org/2000/svg";
+  let righello = null;
+
+  /** Elenco puntato annidato ("- voce", due spazi per livello) → albero { testo, figli }. */
+  function leggiAlbero(testo) {
+    const radici = [];
+    const pila = [];
+    for (const riga of testo.split("\n")) {
+      const m = riga.match(/^(\s*)[-*+]\s+(.+?)\s*$/);
+      if (!m) continue;
+      const livello = Math.floor(m[1].replace(/\t/g, "  ").length / 2);
+      const nodo = { testo: m[2].replace(/[*_`#]/g, "").trim(), figli: [] };
+      while (pila.length && pila[pila.length - 1].livello >= livello) pila.pop();
+      if (pila.length) pila[pila.length - 1].nodo.figli.push(nodo);
+      else radici.push(nodo);
+      pila.push({ livello, nodo });
     }
-    for (const code of blocchi) {
-      // Niente classe "markmap" sul contenitore: markmap la assegna al proprio <svg>.
+    if (!radici.length) return null;
+    return radici.length === 1 ? radici[0] : { testo: "Lezione", figli: radici };
+  }
+
+  function larghezzaTesto(testo, peso) {
+    if (!righello) righello = document.createElement("canvas").getContext("2d");
+    righello.font = `${peso} 14px Saira, system-ui, sans-serif`;
+    return righello.measureText(testo).width;
+  }
+
+  /** Spezza le etichette lunghe su due righe al confine di parola più vicino a metà. */
+  function righeEtichetta(testo) {
+    if (testo.length <= 26) return [testo];
+    const parole = testo.split(" ");
+    let migliore = 1;
+    let scarto = Infinity;
+    for (let i = 1; i < parole.length; i++) {
+      const diff = Math.abs(parole.slice(0, i).join(" ").length - parole.slice(i).join(" ").length);
+      if (diff < scarto) { scarto = diff; migliore = i; }
+    }
+    return [parole.slice(0, migliore).join(" "), parole.slice(migliore).join(" ")];
+  }
+
+  function disegnaMappa(albero) {
+    const RIGA = 18;
+    const SPAZIO_V = 14;
+    const SPAZIO_O = 56;
+    const PAD_O = 16;
+    const nodi = [];
+    const larghezzePerLivello = [];
+
+    (function misura(nodo, livello) {
+      nodo.livello = livello;
+      nodo.righe = righeEtichetta(nodo.testo);
+      const peso = livello === 0 ? 650 : livello === 1 ? 600 : 450;
+      nodo.l = Math.ceil(Math.max(...nodo.righe.map((r) => larghezzaTesto(r, peso)))) + PAD_O * 2;
+      nodo.a = nodo.righe.length * RIGA + 16;
+      larghezzePerLivello[livello] = Math.max(larghezzePerLivello[livello] || 0, nodo.l);
+      nodi.push(nodo);
+      nodo.figli.forEach((f) => misura(f, livello + 1));
+    })(albero, 0);
+
+    const xLivello = [0];
+    for (let i = 1; i < larghezzePerLivello.length; i++) xLivello[i] = xLivello[i - 1] + larghezzePerLivello[i - 1] + SPAZIO_O;
+
+    let cursore = 0;
+    (function posiziona(nodo) {
+      nodo.x = xLivello[nodo.livello];
+      if (!nodo.figli.length) {
+        nodo.y = cursore + nodo.a / 2;
+        cursore += nodo.a + SPAZIO_V;
+        return;
+      }
+      nodo.figli.forEach(posiziona);
+      const primo = nodo.figli[0];
+      const ultimo = nodo.figli[nodo.figli.length - 1];
+      nodo.y = (primo.y + ultimo.y) / 2;
+    })(albero);
+
+    const larghezza = Math.max(...nodi.map((n) => n.x + n.l)) + 4;
+    const altezza = Math.max(cursore - SPAZIO_V, albero.a) + 4;
+    const svg = document.createElementNS(SVG, "svg");
+    svg.setAttribute("viewBox", `-2 -2 ${larghezza} ${altezza}`);
+    svg.setAttribute("width", String(larghezza));
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", `Mappa concettuale: ${albero.testo}. ${albero.figli.map((f) => f.testo).join(", ")}.`);
+
+    const collegamenti = document.createElementNS(SVG, "g");
+    collegamenti.setAttribute("class", "collegamenti");
+    const gruppoNodi = document.createElementNS(SVG, "g");
+    let ordine = 0;
+    for (const nodo of nodi) {
+      for (const figlio of nodo.figli) {
+        const x1 = nodo.x + nodo.l;
+        const x2 = figlio.x;
+        const metà = (x1 + x2) / 2;
+        const p = document.createElementNS(SVG, "path");
+        p.setAttribute("d", `M${x1},${nodo.y} C${metà},${nodo.y} ${metà},${figlio.y} ${x2},${figlio.y}`);
+        p.setAttribute("pathLength", "1");
+        p.style.setProperty("--ritardo", `${figlio.livello * 120}ms`);
+        collegamenti.append(p);
+      }
+      const g = document.createElementNS(SVG, "g");
+      g.setAttribute("class", `nodo livello-${Math.min(nodo.livello, 2)}`);
+      g.style.setProperty("--ritardo", `${nodo.livello * 120 + (ordine++ % 12) * 18}ms`);
+      const rect = document.createElementNS(SVG, "rect");
+      rect.setAttribute("x", String(nodo.x));
+      rect.setAttribute("y", String(nodo.y - nodo.a / 2));
+      rect.setAttribute("width", String(nodo.l));
+      rect.setAttribute("height", String(nodo.a));
+      rect.setAttribute("rx", String(Math.min(nodo.a / 2, 14)));
+      g.append(rect);
+      nodo.righe.forEach((riga, i) => {
+        const t = document.createElementNS(SVG, "text");
+        t.setAttribute("x", String(nodo.x + PAD_O));
+        t.setAttribute("y", String(nodo.y - ((nodo.righe.length - 1) * RIGA) / 2 + i * RIGA));
+        t.setAttribute("dominant-baseline", "central");
+        t.textContent = riga;
+        g.append(t);
+      });
+      gruppoNodi.append(g);
+    }
+    svg.append(collegamenti, gruppoNodi);
+    return svg;
+  }
+
+  function rendiMappe(radice) {
+    for (const code of radice.querySelectorAll("pre > code.language-mappa")) {
+      const albero = leggiAlbero(code.textContent);
+      if (!albero) continue;
       const div = document.createElement("div");
       div.className = "mappa";
-      // markmap interpreta l'HTML nelle etichette: qui servono solo testo e Markdown semplice.
-      div.textContent = code.textContent.replace(/[<>]/g, "");
-      const pre = code.parentElement;
-      pre.replaceWith(div);
-      try {
-        loader.render(div);
-      } catch (e) {
-        div.replaceWith(pre);
-      }
+      div.append(disegnaMappa(albero));
+      code.parentElement.replaceWith(div);
     }
   }
 
@@ -185,9 +334,19 @@
     });
     classificaRiquadri(contenitore);
     collegaTempi(contenitore, opzioni.onTempo);
+    rendiMappe(contenitore);
     await rendiSchemi(contenitore);
-    await rendiMappe(contenitore);
   }
 
-  window.Sbobina = { render, secondi };
+  // La stampa in PDF aspetta che formule, schemi e mappe siano disegnati.
+  async function pronto(promesse) {
+    try {
+      await Promise.all(promesse);
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    } finally {
+      window.__sbobinaPronto = true;
+    }
+  }
+
+  window.Sbobina = { render, secondi, pronto };
 })();
