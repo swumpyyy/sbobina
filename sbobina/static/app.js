@@ -1322,6 +1322,13 @@
   }
 
   /** Una sessione di ripasso: la carta si gira, poi "La sapevo" o "Da rivedere". */
+  /** Uno span con il testo e le sue formule disegnate (il testo è sempre messo in sicurezza da Sbobina.formule). */
+  function conFormule(testo) {
+    const span = h("span");
+    span.innerHTML = window.Sbobina.formule(String(testo ?? ""));
+    return span;
+  }
+
   function sessioneRipasso(carte, contesto) {
     const box = h("div", { class: "sessione" });
     let i = 0;
@@ -1334,9 +1341,9 @@
         return;
       }
       const c = carte[i];
-      const retro = h("div", { class: "retro" }, h("div", {}, c.retro));
+      const retro = h("div", { class: "retro" }, h("div", {}, conFormule(c.retro)));
       const carta = h("button", { class: "carta", type: "button", "aria-label": "Gira la carta" },
-        h("span", { class: "fronte" }, c.fronte), retro);
+        h("span", { class: "fronte" }, conFormule(c.fronte)), retro);
       const esiti = h("div", { class: "esiti", hidden: true },
         h("button", { class: "tasto", type: "button", onclick: () => rispondi(false) }, "Da rivedere"),
         h("button", { class: "tasto grande", type: "button", onclick: () => rispondi(true) }, icona("spunta"), "La sapevo"));
@@ -1392,15 +1399,15 @@
             if (k === Number(q.corretta)) b.classList.add("giusta");
           });
           if (!giusta) e.currentTarget.classList.add("sbagliata");
-          spiegazione.replaceChildren(h("strong", {}, giusta ? "Giusto. " : "Non proprio. "), q.spiegazione,
+          spiegazione.replaceChildren(h("strong", {}, giusta ? "Giusto. " : "Non proprio. "), conFormule(q.spiegazione),
             q.tempo && $("#lettore-audio") ? h("a", { class: "tempo", href: "#", onclick: (ev) => { ev.preventDefault(); vaiA(secondiDa(q.tempo)); } }, ` ⏱ ${q.tempo}`) : null);
           spiegazione.hidden = false;
           avanti.hidden = false;
           avanti.focus();
-        } }, h("span", { class: "lettera" }, "ABCD"[n] || String(n + 1)), testo)));
+        } }, h("span", { class: "lettera" }, "ABCD"[n] || String(n + 1)), conFormule(testo))));
       corpo.replaceChildren(
         h("div", { class: "contatore-carte" }, h("span", { class: "dati" }, `${i + 1} / ${quiz.domande.length}`)),
-        h("p", { class: "domanda" }, q.domanda), opzioni, spiegazione, avanti);
+        h("p", { class: "domanda" }, conFormule(q.domanda)), opzioni, spiegazione, avanti);
     };
     mostra();
     zona.replaceChildren(testa, corpo);
