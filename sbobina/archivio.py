@@ -21,7 +21,7 @@ ESTENSIONI_AUDIO = {
 }
 ESTENSIONI_MATERIALI = {".pdf", ".txt", ".md", ".jpg", ".jpeg", ".png", ".webp"}
 
-STATI = ("in_coda", "in_elaborazione", "completata", "errore")
+STATI = ("in_coda", "in_elaborazione", "completata", "errore", "fermata")
 
 _scrittura = threading.Lock()
 

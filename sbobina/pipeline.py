@@ -21,7 +21,7 @@ from sbobina import audio, prompt
 from sbobina.archivio import Archivio, Lezione, leggi_json, scrivi_atomico, scrivi_json, unisci_termini
 from sbobina.config import Config
 from sbobina.esporta import esporta_html
-from sbobina.llm import ErroreClaude, ModelloLinguistico, Utilizzo
+from sbobina.llm import FERMA, ErroreClaude, Fermata, ModelloLinguistico, Utilizzo
 from sbobina.materiali import Materiali, carica_materiali
 from sbobina.trascrizione.base import (
     Blocco,
@@ -121,6 +121,8 @@ class Elaborazione:
     # --- stato e avanzamento ----------------------------------------------
 
     def _avanza(self, id_lezione: str, fase: str, frazione: float, messaggio: str = "") -> None:
+        if FERMA.is_set():
+            raise Fermata()
         etichetta, inizio, fine = FASI[fase]
         progresso = round(inizio + (fine - inizio) * max(0.0, min(1.0, frazione)), 3)
         with self._lock:
@@ -148,9 +150,13 @@ class Elaborazione:
     # --- esecuzione -------------------------------------------------------
 
     def esegui(self, id_lezione: str) -> Lezione:
+        FERMA.clear()
         self.archivio.aggiorna(id_lezione, stato="in_elaborazione", errore="", messaggio="", avvisi=[])
         try:
             self._esegui(id_lezione)
+        except Fermata:
+            # I blocchi già salvati restano: "Riprendi" riparte da lì.
+            return self.archivio.aggiorna(id_lezione, stato="fermata", messaggio="")
         except Exception as e:  # noqa: BLE001 - l'errore va mostrato all'utente, non perso
             log.exception("Elaborazione di %s non riuscita", id_lezione)
             return self.archivio.aggiorna(

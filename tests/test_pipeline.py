@@ -224,3 +224,22 @@ def test_approfondimento_ed_espansioni(config, archivio, audio_prova, tmp_path):
     testo = f.approfondimento.read_text()
     assert "## Il quadro generale" in testo and "## Approfondimento: teorema di Lagrange" in testo
     assert archivio.carica(lezione.id).da_approfondire == []
+
+
+def test_fermata_e_ripresa(config, archivio, audio_prova, tmp_path):
+    from sbobina.llm import FERMA
+
+    class LLMFermato(FintoLLM):
+        def testo(self, **kw):
+            if not self.chiamate:
+                FERMA.set()  # come il pulsante "Ferma" durante la prima chiamata
+            return super().testo(**kw)
+
+    lezione = _crea(archivio, audio_prova, tmp_path, materiali=False)
+    llm = LLMFermato()
+    elaborazione = Elaborazione(config, archivio, llm, [FintoMotore()])
+    fermata = elaborazione.esegui(lezione.id)
+    assert fermata.stato == "fermata" and fermata.errore == ""
+
+    prepara_rielaborazione(archivio, lezione.id, "riprendi")
+    assert elaborazione.esegui(lezione.id).stato == "completata"

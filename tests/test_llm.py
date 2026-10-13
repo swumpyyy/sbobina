@@ -129,7 +129,7 @@ def test_locale_testo_e_json():
     dati, uso = _locale(pronta, richieste).json(system=system, contenuto=contenuto, schema={"type": "object"}, sforzo="high")
     assert dati == {"termini": ["Rolle"]} and uso == Utilizzo(input=900, output=40)
     corpo = json.loads(richieste[0].content)
-    assert corpo["model"] == "gemma4:12b" and corpo["format"] == {"type": "object"} and corpo["stream"] is False
+    assert corpo["model"] == "gemma4:12b" and corpo["format"] == {"type": "object"} and corpo["stream"] is True
     assert corpo["messages"][0] == {"role": "system", "content": "Sei un revisore."}
     assert corpo["messages"][1]["content"] == "trascrizione" and corpo["messages"][1]["images"] == ["QUJD"]
     assert corpo["options"]["num_ctx"] >= 32768

@@ -6,9 +6,9 @@
 - [x] Commit di tutto il lavoro non salvato (vendor, sistema.py, fix think, repo_mlx, --dmg)
 
 ## 1. Stop dell'AI (richiesto)
-- [ ] Pulsante "Ferma" visibile durante trascrizione, revisione, appunti, verifica
-- [ ] Backend: `POST /api/lezioni/{id}/ferma`, annullamento cooperativo in `Elaborazione` (controllo tra blocchi + chiusura richiesta Ollama)
-- [ ] Stato "fermata" (non "errore") + pulsante "Riprendi" che riparte dall'ultimo blocco salvato
+- [x] Pulsante "Ferma" visibile durante trascrizione, revisione, appunti, verifica
+- [x] Backend: `POST /api/lezioni/{id}/ferma`, annullamento cooperativo in `Elaborazione` (controllo tra blocchi + chiusura richiesta Ollama)
+- [x] Stato "fermata" (non "errore") + pulsante "Riprendi" che riparte dall'ultimo blocco salvato
 
 ## 2. PDF scaricabili (richiesto)
 - [ ] Pulsante "Scarica PDF" che salva il file direttamente (nell'app nativa: finestra Salva di macOS, non la stampa)
@@ -29,9 +29,9 @@
 - [ ] Notifiche e suono a fine lezione; cartella dati
 
 ## 5. Animazioni più fluide (richiesto)
-- [ ] Le schede Appunti/Trascrizione/Verifica non devono ricostruire tutto il DOM: cambiare solo il pannello e far scorrere l'indicatore
+- [x] Le schede Appunti/Trascrizione/Verifica non devono ricostruire tutto il DOM: cambiare solo il pannello e far scorrere l'indicatore
 - [ ] Transizioni tra lezioni, comparsa progressiva degli appunti, avanzamento del VU meter animato
-- [ ] Rispettare "riduci movimento" di macOS
+- [x] Rispettare "riduci movimento" di macOS
 
 ## 6. Altre funzioni (idee prese da Notion AI, Otter, Notability, Glean, Anki)
 - [ ] Registrazione dal microfono dentro l'app, con VU meter reale (ffmpeg astats)

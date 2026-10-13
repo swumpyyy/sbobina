@@ -13,7 +13,7 @@ Italian university students (Scuola di Economia e Studi Aziendali): the owner an
 Sbobina turns a lecture recording into accurate Italian study notes: transcription, revised transcript, notes with tables, diagrams and concept maps, teacher's exam hints, glossary and review questions, plus a check of the notes against the transcript. Success: a student drops in an audio file and later gets notes they trust enough to study from, without paying anything.
 
 ## Positioning
-Free and fully local: transcription with Whisper and note writing with an open-source model through Ollama, all on the student's own computer. No account, no API key and no per-lesson cost. The audio never leaves the machine. Claude (paid API) remains possible only if someone explicitly configures it.
+Free and fully local: transcription with Whisper and note writing with an open-source model through Ollama (an in-process MLX engine is planned), all on the student's own computer. No account, no API key and no per-lesson cost. The audio never leaves the machine. Claude (paid API) remains possible only if someone explicitly configures it.
 
 ## Operating Context
 - Runs as a local web app (FastAPI + static HTML/CSS/JS) at localhost, started from the terminal; also has a CLI.
@@ -29,7 +29,7 @@ Free and fully local: transcription with Whisper and note writing with an open-s
 
 ## Brand Commitments
 - Name: Sbobina (from "sbobinare", to transcribe a lecture).
-- Binding visual direction from the owner: **neumorphism** (soft extruded and inset surfaces on a light grey field, pill controls, round icon wells, large rounded cards, as in the reference image the owner provided).
+- Binding visual direction from the owner (2026-10-13, replaces the earlier neumorphism/hi-fi direction): **glassmorphism with blue and white accents**, professional finish, polished fluid animations.
 
 ## Evidence on Hand
 No testimonials, user counts or benchmarks exist. Do not invent any.
@@ -41,4 +41,4 @@ No testimonials, user counts or benchmarks exist. Do not invent any.
 4. The notes are the product: reading and printing them comes before decoration.
 
 ## Accessibility & Inclusion
-The owner asked for an ADHD-friendly experience: minimal distractions, one step at a time, visible progress. Neumorphism's low-contrast tendency must not reduce text or control legibility (WCAG AA for text and focus indicators).
+The owner asked for an ADHD-friendly experience: minimal distractions, one step at a time, visible progress. Glass's low-contrast tendency must not reduce text or control legibility (WCAG AA for text and focus indicators).

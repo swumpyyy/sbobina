@@ -162,3 +162,11 @@ def test_approfondisci_richiede_appunti_pronti(client, audio_prova):
     client.app.state.archivio.aggiorna(creata["id"], stato="errore")
     risposta = client.post(f"/api/lezioni/{creata['id']}/approfondisci", headers=PROTETTO, json={"argomento": "x"})
     assert risposta.status_code == 409
+
+
+def test_ferma_lezione_in_coda(config, audio_prova):
+    with TestClient(crea_app(config, avvia_coda=False)) as client:
+        [creata] = _carica(client, audio_prova).json()
+        risposta = client.post(f"/api/lezioni/{creata['id']}/ferma", headers=PROTETTO)
+        assert risposta.status_code == 200 and risposta.json()["stato"] == "fermata"
+        assert client.post(f"/api/lezioni/{creata['id']}/ferma", headers=PROTETTO).status_code == 409

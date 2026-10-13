@@ -1,4 +1,4 @@
-/* Sbobina: interfaccia web (pannello hi-fi). */
+/* Sbobina: interfaccia web (vetro, accenti blu). */
 (function () {
   "use strict";
 
@@ -12,8 +12,8 @@
     schema: "Schema",
     formato: "Formato",
   };
-  // Le tacche del selettore. Il server salva la fase come etichetta ("Revisione della trascrizione"):
-  // ogni tacca riconosce le etichette dall'inizio.
+  // Le tappe dell'elaborazione. Il server salva la fase come etichetta ("Revisione della trascrizione"):
+  // ogni tappa riconosce le etichette dall'inizio.
   const TACCHE = [
     { etichetta: "Preparazione", inizi: ["preparazione", "analisi"] },
     { etichetta: "Trascrizione", inizi: ["trascrizione"] },
@@ -22,8 +22,6 @@
     { etichetta: "Verifica", inizi: ["verifica", "correzione"] },
     { etichetta: "Approfondimento", inizi: ["approfondimento"] },
   ];
-  const ANGOLI = [-125, -75, -25, 25, 75, 125];
-  const ANGOLO_CODA = -150;
   const ACCETTA_AUDIO = "audio/*,video/*,.m4a,.mp3,.wav,.ogg,.opus,.flac,.aac,.amr,.3gp,.caf,.webm,.mp4,.wma";
 
   const ICONE = {
@@ -47,6 +45,8 @@
     onda: '<path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 7v10M21 12h0"/>',
     matita: '<path d="M4 20h4L19.5 8.5a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m14 6 4 4"/>',
     spunta: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+    ferma: '<rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/>',
+    carica: '<path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9"/><path d="M4.5 14.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/>',
     cuffie: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6.5" rx="2"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="2"/>',
   };
 
@@ -129,6 +129,16 @@
 
   const percentuale = (valore) => `${Math.round((valore || 0) * 100)}%`;
 
+  /** Riempie la piastra; con `anima` i blocchi entrano in sequenza. */
+  function riempiPiastra(elementi, anima = true) {
+    const piastra = $("#contenuto");
+    piastra.replaceChildren(...elementi);
+    if (!anima) return;
+    piastra.classList.remove("entra");
+    void piastra.offsetWidth; // riavvia l'animazione
+    piastra.classList.add("entra");
+  }
+
   // Una lezione pronta resta "accesa" finché non la apri.
   const CHIAVE_VISTE = "sbobina-viste";
   function viste() {
@@ -147,6 +157,7 @@
     if (l.stato === "errore") { tipo = "guasto"; descrizione = "Interrotta da un errore"; }
     else if (l.stato === "in_coda") { tipo = "coda"; descrizione = "In coda"; }
     else if (l.stato === "in_elaborazione") { tipo = "attiva"; descrizione = "In elaborazione"; }
+    else if (l.stato === "fermata") { tipo = "fermata"; descrizione = "Fermata"; }
     else if (!giaViste.has(l.id)) { tipo = "nuova"; descrizione = "Pronta, non ancora aperta"; }
     return h("span", { class: `segnale ${tipo}`, role: "img", "aria-label": descrizione });
   }
@@ -249,7 +260,8 @@
           : h("span", { class: "sotto" },
               h("span", {}, formattaData(l.data)),
               l.durata_secondi ? h("span", { class: "dati" }, formattaDurata(l.durata_secondi)) : null,
-              l.stato === "errore" ? h("span", {}, "· da riprovare") : null);
+              l.stato === "errore" ? h("span", {}, "· da riprovare") : null,
+              l.stato === "fermata" ? h("span", {}, "· fermata") : null);
         elenco.append(h("button", {
           class: "preselezione",
           type: "button",
@@ -276,21 +288,45 @@
 
   function mostraBenvenuto() {
     stato.vista = "benvenuto";
-    const piastra = $("#contenuto");
     const ciSonoLezioni = stato.lezioni.length > 0;
-    const passo = (nome, titolo, testo) => h("li", {},
-      h("span", { class: "pozzetto", "aria-hidden": "true" }, icona(nome)), h("strong", {}, titolo), h("span", {}, testo));
-    piastra.replaceChildren(
+    const input = h("input", { type: "file", accept: ACCETTA_AUDIO, multiple: true });
+    const vassoio = h("label", { class: "vassoio" },
+      h("span", { class: "disco", "aria-hidden": "true" }, icona("carica")),
+      h("strong", {}, "Trascina qui la registrazione"),
+      h("span", {}, "oppure fai clic per sceglierla · m4a, mp3, wav e altri formati"),
+      input);
+    input.addEventListener("change", () => input.files.length && mostraNuova(input.files));
+    vassoio.addEventListener("dragover", (e) => { e.preventDefault(); vassoio.classList.add("sopra"); });
+    vassoio.addEventListener("dragleave", () => vassoio.classList.remove("sopra"));
+    vassoio.addEventListener("drop", (e) => {
+      e.preventDefault();
+      vassoio.classList.remove("sopra");
+      if (e.dataTransfer.files.length) mostraNuova(e.dataTransfer.files);
+    });
+
+    const pronte = stato.lezioni.filter((l) => l.stato === "completata");
+    const ore = pronte.reduce((somma, l) => somma + (l.durata_secondi || 0), 0) / 3600;
+    const corsi = new Set(stato.lezioni.map((l) => l.corso)).size;
+    const passo = (nome, testo) => h("li", {}, icona(nome), testo);
+
+    riempiPiastra([
       ...avvisiConfigurazione(),
       h("section", { class: "benvenuto" },
-        h("h1", {}, ciSonoLezioni ? "Scegli una lezione, oppure caricane una nuova." : "Dalla registrazione agli appunti, gratis sul tuo computer."),
-        h("p", {}, "Sbobina trascrive l'audio della lezione, corregge i termini tecnici con le tue slide, scrive appunti con schemi e domande di ripasso e li ricontrolla con la registrazione. Tutto in locale: niente account, niente costi."),
-        h("ol", { class: "percorso" },
-          passo("microfono", "Carica la registrazione", "Note vocali, registratore, Teams o Zoom. Puoi aggiungere slide e dispense."),
-          passo("onda", "Lascia lavorare", "Il selettore mostra la fase, l'indicatore quanto manca. Puoi chiudere e tornare dopo."),
-          passo("stampa", "Studia e stampa", "Leggi a schermo, riascolta dal punto giusto, stampa il PDF da ricopiare.")),
-        h("button", { class: "tasto grande", type: "button", onclick: mostraNuova }, icona("piu"),
-          ciSonoLezioni ? "Nuova lezione" : "Carica la prima lezione")));
+        h("h1", {}, ciSonoLezioni
+          ? ["Riprendi da dove eri, ", h("em", {}, "o aggiungi una lezione.")]
+          : ["Dalla registrazione agli appunti, ", h("em", {}, "sul tuo computer.")]),
+        h("p", { class: "sottotitolo" }, "Sbobina trascrive la lezione, corregge i termini con le tue slide, scrive appunti con schemi e domande di ripasso e li ricontrolla con l'audio. Niente account, niente costi, l'audio non esce dal Mac."),
+        vassoio,
+        ciSonoLezioni
+          ? h("ul", { class: "contatori" },
+              h("li", {}, h("b", {}, String(pronte.length)), pronte.length === 1 ? "lezione pronta" : "lezioni pronte"),
+              h("li", {}, h("b", {}, ore.toLocaleString("it-IT", { maximumFractionDigits: 1 })), "ore sbobinate"),
+              h("li", {}, h("b", {}, String(corsi)), corsi === 1 ? "corso" : "corsi"))
+          : h("ol", { class: "percorso", "aria-label": "Come funziona" },
+              passo("microfono", "Carica l'audio"),
+              passo("onda", "Lascia lavorare, anche a finestra chiusa"),
+              passo("stampa", "Studia, riascolta, stampa il PDF"))),
+    ]);
   }
 
   // --- dettaglio lezione ----------------------------------------------------
@@ -320,47 +356,20 @@
     return i === -1 ? 0 : i;
   }
 
-  /** Il selettore di fase con le sue tacche e il VU-metro. */
+  /** L'avanzamento: percentuale, barra liquida, le sei tappe e i tasti Ferma / Riprendi. */
   function consoleElaborazione(l) {
-    const guasto = l.stato === "errore";
-    const selettore = h("div", { class: "selettore", role: "img" },
-      h("div", { class: "anello" }),
-      h("div", { class: "manopola" }),
-      ...TACCHE.map((t, i) => {
-        const radianti = (ANGOLI[i] * Math.PI) / 180;
-        return h("span", {
-          class: "tacca",
-          style: `left:${50 + 44 * Math.sin(radianti)}%;top:${50 - 44 * Math.cos(radianti)}%`,
-        }, t.etichetta);
-      }));
-
-    const tacche = [];
-    for (let i = 0; i <= 40; i++) {
-      const gradi = -90 + i * 4.5;
-      const r = (gradi * Math.PI) / 180;
-      const lunga = i % 5 === 0;
-      const interno = lunga ? 96 : 106;
-      tacche.push(`<line class="tick" data-i="${i}" x1="${160 + interno * Math.sin(r)}" y1="${150 - interno * Math.cos(r)}" x2="${160 + 126 * Math.sin(r)}" y2="${150 - 126 * Math.cos(r)}"/>`);
-    }
-    const quadrante = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    quadrante.setAttribute("viewBox", "0 0 320 165");
-    quadrante.setAttribute("aria-hidden", "true");
-    quadrante.innerHTML = `${tacche.join("")}<line class="lancetta" x1="160" y1="150" x2="160" y2="58"/><circle class="perno" cx="160" cy="150" r="7"/>`;
-
-    const vu = h("div", { class: "vu" },
-      quadrante,
-      h("div", { class: "lettura" },
-        h("span", { class: "valore" }),
-        h("span", { class: "fase", "aria-live": "polite" })),
-      h("p", { class: "messaggio" }));
-
-    const console = h("section", { class: `pannello console${guasto ? " guasto" : ""}`, id: "console", "aria-label": "Elaborazione" },
-      selettore, vu);
-    if (guasto) {
-      console.append(h("div", { class: "azioni" },
-        h("button", { class: "tasto grande", type: "button", onclick: () => rielabora("riprendi") },
-          icona("ricarica"), "Riprova da dove si era fermata")));
-    }
+    const tappe = h("ol", { class: "tappe" }, TACCHE.map((t) =>
+      h("li", { class: "tappa" }, h("span", { class: "punto", "aria-hidden": "true" }, icona("spunta")), t.etichetta)));
+    const console = h("section", { class: "pannello avanzamento", id: "console", "aria-label": "Elaborazione" },
+      h("div", { class: "avanz-testa" },
+        h("div", { class: "percento", "aria-hidden": "true" }, h("span", { class: "valore" }, "0"), h("span", { class: "unita" }, "%")),
+        h("div", { class: "fase-blocco" },
+          h("span", { class: "fase", role: "status", "aria-live": "polite" }),
+          h("p", { class: "messaggio" })),
+        h("div", { class: "azioni" })),
+      h("div", { class: "liquido", role: "progressbar", "aria-valuemin": 0, "aria-valuemax": 100 },
+        h("div", { class: "riempimento" })),
+      tappe);
     aggiornaConsole(console, l);
     return console;
   }
@@ -368,25 +377,56 @@
   function aggiornaConsole(console, l) {
     const inCoda = l.stato === "in_coda";
     const guasto = l.stato === "errore";
+    const fermata = l.stato === "fermata";
+    const attiva = l.stato === "in_elaborazione";
     const corrente = indiceTacca(l.fase);
     const progresso = Math.max(0, Math.min(1, l.progresso || 0));
-    $(".manopola", console).style.setProperty("--angolo", `${inCoda ? ANGOLO_CODA : ANGOLI[corrente]}deg`);
-    console.querySelectorAll(".tacca").forEach((tacca, i) => {
-      tacca.className = "tacca";
+    console.classList.toggle("attiva", attiva);
+    console.classList.toggle("guasto", guasto);
+    console.classList.toggle("fermata", fermata);
+    console.querySelectorAll(".tappa").forEach((tappa, i) => {
+      tappa.className = "tappa";
       if (inCoda) return;
-      if (i < corrente) tacca.classList.add("fatta");
-      if (i === corrente) tacca.classList.add(guasto ? "guasto" : "corrente");
+      if (i < corrente) tappa.classList.add("fatta");
+      if (i === corrente) tappa.classList.add(guasto ? "guasto" : "corrente");
     });
     const nomeFase = inCoda ? "In coda" : TACCHE[corrente].etichetta;
-    $(".selettore", console).setAttribute("aria-label", guasto ? `Interrotta durante: ${nomeFase}` : `Fase: ${nomeFase}`);
-    const accese = Math.round(progresso * 40);
-    console.querySelectorAll(".tick").forEach((t) => t.classList.toggle("acceso", Number(t.dataset.i) <= accese && accese > 0));
-    $(".lancetta", console).style.transform = `rotate(${-90 + progresso * 180}deg)`;
-    $(".valore", console).textContent = percentuale(progresso);
-    $(".fase", console).textContent = guasto ? `Interrotta · ${nomeFase}` : nomeFase;
+    $(".riempimento", console).style.setProperty("--p", String(progresso));
+    $(".liquido", console).setAttribute("aria-valuenow", String(Math.round(progresso * 100)));
+    $(".valore", console).textContent = String(Math.round(progresso * 100));
+    $(".fase", console).textContent = guasto ? `Interrotta durante ${nomeFase.toLowerCase()}`
+      : fermata ? `Fermata durante ${nomeFase.toLowerCase()}` : nomeFase;
     $(".messaggio", console).textContent = guasto
       ? (l.errore || "Errore sconosciuto")
+      : fermata ? "Il lavoro fatto è salvato: Riprendi riparte da qui."
       : (l.messaggio || (inCoda ? "Parte quando finiscono le lezioni prima di questa." : "In corso…"));
+
+    // I tasti cambiano solo con lo stato, non a ogni aggiornamento (non perdono il focus).
+    const azioni = $(".azioni", console);
+    if (azioni.dataset.stato === l.stato) return;
+    azioni.dataset.stato = l.stato;
+    if (ATTIVI.has(l.stato)) {
+      const tasto = h("button", { class: "tasto ferma", type: "button" }, icona("ferma"), "Ferma");
+      tasto.addEventListener("click", () => fermaLezione(tasto));
+      azioni.replaceChildren(tasto);
+    } else {
+      azioni.replaceChildren(h("button", { class: "tasto grande", type: "button", onclick: () => rielabora("riprendi") },
+        icona("ricarica"), guasto ? "Riprova da qui" : "Riprendi"));
+    }
+  }
+
+  async function fermaLezione(tasto) {
+    const l = stato.dettaglio.lezione;
+    tasto.disabled = true;
+    tasto.replaceChildren(icona("orologio"), "Mi fermo…");
+    try {
+      await api(`/api/lezioni/${l.id}/ferma`, { method: "POST" });
+      await aggiornaElenco();
+    } catch (e) {
+      alert(e.message);
+      tasto.disabled = false;
+      tasto.replaceChildren(icona("ferma"), "Ferma");
+    }
   }
 
   function vaiA(secondi) {
@@ -416,6 +456,7 @@
       const durata = audio.duration || 0;
       letto.textContent = `${formattaOrologio(audio.currentTime)} / ${formattaOrologio(durata)}`;
       if (durata && document.activeElement !== scala) scala.value = String(Math.round((audio.currentTime / durata) * 1000));
+      scala.style.setProperty("--pos", `${Number(scala.value) / 10}%`);
     };
     const statoPlay = () => {
       const fermo = audio.paused;
@@ -430,6 +471,7 @@
     tastoPlay.addEventListener("click", () => (audio.paused ? audio.play().catch(() => {}) : audio.pause()));
     scala.addEventListener("input", () => {
       if (audio.duration) audio.currentTime = (Number(scala.value) / 1000) * audio.duration;
+      scala.style.setProperty("--pos", `${Number(scala.value) / 10}%`);
     });
     statoPlay();
     aggiorna();
@@ -437,14 +479,13 @@
       audio, tastoPlay, salto(-15, "indietro", "Indietro di 15 secondi"), salto(15, "avanti", "Avanti di 15 secondi"), scala, letto);
   }
 
-  function mostraDettaglio({ conservaAudio = false } = {}) {
+  function mostraDettaglio({ conservaAudio = false, anima = !conservaAudio } = {}) {
     stato.vista = "lezione";
     const d = stato.dettaglio;
     const l = d.lezione;
     const precedente = $("#lettore-audio");
     const audioPrecedente = conservaAudio && precedente && precedente.dataset.lezione === l.id ? precedente : null;
 
-    const piastra = $("#contenuto");
     const elementi = [...avvisiConfigurazione()];
 
     elementi.push(h("header", { class: "intestazione" },
@@ -455,43 +496,40 @@
         l.durata_secondi ? h("li", {}, icona("orologio"), h("span", { class: "dati" }, formattaDurata(l.durata_secondi))) : null,
         l.materiali.length ? h("li", {}, icona("graffetta"), `${l.materiali.length} ${l.materiali.length === 1 ? "materiale" : "materiali"}`) : null)));
 
-    if (ATTIVI.has(l.stato) || l.stato === "errore") elementi.push(consoleElaborazione(l));
+    if (ATTIVI.has(l.stato) || l.stato === "errore" || l.stato === "fermata") elementi.push(consoleElaborazione(l));
 
     if (l.da_approfondire && l.da_approfondire.length && ATTIVI.has(l.stato)) {
       elementi.push(h("div", { class: "avviso" }, icona("onda"),
         h("strong", {}, "Da approfondire"),
-        h("ul", { style: "margin:4px 0 0;padding-left:18px" }, l.da_approfondire.map((a) => h("li", {}, a)))));
+        h("ul", {}, l.da_approfondire.map((a) => h("li", {}, a)))));
     }
     if (l.avvisi && l.avvisi.length) {
       elementi.push(h("div", { class: "avviso" }, icona("avviso"),
         h("strong", {}, "Da controllare"),
-        h("ul", { style: "margin:4px 0 0;padding-left:18px" }, l.avvisi.map((a) => h("li", {}, a)))));
+        h("ul", {}, l.avvisi.map((a) => h("li", {}, a)))));
     }
 
     if (d.audio) elementi.push(trasporto(l, audioPrecedente));
 
     const problemi = d.verifica ? d.verifica.problemi.length : null;
-    const commutatore = h("div", { class: "commutatore", role: "tablist", "aria-label": "Cosa vuoi vedere" });
+    const commutatore = h("div", { class: "commutatore", role: "tablist", "aria-label": "Cosa vuoi vedere" },
+      h("span", { class: "cursore", "aria-hidden": "true" }));
     const schede = [["appunti", "Appunti", null], ["approfondimento", "Approfondimento", null], ["trascrizione", "Trascrizione", null], ["verifica", "Verifica", problemi]];
     for (const [chiave, etichetta, conteggio] of schede) {
       commutatore.append(h("button", {
         type: "button",
         role: "tab",
         id: `scheda-${chiave}`,
+        "data-scheda": chiave,
         "aria-selected": stato.scheda === chiave ? "true" : "false",
         "aria-controls": "corpo-scheda",
-        onclick: () => { stato.scheda = chiave; mostraDettaglio({ conservaAudio: true }); },
+        onclick: () => cambiaScheda(chiave),
       }, etichetta, conteggio !== null ? h("span", { class: "conteggio", "aria-label": `${conteggio} correzioni` }, conteggio) : null));
     }
     elementi.push(commutatore);
-
-    const foglio = h("section", { class: "foglio", id: "corpo-scheda", role: "tabpanel", "aria-labelledby": `scheda-${stato.scheda}` });
-    if (stato.scheda === "appunti") mostraAppunti(foglio, d);
-    else if (stato.scheda === "approfondimento") mostraApprofondimento(foglio, d);
-    else if (stato.scheda === "trascrizione") mostraTrascrizione(foglio, d);
-    else mostraVerifica(foglio, d);
-    elementi.push(foglio);
-    if (stato.scheda === "approfondimento" && d.approfondimento && l.stato === "completata") elementi.push(pannelloEspansione(d));
+    const area = h("div", { class: "area-scheda", id: "area-scheda" });
+    riempiScheda(area, d);
+    elementi.push(area);
 
     elementi.push(tastiera(d));
     const piede = [];
@@ -499,7 +537,42 @@
     if (d.costo !== null && d.costo !== undefined) piede.push(`Costo stimato di Claude: $${d.costo.toFixed(2)}`);
     if (piede.length) elementi.push(h("p", { class: "piede" }, piede.join(" · ")));
 
-    piastra.replaceChildren(...elementi);
+    riempiPiastra(elementi, anima);
+    posizionaCursore(commutatore);
+    requestAnimationFrame(() => commutatore.classList.add("pronto"));
+  }
+
+  function riempiScheda(area, d) {
+    const l = d.lezione;
+    const foglio = h("section", { class: "foglio", id: "corpo-scheda", role: "tabpanel", "aria-labelledby": `scheda-${stato.scheda}` });
+    if (stato.scheda === "appunti") mostraAppunti(foglio, d);
+    else if (stato.scheda === "approfondimento") mostraApprofondimento(foglio, d);
+    else if (stato.scheda === "trascrizione") mostraTrascrizione(foglio, d);
+    else mostraVerifica(foglio, d);
+    area.replaceChildren(foglio);
+    if (stato.scheda === "approfondimento" && d.approfondimento && l.stato === "completata") area.append(pannelloEspansione(d));
+  }
+
+  function posizionaCursore(commutatore) {
+    const attivo = commutatore.querySelector('[aria-selected="true"]');
+    if (!attivo) return;
+    commutatore.style.setProperty("--x", `${attivo.offsetLeft}px`);
+    commutatore.style.setProperty("--w", `${attivo.offsetWidth}px`);
+  }
+
+  /** Cambia scheda senza ridisegnare la pagina: il cursore scivola e cambia solo il foglio. */
+  function cambiaScheda(chiave) {
+    if (chiave === stato.scheda) return;
+    stato.scheda = chiave;
+    const commutatore = $(".commutatore");
+    commutatore.querySelectorAll('[role="tab"]').forEach((b) =>
+      b.setAttribute("aria-selected", b.dataset.scheda === chiave ? "true" : "false"));
+    posizionaCursore(commutatore);
+    const area = $("#area-scheda");
+    riempiScheda(area, stato.dettaglio);
+    area.classList.remove("cambia");
+    void area.offsetWidth;
+    area.classList.add("cambia");
   }
 
   function nota(testo) {
@@ -508,7 +581,7 @@
 
   function mostraAppunti(foglio, d) {
     if (!d.appunti) {
-      foglio.append(h("p", { class: "segnaposto" }, "Gli appunti compaiono qui quando il selettore arriva ad Appunti."));
+      foglio.append(h("p", { class: "segnaposto" }, "Gli appunti compaiono qui quando l'elaborazione arriva ad Appunti."));
       return;
     }
     if (d.bozza) foglio.append(nota("Bozza: la verifica con la registrazione è in corso e potrebbe correggerla."));
@@ -776,7 +849,7 @@
     return { vano, input };
   }
 
-  function mostraNuova() {
+  function mostraNuova(fileIniziali) {
     stato.vista = "nuova";
     const audio = vanoFile({
       nome: "audio", accetta: ACCETTA_AUDIO, multiplo: true, obbligatorio: true, icona: "microfono",
@@ -788,7 +861,6 @@
       titolo: "Slide, dispense o foto della lavagna",
       aiuto: "Facoltativi, ma migliorano molto i termini tecnici.",
     });
-    materiali.vano.style.padding = "22px";
     const corsi = h("datalist", { id: "elenco-corsi" }, ...(stato.info ? stato.info.corsi : []).map((c) => h("option", { value: c.nome })));
     const campoTitolo = h("input", { name: "titolo", placeholder: "es. Lezione 5, Derivate" });
     audio.input.addEventListener("change", () => {
@@ -827,13 +899,20 @@
         invia));
     form.addEventListener("submit", (evento) => inviaNuova(evento, { barra, testoCaricamento, caricamento, errore, invia }));
 
-    $("#contenuto").replaceChildren(
+    riempiPiastra([
       ...avvisiConfigurazione(),
       h("section", { class: "pannello", "aria-labelledby": "titolo-nuova" },
         h("h2", { id: "titolo-nuova" }, "Nuova lezione"),
         h("p", {}, "Scegli l'audio e il corso. Al resto pensa Sbobina, sul tuo computer."),
-        form));
-    window.scrollTo({ top: 0 });
+        form)]);
+    if (fileIniziali && fileIniziali.length) {
+      const trasferimento = new DataTransfer();
+      for (const file of fileIniziali) trasferimento.items.add(file);
+      audio.input.files = trasferimento.files;
+      audio.input.dispatchEvent(new Event("change"));
+      form.querySelector('[name="corso"]').focus();
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function inviaNuova(evento, { barra, testoCaricamento, caricamento, errore, invia }) {
@@ -913,18 +992,18 @@
         errore.hidden = false;
       }
     });
-    $("#contenuto").replaceChildren(h("section", { class: "pannello", "aria-labelledby": "titolo-glossario" },
+    riempiPiastra([h("section", { class: "pannello", "aria-labelledby": "titolo-glossario" },
       h("h2", { id: "titolo-glossario" }, `Glossario di ${corso}`),
       h("p", { id: "spiega-glossario" },
         "Questi termini aiutano il riconoscimento vocale e l'AI a scriverli giusti. Il glossario cresce da solo dopo ogni lezione: aggiungi il nome del docente o correggi una grafia sbagliata."),
-      form));
+      form)]);
     area.focus();
   }
 
   // --- avvio --------------------------------------------------------------
 
   function collegaEventi() {
-    $("#btn-nuova").addEventListener("click", mostraNuova);
+    $("#btn-nuova").addEventListener("click", () => mostraNuova());
     $("#marchio").addEventListener("click", (e) => {
       e.preventDefault();
       stato.selezionata = null;
@@ -933,6 +1012,7 @@
       mostraBenvenuto();
     });
     $("#cerca").addEventListener("input", (e) => { stato.filtro = e.target.value; mostraElenco(); });
+    window.addEventListener("resize", () => { const c = $(".commutatore"); if (c) posizionaCursore(c); });
     window.addEventListener("hashchange", () => {
       const id = location.hash.slice(1);
       if (id && id !== stato.selezionata && stato.lezioni.some((l) => l.id === id)) apriLezione(id);

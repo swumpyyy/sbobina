@@ -31,7 +31,7 @@ from sbobina.audio import ffmpeg_disponibile
 from sbobina.coda import ATTIVI, Coda
 from sbobina.config import Config
 from sbobina.esporta import LIBRERIE, crea_pdf, esporta_pdf_html
-from sbobina.llm import PREPARAZIONE, costo_stimato, prepara_locale
+from sbobina.llm import FERMA, PREPARAZIONE, costo_stimato, prepara_locale
 from sbobina.pipeline import RIPARTENZE, Elaborazione, File, prepara_rielaborazione
 
 STATIC = Path(__file__).parent / "static"
@@ -289,6 +289,17 @@ def crea_app(
             raise HTTPException(400, f"Valore non valido: {corpo.da}")
         lezione = prepara_rielaborazione(archivio, id_lezione, corpo.da)
         coda.accoda(id_lezione)
+        return riassunto(lezione)
+
+    @app.post("/api/lezioni/{id_lezione}/ferma", dependencies=protetto)
+    def ferma(id_lezione: str) -> dict:
+        lezione = trova(id_lezione)
+        if lezione.stato == "in_coda":
+            lezione = archivio.aggiorna(id_lezione, stato="fermata", messaggio="")
+        elif lezione.stato == "in_elaborazione":
+            FERMA.set()  # la pipeline si ferma al prossimo controllo e salva lo stato "fermata"
+        else:
+            raise HTTPException(409, "La lezione non è in elaborazione.")
         return riassunto(lezione)
 
     @app.delete("/api/lezioni/{id_lezione}", dependencies=protetto)

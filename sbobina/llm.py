@@ -6,6 +6,7 @@ import base64
 import io
 import json
 import logging
+import threading
 import time
 from dataclasses import asdict, dataclass
 from typing import Any, Protocol
@@ -31,6 +32,14 @@ PREZZI = {
 
 class ErroreClaude(RuntimeError):
     pass
+
+
+class Fermata(Exception):
+    """L'utente ha fermato l'elaborazione."""
+
+
+# La coda elabora una lezione alla volta: un solo segnale basta.
+FERMA = threading.Event()
 
 
 @dataclass
@@ -223,7 +232,7 @@ class Locale:
             utente["images"] = immagini
         corpo: dict[str, Any] = {
             "model": self.modello,
-            "stream": False,
+            "stream": True,
             "messages": [{"role": "system", "content": system}, utente],
             # gemma4 ragiona ad alta voce per default: su un blocco lungo esaurisce num_predict e la risposta viene troncata.
             "think": False,
@@ -231,20 +240,29 @@ class Locale:
         }
         if schema is not None:
             corpo["format"] = schema
+        # In streaming per poter fermare: chiudere la connessione interrompe anche la generazione in Ollama.
+        parti: list[str] = []
+        dati: dict[str, Any] = {}
         try:
-            risposta = self.client.post(f"{self.url}/api/chat", json=corpo)
+            with self.client.stream("POST", f"{self.url}/api/chat", json=corpo) as risposta:
+                if risposta.status_code == 404:
+                    raise ErroreClaude(f"Modello {self.modello} non scaricato: esegui `ollama pull {self.modello}`.")
+                if risposta.status_code >= 400:
+                    risposta.read()
+                    raise ErroreClaude(f"Errore da Ollama ({risposta.status_code}): {risposta.text[:300]}")
+                for riga in risposta.iter_lines():
+                    if FERMA.is_set():
+                        raise Fermata()
+                    if riga.strip():
+                        dati = json.loads(riga)
+                        parti.append((dati.get("message") or {}).get("content", ""))
         except httpx2.ConnectError as e:
             raise ErroreClaude("Ollama non è in esecuzione: apri l'app Ollama e riprova.") from e
         except httpx2.HTTPError as e:
             raise ErroreClaude(f"Errore di comunicazione con Ollama: {e}") from e
-        if risposta.status_code == 404:
-            raise ErroreClaude(f"Modello {self.modello} non scaricato: esegui `ollama pull {self.modello}`.")
-        if risposta.status_code >= 400:
-            raise ErroreClaude(f"Errore da Ollama ({risposta.status_code}): {risposta.text[:300]}")
-        dati = risposta.json()
         if dati.get("done_reason") == "length":
             raise ErroreClaude("La risposta del modello locale è stata troncata (limite di lunghezza raggiunto).")
-        testo = (dati.get("message") or {}).get("content", "").strip()
+        testo = "".join(parti).strip()
         if not testo:
             raise ErroreClaude("Il modello locale ha restituito una risposta vuota.")
         return testo, Utilizzo(input=dati.get("prompt_eval_count") or 0, output=dati.get("eval_count") or 0)
