@@ -87,3 +87,24 @@ def test_estrai_json_ripara_latex_e_virgole():
     assert dati["carte"][0]["fronte"] == "Derivata di $\\frac{1}{x}$"
     assert dati["carte"][0]["retro"] == "$-\\frac{1}{x^2}$ e \\sum, \\alpha"
     assert dati["nota"] == "riga\nnuova \\beta"  # \n vero e \\ già corretto restano com'erano
+
+
+def test_estrai_json_rimette_le_chiavi_storpiate_di_gemma():
+    # Casi veri dal modello integrato: chiave senza virgoletta d'apertura, carattere spurio, nome sbagliato, chiave in più.
+    from sbobina.studio import SCHEMA_QUIZ
+    rotto = """{"domande": [
+    {
+즘": "Perché non è iniettiva?",
+      "opzione": [
+e        "A",
+        "B"
+      ],
+      azione: "nessuna",
+      "corretta": 1,
+      "spiegazione": "Perché f(1) = f(-1).",
+      "tempo": "16:15"
+    }
+  ]}"""
+    [d] = _estrai_json(rotto, SCHEMA_QUIZ)["domande"]
+    assert d == {"domanda": "Perché non è iniettiva?", "opzioni": ["A", "B"], "corretta": 1,
+                 "spiegazione": "Perché f(1) = f(-1).", "tempo": "16:15"}

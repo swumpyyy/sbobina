@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import difflib
 import io
 import json
 import logging
@@ -297,7 +298,7 @@ def testo_immagine(dati_base64: str) -> str:
     return "\n".join(righe)
 
 
-def _estrai_json(testo: str) -> dict:
+def _estrai_json(testo: str, schema: dict | None = None) -> dict:
     """Il JSON dalla risposta, anche se il modello lo avvolge in ```json ... ``` o aggiunge una frase."""
     pulito = testo.strip()
     if pulito.startswith("```"):
@@ -308,9 +309,10 @@ def _estrai_json(testo: str) -> dict:
         raise json.JSONDecodeError("nessun oggetto JSON", pulito, 0)
     pulito = pulito[inizio : fine + 1]
     try:
-        return json.loads(pulito)
+        dati = json.loads(pulito)
     except json.JSONDecodeError:
-        return json.loads(_ripara_json(pulito))  # se anche la riparazione fallisce, resta l'errore vero
+        dati = json.loads(_ripara_json(pulito))  # se anche la riparazione fallisce, resta l'errore vero
+    return _rimetti_chiavi(dati, schema) if schema else dati
 
 
 # I comandi LaTeX che iniziano con una lettera che in JSON è un escape valido (\frac = \f + "rac"):
@@ -330,7 +332,41 @@ def _ripara_json(testo: str) -> str:
         return "\\\\" + dopo
 
     testo = re.sub(r"\\(.)", barra, testo, flags=re.S)
+    # Gemma a volte storpia il nome di una chiave ("ista": o 즘": al posto di "fronte":) o lo scrive senza virgolette:
+    # diventa una chiave segnaposto che _rimetti_chiavi rinomina con quella mancante.
+    testo = re.sub(r'(?m)^(\s*)[^\s"{}\[\],:][^"\n:]*"\s*:', r'\1"__rotta__":', testo)
+    testo = re.sub(r'(?m)^(\s*)([A-Za-z_]\w*)\s*:(?=\s*["\[{\d-])', r'\1"\2":', testo)
+    # ...oppure lascia una lettera spuria prima di una stringa in un elenco (e        "L'insieme...")
+    testo = re.sub(r'(?m)^(\s*)[^\s"{}\[\],:]{1,3}\s+(?=")', r"\1", testo)
     return re.sub(r",(\s*[}\]])", r"\1", testo)
+
+
+def _rimetti_chiavi(dati, schema: dict):
+    """Le chiavi storpiate prendono il nome delle chiavi obbligatorie che mancano: prima per somiglianza ("opzione" →
+    "opzioni"), poi "__rotta__" di _ripara_json fa da jolly; sempre con un valore del tipo giusto.
+    Con additionalProperties False le chiavi in più si tolgono."""
+    if isinstance(dati, list) and isinstance(schema.get("items"), dict):
+        return [_rimetti_chiavi(x, schema["items"]) for x in dati]
+    if not isinstance(dati, dict) or "properties" not in schema:
+        return dati
+    proprieta = schema["properties"]
+    tipi = {"string": str, "array": list, "object": dict, "integer": int, "number": (int, float), "boolean": bool}
+    mancanti = [k for k in schema.get("required", proprieta) if k not in dati]
+    estranee = [k for k in dati if k not in proprieta]
+    adatta = lambda k, e: isinstance(dati[e], tipi.get(proprieta[k].get("type"), object))  # noqa: E731
+    coppie = sorted(((difflib.SequenceMatcher(None, k, e).ratio(), k, e) for k in mancanti for e in estranee
+                     if e != "__rotta__" and adatta(k, e)), reverse=True)
+    nomi: dict[str, str] = {}
+    for somiglianza, k, e in coppie:
+        if somiglianza >= 0.75 and k not in nomi.values() and e not in nomi:
+            nomi[e] = k
+    resto = [k for k in mancanti if k not in nomi.values()]
+    if "__rotta__" in dati and resto and adatta(resto[0], "__rotta__"):
+        nomi["__rotta__"] = resto[0]
+    dati = {nomi.get(k, k): v for k, v in dati.items() if k != "__rotta__" or k in nomi}
+    if schema.get("additionalProperties") is False:
+        dati = {k: v for k, v in dati.items() if k in proprieta}
+    return {k: _rimetti_chiavi(v, proprieta[k]) if k in proprieta else v for k, v in dati.items()}
 
 
 def _solo_testo(system: str | list[dict], contenuto: list[dict], schema: dict | None) -> tuple[str, str]:
@@ -372,12 +408,21 @@ class MLX:
     ) -> tuple[dict, Utilizzo]:
         testo, utilizzo = self._chiama(system, contenuto, schema, max_tokens)
         try:
-            return _estrai_json(testo), utilizzo
+            return _estrai_json(testo, schema), utilizzo
+        except json.JSONDecodeError:
+            log.warning("JSON non valido dal modello integrato, riprovo una volta:\n%s", testo)
+        # Il primo tentativo è a temperatura 0, quindi sempre uguale: il secondo usa la temperatura normale.
+        testo, altro = self._chiama(system, contenuto, schema, max_tokens, temperatura=self.temperatura)
+        utilizzo = Utilizzo(**{k: getattr(utilizzo, k) + getattr(altro, k) for k in vars(utilizzo)})
+        try:
+            return _estrai_json(testo, schema), utilizzo
         except json.JSONDecodeError as e:
+            log.warning("JSON non valido anche al secondo tentativo:\n%s", testo)
             raise ErroreClaude(f"Risposta JSON non valida dal modello integrato: {e}") from e
 
     def _chiama(
-        self, system: str | list[dict], contenuto: list[dict], schema: dict | None, max_tokens: int
+        self, system: str | list[dict], contenuto: list[dict], schema: dict | None, max_tokens: int,
+        temperatura: float | None = None,
     ) -> tuple[str, Utilizzo]:
         from mlx_lm import stream_generate
         from mlx_lm.sample_utils import make_sampler
@@ -404,12 +449,16 @@ class MLX:
             )
         from mlx_lm.sample_utils import make_logits_processors
 
+        # JSON: la penalità sulle ripetizioni allontana il modello da chiavi e virgolette che DEVONO ripetersi
+        # (nascevano "fully": al posto di "fronte":), e il caso aggiunge parole spurie: niente penalità e temperatura 0.
+        if temperatura is None:
+            temperatura = 0.0 if schema is not None else self.temperatura
         parti: list[str] = []
         ultima = None
         inizia_diretta()
         for i, risposta in enumerate(stream_generate(
-            modello, tokenizer, prompt, max_tokens=max_tokens, sampler=make_sampler(temp=self.temperatura),
-            logits_processors=make_logits_processors(repetition_penalty=1.05, repetition_context_size=256),
+            modello, tokenizer, prompt, max_tokens=max_tokens, sampler=make_sampler(temp=temperatura),
+            logits_processors=None if schema is not None else make_logits_processors(repetition_penalty=1.05, repetition_context_size=256),
         )):
             if FERMA.is_set():
                 raise Fermata()
@@ -559,7 +608,8 @@ class LlamaCpp:
     testo, json = MLX.testo, MLX.json  # stessa interfaccia: cambia solo _chiama
 
     def _chiama(
-        self, system: str | list[dict], contenuto: list[dict], schema: dict | None, max_tokens: int
+        self, system: str | list[dict], contenuto: list[dict], schema: dict | None, max_tokens: int,
+        temperatura: float | None = None,
     ) -> tuple[str, Utilizzo]:
         system, utente = _solo_testo(system, contenuto, schema)
         try:
@@ -572,8 +622,9 @@ class LlamaCpp:
         corpo = {
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": utente}],
             "stream": True, "stream_options": {"include_usage": True},
-            "max_tokens": max_tokens, "temperature": self.temperatura,
-            "repeat_penalty": 1.05, "repeat_last_n": 256,
+            "max_tokens": max_tokens,
+            "temperature": temperatura if temperatura is not None else (0.0 if schema is not None else self.temperatura),
+            "repeat_penalty": 1.0 if schema is not None else 1.05, "repeat_last_n": 256,  # JSON: vedi MLX._chiama
         }
         parti: list[str] = []
         fine, uso = None, Utilizzo()
