@@ -1,12 +1,19 @@
+<p align="center"><img src="docs/img/banner.png" alt="Sbobina: dalla lezione agli appunti, sul tuo computer" width="100%"></p>
+
+<p align="center"><code>SBOBINA.OS1</code> · <b>Mac</b> · <b>Windows</b> · gratis · in locale<br>
+<a href="docs/index.html"><b>Pagina del progetto</b></a> · <a href="docs/brandkit.html">Brand kit</a> · <a href="#installazione">Installa</a></p>
+
 # Sbobina
 
 **Dalle registrazioni delle lezioni ad appunti di studio accurati, con schemi e mappe concettuali.**
 
 Sbobina prende gli audio che hai già (note vocali del telefono, registratore, file di Teams/Zoom…)
-oppure registra la lezione dal microfono del Mac, e li trasforma in appunti completi, pensati per
+oppure registra la lezione dal microfono del computer, e li trasforma in appunti completi, pensati per
 studiare e preparare l'esame.
 L'obiettivo è l'accuratezza: ogni passaggio è progettato per ridurre gli errori di trascrizione e
 per non far inventare nulla agli appunti.
+
+<p align="center"><img src="docs/img/app-chiaro.jpg" alt="La schermata iniziale di Sbobina" width="100%"></p>
 
 ## Cosa ottieni per ogni lezione
 
@@ -59,8 +66,9 @@ aggiungendo il nome del docente).
 ## Installazione
 
 Ti servono **Python 3.10 o più recente** e **ffmpeg**. L'AI gratuita che scrive gli appunti gira sul tuo
-computer, direttamente dentro Sbobina (motore **Integrato**, MLX): serve un **Mac con Apple Silicon** (M1 o più
-recente). Su altri computer resta solo Claude, a pagamento. Per creare i PDF serve anche Google Chrome (o Chromium o Edge).
+computer, direttamente dentro Sbobina (motore **Integrato**): **MLX** su un **Mac con Apple Silicon** (M1 o più
+recente), **llama.cpp** su un **PC Windows con scheda NVIDIA** (vedi [App per Windows](#app-per-windows)). Su altri
+computer resta solo Claude, a pagamento. Per creare i PDF serve anche Google Chrome (o Chromium o Edge).
 
 ```bash
 # ffmpeg
@@ -192,6 +200,13 @@ L'audio resta sul tuo computer, salvo quando usi i servizi cloud di trascrizione
 ElevenLabs), a cui viene inviato l'audio. Con l'AI locale (predefinita) anche trascrizione e
 materiali restano sul computer; solo se scegli Claude vengono inviati ad Anthropic. Tutti i risultati sono salvati in locale nella cartella `dati/`.
 Il server ascolta solo su `localhost`.
+
+## Brand kit
+
+Tema **Lectio**: carta e inchiostro a 1 bit, finestre con la barra del titolo nera, griglia a puntini, un solo
+accento rosa. Il marchio è la voce che diventa testo: cinque barre d'onda, la centrale in rosa.
+
+<p align="center"><img src="docs/img/brandkit.png" alt="Brand kit di Sbobina" width="100%"></p>
 
 ## Struttura del progetto
 

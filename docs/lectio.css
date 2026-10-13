@@ -1,0 +1,174 @@
+/* Tema Lectio per le pagine del repository: gli stessi gettoni di sbobina/static/app.css
+   (carta e inchiostro a 1 bit, finestre con barra nera, griglia a puntini, un solo accento rosa). */
+
+@font-face { font-family: "Geist"; src: url("fonts/Geist-Regular.otf") format("opentype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Geist"; src: url("fonts/Geist-SemiBold.otf") format("opentype"); font-weight: 600 700; font-display: swap; }
+@font-face { font-family: "Geist"; src: url("fonts/Geist-Black.otf") format("opentype"); font-weight: 800 900; font-display: swap; }
+@font-face { font-family: "Departure Mono"; src: url("fonts/DepartureMono-Regular.otf") format("opentype"); font-display: swap; }
+
+:root {
+  color-scheme: light dark;
+  --campo: light-dark(#fefefe, #141414);
+  --carta: light-dark(#fefefe, #1b1b1b);
+  --finestra: light-dark(#dedede, #262626);
+  --griglia: light-dark(#c4c4c4, #3a3a3a);
+  --inchiostro: light-dark(#1e1e1e, #ececec);
+  --tenue: light-dark(#4a4a4a, #bdbdbd);
+  --lieve: light-dark(#6b6b6b, #9a9a9a);
+  --rosa: light-dark(#f386a1, #b85a73);
+  --lectio: light-dark(#d45bb6, #e27fca);
+  --stato: #09aea1;
+  --ok: #03aa5c;
+  --guasto: #e5484d;
+  --ombra: 6px 6px 0 var(--inchiostro);
+  --mono: "Departure Mono", ui-monospace, monospace;
+  --ui: "Geist", system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--campo); color: var(--inchiostro); }
+body { margin: 0; font: 400 16px/1.6 var(--ui); position: relative; overflow-x: hidden; }
+/* griglia a puntini in alto, retino nell'angolo in basso a destra */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(circle, var(--griglia) 1px, transparent 1.3px) 0 0 / 22px 22px;
+  mask-image: radial-gradient(120% 90% at 50% 0%, #000 30%, transparent 100%);
+}
+body::after {
+  content: ""; position: fixed; right: 0; bottom: 0; width: 340px; height: 300px; z-index: -1; pointer-events: none;
+  background: radial-gradient(circle, var(--inchiostro) 1.4px, transparent 1.7px) 0 0 / 8px 8px;
+  mask-image: radial-gradient(100% 100% at 100% 100%, #000 0%, rgba(0,0,0,.55) 35%, transparent 72%);
+}
+::selection { background: var(--rosa); color: #1e1e1e; }
+:focus-visible { outline: 2px solid var(--lectio); outline-offset: 2px; }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+code, kbd, .mono { font-family: var(--mono); font-size: .92em; }
+
+/* --- testata ----------------------------------------------------------------- */
+.testata {
+  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 14px;
+  padding: 14px clamp(16px, 4vw, 40px); border-bottom: 1px solid var(--inchiostro);
+  background: color-mix(in srgb, var(--carta) 86%, transparent); backdrop-filter: blur(12px);
+}
+.marchio-testo { background: var(--inchiostro); color: var(--carta); font-weight: 600; padding: 4px 10px; letter-spacing: .02em; text-decoration: none; }
+.chip { font-family: var(--mono); font-size: 13px; border: 1px solid var(--inchiostro); padding: 3px 10px; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.chip::before { content: ""; width: 9px; height: 9px; background: var(--lectio); }
+.chip.ok::before { background: var(--ok); }
+.chip.rec::before { background: var(--guasto); border-radius: 50%; }
+.chip.nudo::before { display: none; }
+.testata nav { margin-left: auto; display: flex; gap: 18px; font-size: 14px; }
+.testata nav a { text-decoration: none; }
+.testata nav a:hover { text-decoration: underline; text-decoration-color: var(--rosa); text-decoration-thickness: 3px; }
+
+/* --- impaginazione -------------------------------------------------------------- */
+main { max-width: 1180px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px) 96px; }
+section { margin-top: 112px; scroll-margin-top: 80px; }
+.etichetta { font-family: var(--mono); font-size: 13px; color: var(--lieve); text-transform: uppercase; letter-spacing: .06em; }
+h1, h2, h3 { margin: 0; }
+h1 { font-weight: 900; font-size: clamp(44px, 7.4vw, 96px); letter-spacing: -0.045em; line-height: .95; }
+h2 { font-weight: 900; font-size: clamp(32px, 4.6vw, 56px); letter-spacing: -0.04em; line-height: 1; margin: 10px 0 18px; }
+h3 { font-weight: 600; font-size: 19px; letter-spacing: -0.01em; }
+.sotto { text-decoration: underline; text-decoration-color: var(--rosa); text-decoration-thickness: .12em; text-underline-offset: .08em; text-decoration-skip-ink: none; }
+.lead { font-size: clamp(17px, 1.6vw, 20px); color: var(--tenue); max-width: 64ch; }
+p { max-width: 70ch; }
+
+/* --- finestre Lectio: barra nera, bordo 1px, ombra sfalsata, doppio filo -------- */
+.finestra { background: var(--finestra); border: 1px solid var(--inchiostro); box-shadow: var(--ombra); position: relative; }
+.finestra > .barra {
+  height: 30px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px;
+  background: var(--inchiostro); color: var(--carta); font-size: 13px; font-weight: 600;
+}
+.finestra > .barra .mono { font-weight: 400; opacity: .75; }
+.finestra > .corpo { padding: 22px; position: relative; }
+.finestra > .corpo::after { content: ""; position: absolute; inset: 4px; border: 1px solid var(--carta); pointer-events: none; }
+.finestra.carta { background: var(--carta); }
+.finestra img { display: block; width: 100%; height: auto; }
+
+.tasto {
+  display: inline-flex; align-items: center; gap: 10px; padding: 12px 20px; font: 600 15px var(--ui);
+  text-transform: uppercase; letter-spacing: .03em; text-decoration: none; border: 1px solid var(--inchiostro);
+  background: var(--carta); color: var(--inchiostro); transition: transform .12s, box-shadow .12s;
+}
+.tasto.pieno { background: var(--inchiostro); color: var(--carta); }
+.tasto:hover { transform: translate(-2px, -2px); box-shadow: 3px 3px 0 var(--lectio); }
+
+/* --- hero ------------------------------------------------------------------------ */
+.hero { margin-top: 72px; display: grid; gap: 40px; }
+.hero .azioni { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
+.hero .schermo { margin-top: 24px; }
+.dati { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* --- griglie --------------------------------------------------------------------- */
+.griglia { display: grid; gap: 28px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.griglia .finestra h3 { margin-bottom: 6px; }
+.griglia .finestra p { margin: 0; color: var(--tenue); font-size: 15px; }
+
+/* --- catena di elaborazione ------------------------------------------------------ */
+.catena { list-style: none; padding: 0; margin: 0; counter-reset: passo; display: grid; gap: 0; }
+.catena li {
+  counter-increment: passo; display: grid; grid-template-columns: 64px 1fr; gap: 20px; padding: 22px 0;
+  border-top: 1px solid var(--inchiostro);
+}
+.catena li:last-child { border-bottom: 1px solid var(--inchiostro); }
+.catena li::before {
+  content: counter(passo, decimal-leading-zero); font-family: var(--mono); font-size: 28px; line-height: 1;
+  width: 56px; height: 56px; display: grid; place-items: center; background: var(--inchiostro); color: var(--carta);
+}
+.catena li:nth-child(4)::before { box-shadow: 3px 3px 0 var(--lectio); }
+.catena h3 { margin: 4px 0 4px; }
+.catena p { margin: 0; color: var(--tenue); }
+.catena .uscita { font-family: var(--mono); font-size: 13px; color: var(--lieve); margin-top: 6px; display: block; }
+
+/* --- tabella Mac / Windows ------------------------------------------------------- */
+table { border-collapse: collapse; width: 100%; font-size: 15px; background: var(--carta); }
+th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--griglia); vertical-align: top; }
+thead th { background: var(--inchiostro); color: var(--carta); font-weight: 600; border: 0; }
+tbody th { font-weight: 600; white-space: nowrap; }
+.scorri { overflow-x: auto; }
+
+/* --- terminale ------------------------------------------------------------------- */
+pre {
+  margin: 0; padding: 18px 20px; background: #141414; color: #ececec; font: 14px/1.7 var(--mono);
+  overflow-x: auto; white-space: pre;
+}
+pre .c { color: #9a9a9a; }
+pre .p { color: #e27fca; }
+
+/* --- brand kit ------------------------------------------------------------------- */
+.tavola { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; padding: 18px; background: #141414; }
+.tavola > div {
+  aspect-ratio: 4 / 3; background: #fefefe; color: #1e1e1e; position: relative; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 22px;
+}
+.tavola > div.buio { background: #1e1e1e; color: #ececec; }
+.tavola > div.grigio { background: #dedede; }
+.tavola .n { position: absolute; left: 14px; bottom: 10px; font: 12px var(--mono); opacity: .8; letter-spacing: .06em; }
+.tavola .puntini { background: #fefefe radial-gradient(circle, #c4c4c4 1px, transparent 1.3px) 0 0 / 16px 16px; }
+.marchio { width: 96px; height: 96px; display: block; }
+.parola { font-weight: 900; font-size: 46px; letter-spacing: -0.05em; line-height: 1; margin-top: 14px; }
+.costruzione svg { width: 72%; height: auto; }
+.essenza { font-weight: 900; font-size: clamp(26px, 3vw, 40px); letter-spacing: -0.045em; line-height: .98; text-align: left; align-self: stretch; }
+.colori { display: grid; grid-template-columns: repeat(3, 1fr); align-self: stretch; flex: 1; border: 1px solid #1e1e1e; }
+.colori span { display: flex; align-items: flex-end; padding: 6px 8px; font: 12px var(--mono); }
+.tipo { align-self: stretch; text-align: left; }
+.tipo b { display: block; font-weight: 900; font-size: 72px; letter-spacing: -0.05em; line-height: .9; }
+.tipo span { font: 15px var(--mono); display: block; margin-top: 10px; }
+.copertina-pdf { width: 46%; aspect-ratio: 210 / 297; background: #fefefe; border: 1px solid #1e1e1e; box-shadow: 6px 6px 0 #1e1e1e; padding: 10%; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+.copertina-pdf i { font: normal 10px var(--mono); letter-spacing: .14em; color: #d45bb6; }
+.copertina-pdf b { font-weight: 900; font-size: 17px; letter-spacing: -0.04em; line-height: 1; }
+.copertina-pdf s { display: block; width: 26%; height: 4px; background: #f386a1; text-decoration: none; margin-top: 4px; }
+.manifesto { background: #1e1e1e radial-gradient(circle, #ececec 1.6px, transparent 1.9px) 0 0 / 9px 9px !important; }
+.manifesto svg { width: 70%; height: auto; }
+.pezzi { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.pezzi .chip { background: #fefefe; color: #1e1e1e; border-color: #1e1e1e; }
+
+/* --- piede ----------------------------------------------------------------------- */
+footer { border-top: 1px solid var(--inchiostro); padding: 28px clamp(16px, 4vw, 40px); display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; font-size: 14px; color: var(--lieve); }
+
+@media (max-width: 720px) {
+  .testata nav { display: none; }
+  .tavola { grid-template-columns: 1fr; }
+  .catena li { grid-template-columns: 48px 1fr; }
+  .catena li::before { width: 44px; height: 44px; font-size: 20px; }
+}
+@media (prefers-reduced-motion: reduce) { .tasto { transition: none; } }

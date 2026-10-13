@@ -17,19 +17,23 @@ colors:
   carta: "#ffffff"
 typography:
   titolo:
-    fontFamily: "Schibsted Grotesk, system-ui, sans-serif"
+    fontFamily: "Geist, system-ui, sans-serif"
     fontSize: "clamp(34px, 4.6vw, 60px)"
-    fontWeight: 650
-    lineHeight: 1.04
-    letterSpacing: "-0.04em"
+    fontWeight: 900
+    lineHeight: 0.95
+    letterSpacing: "-0.045em"
   sezione:
-    fontFamily: "Schibsted Grotesk, system-ui, sans-serif"
+    fontFamily: "Geist, system-ui, sans-serif"
     fontSize: "22px"
-    fontWeight: 650
-    letterSpacing: "-0.025em"
+    fontWeight: 700
+    letterSpacing: "-0.02em"
   ui:
-    fontFamily: "Schibsted Grotesk, system-ui, sans-serif"
-    fontSize: "15px"
+    fontFamily: "Geist, system-ui, sans-serif"
+    fontSize: "14.5px"
+    fontWeight: 400
+  etichette:
+    fontFamily: "Departure Mono, ui-monospace, monospace"
+    fontSize: "13px"
     fontWeight: 400
   appunti:
     fontFamily: "Iowan Old Style, Charter, Georgia, serif"

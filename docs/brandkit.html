@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sbobina · Brand kit</title>
+<link rel="icon" href="img/marchio.svg" type="image/svg+xml">
+<link rel="stylesheet" href="lectio.css">
+<style>
+  /* La tavola è sempre a 1200 px di larghezza: è anche la sorgente di img/brandkit.png */
+  html, body { background: #141414; }
+  body::before, body::after { display: none; }
+  .foglio { width: 1200px; margin: 0 auto; }
+  .intestazione { display: flex; justify-content: space-between; padding: 18px 18px 0; font: 12px var(--mono); color: #9a9a9a; letter-spacing: .08em; text-transform: uppercase; }
+  .intestazione b { color: #ececec; font-weight: 400; }
+</style>
+</head>
+<body>
+<div class="foglio">
+  <div class="intestazione"><b>Sbobina — Brand kit</b><span>Tema Lectio · carta, inchiostro, un accento</span><span>2026</span></div>
+  <div class="tavola">
+
+    <!-- 1 · Marchio -->
+    <div class="puntini">
+      <img class="marchio" src="img/marchio.svg" alt="Marchio di Sbobina: cinque barre d'onda bianche su un quadrato nero, la centrale rosa.">
+      <div class="parola">Sbobina</div>
+      <span class="chip nudo" style="margin-top:12px;background:#fefefe">SBOBINA.OS1</span>
+      <span class="n">01 · MARCHIO</span>
+    </div>
+
+    <!-- 2 · Costruzione -->
+    <div class="grigio costruzione">
+      <svg viewBox="0 0 32 32" role="img" aria-label="Costruzione del marchio su una griglia di 32 unità">
+        <defs><pattern id="g" width="2" height="2" patternUnits="userSpaceOnUse"><path d="M2 0H0V2" fill="none" stroke="#a8a8a8" stroke-width=".06"/></pattern></defs>
+        <rect width="32" height="32" fill="url(#g)"/>
+        <rect x="4" y="4" width="25" height="24" fill="none" stroke="#1e1e1e" stroke-width=".12" stroke-dasharray=".5 .5"/>
+        <line x1="0" y1="16" x2="32" y2="16" stroke="#d45bb6" stroke-width=".08"/>
+        <g stroke-width="2.6" stroke-linecap="square" fill="none">
+          <path stroke="#1e1e1e" d="M8.5 13.5v5M12.5 10.5v11M20.5 11v10M24.5 14v4"/>
+          <path stroke="#d45bb6" d="M16.5 7.5v17"/>
+        </g>
+        <g font-family="Departure Mono, monospace" font-size="1.1" fill="#4a4a4a">
+          <text x="7.3" y="30.6">5</text><text x="11.3" y="30.6">11</text><text x="15.3" y="30.6">17</text><text x="19.3" y="30.6">10</text><text x="23.3" y="30.6">4</text>
+        </g>
+      </svg>
+      <span class="n">02 · COSTRUZIONE · 32 u · passo 4</span>
+    </div>
+
+    <!-- 3 · App -->
+    <div class="buio">
+      <div class="finestra" style="width:100%;box-shadow:6px 6px 0 #ececec;border-color:#ececec">
+        <div class="barra" style="background:#ececec;color:#1e1e1e"><span>Sbobina 1.1</span><span class="mono">app</span></div>
+        <img src="img/app-chiaro.jpg" alt="" style="aspect-ratio:16/9;object-fit:cover;object-position:30% 30%">
+      </div>
+      <span class="n">03 · APPLICAZIONE DIGITALE</span>
+    </div>
+
+    <!-- 4 · Essenza -->
+    <div>
+      <p class="essenza">Dalla voce<br>agli appunti.<br><span class="sotto">Niente di inventato.</span></p>
+      <span class="n">04 · ESSENZA</span>
+    </div>
+
+    <!-- 5 · Colori -->
+    <div style="padding-bottom:40px">
+      <div class="colori">
+        <span style="background:#fefefe">Carta<br>#FEFEFE</span>
+        <span style="background:#dedede">Finestra<br>#DEDEDE</span>
+        <span style="background:#1e1e1e;color:#ececec">Inchiostro<br>#1E1E1E</span>
+        <span style="background:#f386a1">Rosa<br>#F386A1</span>
+        <span style="background:#d45bb6;color:#1e1e1e">Lectio<br>#D45BB6</span>
+        <span style="background:#09aea1;color:#1e1e1e">Stato<br>#09AEA1</span>
+      </div>
+      <span class="n">05 · COLORI · un accento per schermata</span>
+    </div>
+
+    <!-- 6 · Caratteri -->
+    <div class="grigio">
+      <div class="tipo">
+        <b>Aa Gg</b>
+        <span style="font-family:var(--ui);font-weight:600;font-size:15px">Geist Black · titoli &nbsp;/&nbsp; Geist · testo</span>
+        <span>Departure Mono · ⏱ 23:15 · [incerto]</span>
+      </div>
+      <span class="n">06 · CARATTERI</span>
+    </div>
+
+    <!-- 7 · PDF -->
+    <div class="puntini">
+      <div class="copertina-pdf">
+        <i>DIRITTO PRIVATO</i>
+        <b>Il contratto: elementi essenziali</b>
+        <s></s>
+      </div>
+      <span class="n">07 · APPLICAZIONE FISICA · PDF A4</span>
+    </div>
+
+    <!-- 8 · Manifesto -->
+    <div class="buio manifesto">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="5" width="22" height="22" fill="#1e1e1e"/>
+        <g stroke-width="2.6" stroke-linecap="square" fill="none"><path stroke="#fefefe" d="M8.5 13.5v5M12.5 10.5v11M20.5 11v10M24.5 14v4"/><path stroke="#f386a1" d="M16.5 7.5v17"/></g></svg>
+      <span class="n" style="color:#ececec;opacity:.8;background:#1e1e1e;padding:0 4px">08 · IMMAGINE · retino a 1 bit</span>
+    </div>
+
+    <!-- 9 · Componenti -->
+    <div>
+      <div class="pezzi">
+        <span class="chip rec">REGISTRA</span>
+        <span class="chip ok">AI pronta</span>
+        <span class="chip nudo">⏱ 23:15</span>
+        <span class="chip nudo">[incerto]</span>
+        <span class="chip">Integrazione</span>
+        <span class="tasto pieno" style="background:#1e1e1e;color:#fefefe;box-shadow:3px 3px 0 #d45bb6">+ Nuova lezione</span>
+      </div>
+      <span class="n">09 · COMPONENTI</span>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
