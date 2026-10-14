@@ -1078,7 +1078,7 @@ a { color: var(--blu-testo); text-underline-offset: 3px; }
 .opzione.sbagliata { border-color: var(--guasto); background: var(--guasto-tenue); }
 .opzione.sbagliata .lettera { background: var(--guasto); color: #fff; }
 .spiegazione { padding: 12px 16px; border-radius: var(--r-piccolo); background: var(--blu-tenue); color: var(--inchiostro-tenue); }
-.spiegazione .tempo { margin-left: 4px; }
+.spiegazione .tempo { margin-left: 4px; white-space: nowrap; }
 .quiz > .tasto.grande { justify-self: end; }
 
 .chat { display: grid; gap: 12px; margin-bottom: 18px; }
