@@ -230,6 +230,16 @@ Gli appunti finiscono in `dati/lezioni/<id>/appunti.md` e `appunti.html` (aprila
 - Un file per lezione. Se la registrazione si interrompe, carica i pezzi come lezioni separate.
 - Carica le slide della lezione: è il modo più efficace per avere termini, formule e nomi corretti.
 
+## Problemi noti
+
+- **App per Mac non firmata da Apple.** Al primo avvio macOS la blocca: tasto destro → **Apri**. Serve un Apple Developer ID (a pagamento), non ancora preso.
+- **Windows non ancora provato su un PC vero.** Installer, llama.cpp e Whisper con CUDA sono stati controllati solo dal Mac: possono esserci errori al primo avvio.
+- **Registrare dal microfono** richiede il permesso del Mac (Impostazioni di Sistema → Privacy e sicurezza → Microfono). Senza, l'app lo dice; una registrazione lunga dall'app non è ancora stata provata a fondo.
+- **Download dei modelli lenti o interrotti.** Da alcune reti Hugging Face si blocca o chiude la connessione: Sbobina riparte da sola dopo 60 secondi senza dati. Il modello più grande pesa circa 15 GB, quindi il primo download può richiedere ore.
+- **Flashcard e quiz con l'AI integrata.** A volte Gemma scrive un JSON rotto: Sbobina lo ripara e riprova una volta, ma può comparire "riprova". Basta rigenerare.
+
+Hai trovato altro? Apri una [segnalazione](https://github.com/swumpyyy/sbobina/issues).
+
 ## Privacy
 
 L'audio resta sul tuo computer, salvo quando usi i servizi cloud di trascrizione (AssemblyAI,

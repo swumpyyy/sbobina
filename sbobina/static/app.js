@@ -1321,7 +1321,6 @@
     zona.replaceChildren(testa, sessioneRipasso(s.da_ripassare, `${s.carte.length} carte in questa lezione`));
   }
 
-  /** Una sessione di ripasso: la carta si gira, poi "La sapevo" o "Da rivedere". */
   /** Uno span con il testo e le sue formule disegnate (il testo è sempre messo in sicurezza da Sbobina.formule). */
   function conFormule(testo) {
     const span = h("span");
@@ -1329,6 +1328,7 @@
     return span;
   }
 
+  /** Una sessione di ripasso: la carta si gira, poi "La sapevo" o "Da rivedere". */
   function sessioneRipasso(carte, contesto) {
     const box = h("div", { class: "sessione" });
     let i = 0;

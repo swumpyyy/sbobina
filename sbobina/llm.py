@@ -317,7 +317,7 @@ def _estrai_json(testo: str, schema: dict | None = None) -> dict:
 
 # I comandi LaTeX che iniziano con una lettera che in JSON è un escape valido (\frac = \f + "rac"):
 # vanno raddoppiati anche loro, altrimenti diventerebbero un carattere di controllo.
-_LATEX = r"(?:frac|forall|beta|bar|binom|begin|boldsymbol|bigcup|bigcap|bmod|nu|nabla|neq|ne|not|notin|newline|nmid|" \
+_LATEX = r"(?:frac|forall|beta|bar|binom|begin|boldsymbol|bigcup|bigcap|bmod|nu|nabla|neq|not|notin|newline|nmid|" \
          r"theta|times|text|textbf|tau|tan|to|top|tilde|triangle|rho|right|rightarrow|rangle|rfloor|rceil|Rightarrow|underline|uparrow|unlhd)"
 
 

@@ -87,6 +87,8 @@ def test_estrai_json_ripara_latex_e_virgole():
     assert dati["carte"][0]["fronte"] == "Derivata di $\\frac{1}{x}$"
     assert dati["carte"][0]["retro"] == "$-\\frac{1}{x^2}$ e \\sum, \\alpha"
     assert dati["nota"] == "riga\nnuova \\beta"  # \n vero e \\ già corretto restano com'erano
+    # "\ne la" in italiano è un a capo seguito da "e", non il \ne del LaTeX
+    assert _estrai_json('{"retro": "uno\\ne la due",}')["retro"] == "uno\ne la due"
 
 
 def test_estrai_json_rimette_le_chiavi_storpiate_di_gemma():
