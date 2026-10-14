@@ -439,21 +439,54 @@
 
   // --- dietro le quinte: cosa sta facendo l'AI, in diretta ----------------------
 
-  // Le parole che girano mentre l'AI lavora, come in Claude Code: metà in italiano, metà in inglese.
+  // Le parole che girano mentre l'AI lavora, come in Claude Code: tutte in italiano, un po' da ragazzi.
   // Ogni tappa ha le sue (Whisper ascolta, la revisione lima, gli appunti si scarabocchiano) più quelle comuni.
   const VERBI = {
     comuni: ["Rimuginando", "Arzigogolando", "Almanaccando", "Elucubrando", "Ghiribizzando", "Macinando",
       "Lambiccandosi", "Fantasticando", "Armeggiando", "Spignattando", "Frullando", "Sobbollendo", "Cogitando",
-      "Improvising", "Doodling", "Pondering", "Noodling", "Percolating", "Cogitating", "Mulling", "Musing",
-      "Ruminating", "Simmering", "Brewing", "Marinating", "Moseying", "Puttering", "Tinkering", "Combobulating",
-      "Flibbertigibbeting", "Reticulating", "Finagling", "Wrangling", "Conjuring", "Whirring"],
-    0: ["Preparando il terreno", "Accordando gli strumenti", "Warming up", "Tuning in"],
-    1: ["Origliando", "Sbobinando", "Tendendo l'orecchio", "Decifrando", "Eavesdropping", "Listening in", "Deciphering", "Transcribing"],
-    2: ["Rileggendo", "Limando", "Ripulendo", "Sgrovigliando", "Polishing", "Tidying up", "Untangling", "Proofreading"],
-    3: ["Scarabocchiando", "Abbozzando", "Impaginando", "Sferruzzando", "Scribbling", "Drafting", "Inking", "Weaving"],
-    4: ["Spulciando", "Scrutinando", "Setacciando", "Fact-checking", "Sussing", "Double-checking", "Scrutinizing"],
-    5: ["Approfondendo", "Scavando", "Rovistando", "Spelunking", "Digging deeper", "Unravelling"],
+      "Improvvisando", "Scarabocchiando a margine", "Meditando", "Cincischiando", "Ruminando", "Pensandoci su",
+      "Bollendo in pentola", "Marinando", "Bighellonando", "Trafficando", "Smanettando", "Rimestando",
+      "Ingarbugliando e sbrogliando", "Facendo due conti", "Spremendo le meningi", "Tirando le fila",
+      "Mettendo in fila i neuroni", "Caricando il cervellone", "Sorseggiando un caffè", "Ronzando",
+      "Girando la moka", "Facendo il ripasso al volo"],
+    0: ["Preparando il terreno", "Accordando gli strumenti", "Scaldando i motori", "Sintonizzandosi", "Allacciando le cinture"],
+    1: ["Origliando", "Sbobinando", "Tendendo l'orecchio", "Decifrando", "Drizzando le antenne", "Ascoltando dal primo banco",
+      "Ripescando le parole", "Prendendo appunti a raffica"],
+    2: ["Rileggendo", "Limando", "Ripulendo", "Sgrovigliando", "Lucidando", "Mettendo in ordine", "Correggendo con la penna rossa",
+      "Stirando le frasi"],
+    3: ["Scarabocchiando", "Abbozzando", "Impaginando", "Sferruzzando", "Scrivendo in bella", "Evidenziando", "Ricopiando in bella",
+      "Disegnando frecce e schemi"],
+    4: ["Spulciando", "Scrutinando", "Setacciando", "Facendo le pulci", "Ricontrollando", "Mettendo la lente d'ingrandimento",
+      "Interrogando gli appunti"],
+    5: ["Approfondendo", "Scavando", "Rovistando", "Andando a fondo", "Sbrogliando la matassa", "Tirando fuori il di più"],
   };
+
+  /** Il marchio di Sbobina che parla: le cinque barre salgono quando l'AI produce parole e si abbassano quando tace. */
+  function marchioVoce() {
+    const marchio = h("span", { class: "marchio-voce", "aria-hidden": "true" }, ...[5, 11, 17, 10, 4].map((alto) =>
+      h("i", { style: `--alto:${alto / 17}` })));
+    const barre = [...marchio.children];
+    let energia = 0.2;   // 0 = silenzio, 1 = l'AI scrive a raffica
+    let attiva = false;
+    let prossimo = 0;
+    const fermo = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const passo = (t) => {
+      if (!marchio.isConnected) return;
+      if (t > prossimo) { // come il livello di un microfono: ogni barra prende un'altezza nuova, scalata dal volume
+        energia = Math.max(attiva ? 0.15 : 0, energia * 0.86);
+        barre.forEach((b) => {
+          const voce = attiva && !fermo ? 0.25 + 0.75 * energia * (0.45 + Math.random() * 0.55) : 0.55;
+          b.style.transform = `scaleY(${Math.max(0.18, Math.min(1, voce * 1.25))})`;
+        });
+        prossimo = t + 110;
+      }
+      requestAnimationFrame(passo);
+    };
+    requestAnimationFrame(passo);
+    marchio.parla = (caratteri) => { energia = Math.min(1, Math.max(energia, 0.3 + caratteri / 120)); };
+    marchio.attiva = (si) => { attiva = si; };
+    return marchio;
+  }
 
   function verboACaso(tappa, precedente) {
     const propri = VERBI[tappa] || [];
@@ -490,13 +523,9 @@
     const chi = h("span", { class: "chi" });
     const flusso = h("div", { class: "flusso", role: "log", "aria-live": "off", tabindex: "0", "aria-label": "Testo in diretta" },
       h("p", { class: "attesa" }, "Tra poco qui compaiono le parole, man mano che l'AI le scrive."));
-    const girandola = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    girandola.setAttribute("class", "girandola");
-    girandola.setAttribute("viewBox", "0 0 24 24");
-    girandola.setAttribute("aria-hidden", "true");
-    girandola.innerHTML = '<g><path d="M12 3.5v17M4.6 7.75l14.8 8.5M4.6 16.25l14.8-8.5"/></g>'; // solo costanti
+    const marchio = marchioVoce();
     const sezione = h("details", { class: "quinte", open: localStorage.getItem("sbobina-quinte") !== "chiuse" },
-      h("summary", {}, girandola, h("span", { class: "riga-verbo" }, verbo, tempo), chi,
+      h("summary", {}, marchio, h("span", { class: "riga-verbo" }, verbo, tempo), chi,
         h("span", { class: "apri" }, icona("freccia"))),
       flusso);
     sezione.addEventListener("toggle", () => localStorage.setItem("sbobina-quinte", sezione.open ? "aperte" : "chiuse"));
@@ -513,6 +542,7 @@
       const lezione = stato.lezioni.find((x) => x.id === l.id) || l;
       const attiva = lezione.stato === "in_elaborazione";
       sezione.classList.toggle("ferma", !attiva);
+      marchio.attiva(attiva);
       const tappa = indiceTacca(lezione.fase);
       const scarica = stato.info && stato.info.preparazione && stato.info.preparazione.attiva;
       chi.textContent = !attiva ? (lezione.stato === "in_coda" ? "In coda" : "In pausa")
@@ -532,6 +562,7 @@
           if (!stato.diretta || stato.diretta.turno !== d.turno) stato.diretta = { turno: d.turno, inizio: Date.now() };
           if (d.testo !== ultimoTesto) {
             const nuovi = d.testo.startsWith(ultimoTesto) ? d.testo.length - ultimoTesto.length : 0;
+            marchio.parla(nuovi);
             if (d.testo) disegnaFlusso(flusso, d.testo, Math.min(nuovi, 400));
             ultimoTesto = d.testo;
             if (segui) flusso.scrollTop = flusso.scrollHeight;
@@ -1290,6 +1321,13 @@
     zona.replaceChildren(testa, sessioneRipasso(s.da_ripassare, `${s.carte.length} carte in questa lezione`));
   }
 
+  /** Uno span con il testo e le sue formule disegnate (il testo è sempre messo in sicurezza da Sbobina.formule). */
+  function conFormule(testo) {
+    const span = h("span");
+    span.innerHTML = window.Sbobina.formule(String(testo ?? ""));
+    return span;
+  }
+
   /** Una sessione di ripasso: la carta si gira, poi "La sapevo" o "Da rivedere". */
   function sessioneRipasso(carte, contesto) {
     const box = h("div", { class: "sessione" });
@@ -1303,9 +1341,9 @@
         return;
       }
       const c = carte[i];
-      const retro = h("div", { class: "retro" }, h("div", {}, c.retro));
+      const retro = h("div", { class: "retro" }, h("div", {}, conFormule(c.retro)));
       const carta = h("button", { class: "carta", type: "button", "aria-label": "Gira la carta" },
-        h("span", { class: "fronte" }, c.fronte), retro);
+        h("span", { class: "fronte" }, conFormule(c.fronte)), retro);
       const esiti = h("div", { class: "esiti", hidden: true },
         h("button", { class: "tasto", type: "button", onclick: () => rispondi(false) }, "Da rivedere"),
         h("button", { class: "tasto grande", type: "button", onclick: () => rispondi(true) }, icona("spunta"), "La sapevo"));
@@ -1361,15 +1399,15 @@
             if (k === Number(q.corretta)) b.classList.add("giusta");
           });
           if (!giusta) e.currentTarget.classList.add("sbagliata");
-          spiegazione.replaceChildren(h("strong", {}, giusta ? "Giusto. " : "Non proprio. "), q.spiegazione,
+          spiegazione.replaceChildren(h("strong", {}, giusta ? "Giusto. " : "Non proprio. "), conFormule(q.spiegazione),
             q.tempo && $("#lettore-audio") ? h("a", { class: "tempo", href: "#", onclick: (ev) => { ev.preventDefault(); vaiA(secondiDa(q.tempo)); } }, ` ⏱ ${q.tempo}`) : null);
           spiegazione.hidden = false;
           avanti.hidden = false;
           avanti.focus();
-        } }, h("span", { class: "lettera" }, "ABCD"[n] || String(n + 1)), testo)));
+        } }, h("span", { class: "lettera" }, "ABCD"[n] || String(n + 1)), conFormule(testo))));
       corpo.replaceChildren(
         h("div", { class: "contatore-carte" }, h("span", { class: "dati" }, `${i + 1} / ${quiz.domande.length}`)),
-        h("p", { class: "domanda" }, q.domanda), opzioni, spiegazione, avanti);
+        h("p", { class: "domanda" }, conFormule(q.domanda)), opzioni, spiegazione, avanti);
     };
     mostra();
     zona.replaceChildren(testa, corpo);

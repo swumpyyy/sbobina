@@ -348,5 +348,11 @@
     }
   }
 
-  window.Sbobina = { render, secondi, pronto };
+  // Testo semplice con formule $...$ (flashcard, quiz): il resto resta testo, le formule passano da KaTeX.
+  function formule(testo) {
+    const protetto = proteggiFormule(testo || "");
+    return rendiFormule(escapeHtml(protetto.md), protetto.formule);
+  }
+
+  window.Sbobina = { render, secondi, pronto, formule };
 })();

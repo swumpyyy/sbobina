@@ -78,3 +78,35 @@ def test_temi_colore_lectio():
     assert Impostazioni.da_dict({"accento": "personalizzato", "colore": "#12ab9F"}).colore == "#12ab9F"
     with pytest.raises(ValueError):
         Impostazioni.da_dict({"colore": "rosso"})
+
+
+def test_estrai_json_ripara_latex_e_virgole():
+    # Gli errori veri di Gemma su flashcard e quiz: \frac con una barra sola e una virgola prima della graffa.
+    rotto = '{"carte": [{"fronte": "Derivata di $\\frac{1}{x}$", "retro": "$-\\frac{1}{x^2}$ e \\sum, \\alpha",},], "nota": "riga\\nnuova \\\\beta"}'
+    dati = _estrai_json(rotto)
+    assert dati["carte"][0]["fronte"] == "Derivata di $\\frac{1}{x}$"
+    assert dati["carte"][0]["retro"] == "$-\\frac{1}{x^2}$ e \\sum, \\alpha"
+    assert dati["nota"] == "riga\nnuova \\beta"  # \n vero e \\ già corretto restano com'erano
+    # "\ne la" in italiano è un a capo seguito da "e", non il \ne del LaTeX
+    assert _estrai_json('{"retro": "uno\\ne la due",}')["retro"] == "uno\ne la due"
+
+
+def test_estrai_json_rimette_le_chiavi_storpiate_di_gemma():
+    # Casi veri dal modello integrato: chiave senza virgoletta d'apertura, carattere spurio, nome sbagliato, chiave in più.
+    from sbobina.studio import SCHEMA_QUIZ
+    rotto = """{"domande": [
+    {
+즘": "Perché non è iniettiva?",
+      "opzione": [
+e        "A",
+        "B"
+      ],
+      azione: "nessuna",
+      "corretta": 1,
+      "spiegazione": "Perché f(1) = f(-1).",
+      "tempo": "16:15"
+    }
+  ]}"""
+    [d] = _estrai_json(rotto, SCHEMA_QUIZ)["domande"]
+    assert d == {"domanda": "Perché non è iniettiva?", "opzioni": ["A", "B"], "corretta": 1,
+                 "spiegazione": "Perché f(1) = f(-1).", "tempo": "16:15"}
