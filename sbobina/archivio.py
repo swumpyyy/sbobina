@@ -141,8 +141,8 @@ class Archivio:
     def crea_lezione(
         self,
         *,
-        audio: Path,
-        nome_audio: str,
+        audio: Path | None,
+        nome_audio: str = "",
         corso: str,
         titolo: str = "",
         data_lezione: str = "",
@@ -150,18 +150,26 @@ class Archivio:
         materiali: list[tuple[str, Path]] | None = None,
         sposta: bool = False,
     ) -> Lezione:
-        """Crea una lezione copiando (o spostando) l'audio e i materiali nella sua cartella."""
+        """Crea una lezione copiando (o spostando) l'audio e i materiali nella sua cartella.
+
+        Senza audio la lezione nasce solo dai materiali (appunti, PDF, foto).
+        """
         estensione = Path(nome_audio).suffix.lower()
-        if estensione not in ESTENSIONI_AUDIO:
+        if audio is not None and estensione not in ESTENSIONI_AUDIO:
             raise ValueError(f"Formato audio non supportato: {nome_audio}")
-        titolo = titolo.strip() or Path(nome_audio).stem.replace("_", " ").strip()
+        if audio is None and not materiali:
+            raise ValueError("Senza audio servono appunti, PDF o foto.")
+        origine = nome_audio if audio is not None else materiali[0][0]
+        titolo = titolo.strip() or Path(origine).stem.replace("_", " ").strip()
         corso = corso.strip() or "Senza corso"
         id_lezione = f"{slug(titolo)}-{secrets.token_hex(3)}"
         cartella = self.cartella(id_lezione)
         (cartella / "materiali").mkdir(parents=True)
 
-        destinazione = cartella / f"originale{estensione}"
-        (shutil.move if sposta else shutil.copyfile)(audio, destinazione)
+        file_audio = ""
+        if audio is not None:
+            file_audio = f"originale{estensione}"
+            (shutil.move if sposta else shutil.copyfile)(audio, cartella / file_audio)
 
         nomi_materiali = []
         for nome, percorso in materiali or []:
@@ -174,7 +182,7 @@ class Archivio:
             titolo=titolo,
             corso=corso,
             data=data_lezione or date.today().isoformat(),
-            file_audio=destinazione.name,
+            file_audio=file_audio,
             materiali=nomi_materiali,
             note=note.strip(),
         )

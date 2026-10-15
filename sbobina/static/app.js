@@ -25,6 +25,8 @@
     { etichetta: "Approfondimento", inizi: ["approfondimento"] },
   ];
   const ACCETTA_AUDIO = "audio/*,video/*,.m4a,.mp3,.wav,.ogg,.opus,.flac,.aac,.amr,.3gp,.caf,.webm,.mp4,.wma";
+  const ACCETTA_MATERIALI = ".pdf,.txt,.md,.jpg,.jpeg,.png,.webp";
+  const ESTENSIONI_MATERIALI = /\.(pdf|txt|md|jpe?g|png|webp)$/i;
 
   const ICONE = {
     piu: '<path d="M12 5v14M5 12h14"/>',
@@ -70,6 +72,8 @@
   // --- utilità ------------------------------------------------------------
 
   /** Crea un elemento DOM. I figli stringa diventano nodi di testo (niente HTML iniettato). */
+  const LOCALE = () => (document.documentElement.lang === "en" ? "en-GB" : "it-IT");
+
   function h(tag, attributi = {}, ...figli) {
     const el = document.createElement(tag);
     for (const [chiave, valore] of Object.entries(attributi || {})) {
@@ -129,7 +133,7 @@
     if (!iso) return "";
     const data = new Date(`${iso}T12:00:00`);
     if (Number.isNaN(data.getTime())) return iso;
-    return new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short", year: "numeric" }).format(data);
+    return new Intl.DateTimeFormat(LOCALE(), { day: "numeric", month: "short", year: "numeric" }).format(data);
   }
 
   const percentuale = (valore) => `${Math.round((valore || 0) * 100)}%`;
@@ -214,7 +218,7 @@
   }
 
   function formattaGB(byte) {
-    return (byte / 1e9).toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    return (byte / 1e9).toLocaleString(LOCALE(), { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   }
 
   /** La barra dei download dei modelli, sotto la testata: GB, velocità e tempo che manca. */
@@ -243,7 +247,7 @@
       resto = minuti <= 1 ? " · meno di un minuto" : minuti < 60 ? ` · circa ${minuti} min` : ` · circa ${Math.floor(minuti / 60)} h ${minuti % 60} min`;
     } else if (/ferma/.test(p.messaggio || "")) resto = " · connessione ferma, riprovo";
     $(".quanto", barra).textContent = `${formattaGB(fatto)} di ${formattaGB(totale)} GB` +
-      (velocita > 50e3 ? ` · ${(velocita / 1e6).toLocaleString("it-IT", { maximumFractionDigits: 1 })} MB/s` : "") + resto;
+      (velocita > 50e3 ? ` · ${(velocita / 1e6).toLocaleString(LOCALE(), { maximumFractionDigits: 1 })} MB/s` : "") + resto;
     $(".riempimento", barra).style.setProperty("--p", String(quota));
     $(".liquido", barra).setAttribute("aria-valuenow", String(Math.round(quota * 100)));
     $(".percentuale", barra).textContent = `${Math.floor(quota * 100)}%`;
@@ -340,11 +344,11 @@
   function mostraBenvenuto() {
     stato.vista = "benvenuto";
     const ciSonoLezioni = stato.lezioni.length > 0;
-    const input = h("input", { type: "file", accept: ACCETTA_AUDIO, multiple: true });
+    const input = h("input", { type: "file", accept: `${ACCETTA_AUDIO},${ACCETTA_MATERIALI}`, multiple: true });
     const vassoio = h("label", { class: "vassoio" },
       h("span", { class: "disco", "aria-hidden": "true" }, icona("carica")),
       h("strong", {}, "Trascina qui la registrazione"),
-      h("span", {}, "oppure fai clic per sceglierla · m4a, mp3, wav e altri formati"),
+      h("span", {}, "oppure fai clic per sceglierla · audio, oppure appunti, PDF e foto senza audio"),
       input);
     input.addEventListener("change", () => input.files.length && mostraNuova(input.files));
     vassoio.addEventListener("dragover", (e) => { e.preventDefault(); vassoio.classList.add("sopra"); });
@@ -371,7 +375,7 @@
         ciSonoLezioni
           ? h("ul", { class: "contatori" },
               h("li", {}, h("b", {}, String(pronte.length)), pronte.length === 1 ? "lezione pronta" : "lezioni pronte"),
-              h("li", {}, h("b", {}, ore.toLocaleString("it-IT", { maximumFractionDigits: 1 })), "ore sbobinate"),
+              h("li", {}, h("b", {}, ore.toLocaleString(LOCALE(), { maximumFractionDigits: 1 })), "ore sbobinate"),
               h("li", {}, h("b", {}, String(corsi)), corsi === 1 ? "corso" : "corsi"),
               h("li", { class: "da-ripassare", hidden: true }, h("button", { class: "collegamento", type: "button", onclick: mostraRipassoGenerale },
                 h("b", {}), "carte da ripassare oggi")))
@@ -740,7 +744,8 @@
     const problemi = d.verifica ? d.verifica.problemi.length : null;
     const commutatore = h("div", { class: "commutatore", role: "tablist", "aria-label": "Cosa vuoi vedere" },
       h("span", { class: "cursore", "aria-hidden": "true" }));
-    const schede = [["appunti", "Appunti", null], ["approfondimento", "Approfondimento", null], ["trascrizione", "Trascrizione", null], ["verifica", "Verifica", problemi]];
+    const schede = [["appunti", "Appunti", null], ["approfondimento", "Approfondimento", null], ["trascrizione", "Trascrizione", null], ["verifica", "Verifica", problemi]]
+      .filter(([k]) => l.file_audio || k !== "trascrizione");  // lezione dai soli materiali: niente trascrizione
     if (l.stato === "completata") schede.push(["ripasso", "Ripasso", null], ["chiedi", "Chiedi", null]);
     if (!schede.some(([k]) => k === stato.scheda)) stato.scheda = "appunti";
     for (const [chiave, etichetta, conteggio] of schede) {
@@ -1021,11 +1026,11 @@
           h("div", { class: "voci-menu" },
             variante("appunti", "Solo appunti", "Il PDF da ricopiare nel quaderno."),
             variante("approfondimento", "Appunti + approfondimento", "Con spiegazioni, esempi ed esercizi."),
-            variante("trascrizione", "Appunti + trascrizione", "Con il testo completo della lezione."))),
+            l.file_audio ? variante("trascrizione", "Appunti + trascrizione", "Con il testo completo della lezione.") : null)),
         h("a", { class: "tasto", href: `/api/lezioni/${l.id}/scarica/html`, target: "_blank", rel: "noopener" },
           icona("stampa"), "Stampa"),
         h("a", { class: "tasto", href: `/api/lezioni/${l.id}/scarica/md` }, icona("scarica"), "Markdown"),
-        h("a", { class: "tasto", href: `/api/lezioni/${l.id}/scarica/trascrizione` }, icona("scarica"), "Trascrizione"));
+        ...(l.file_audio ? [h("a", { class: "tasto", href: `/api/lezioni/${l.id}/scarica/trascrizione` }, icona("scarica"), "Trascrizione")] : []));
     }
     if (!attiva) {
       const voce = (da, titolo, spiegazione) => h("button", { type: "button", onclick: () => rielabora(da) },
@@ -1033,9 +1038,11 @@
       barra.append(h("details", { class: "menu" },
         h("summary", { class: "tasto", role: "button" }, icona("ricarica"), "Rielabora"),
         h("div", { class: "voci-menu" },
-          voce("appunti", "Riscrivi gli appunti", "Dalla trascrizione già revisionata, per esempio dopo aver aggiornato il glossario."),
-          voce("revisione", "Rivedi la trascrizione", "Ripete la correzione dei termini e poi gli appunti."),
-          voce("tutto", "Ricomincia da capo", "Ritrascrive anche l'audio: richiede più tempo."))));
+          l.file_audio
+            ? voce("appunti", "Riscrivi gli appunti", "Dalla trascrizione già revisionata, per esempio dopo aver aggiornato il glossario.")
+            : voce("appunti", "Riscrivi gli appunti", "Di nuovo dai tuoi appunti, PDF e foto."),
+          l.file_audio ? voce("revisione", "Rivedi la trascrizione", "Ripete la correzione dei termini e poi gli appunti.") : null,
+          l.file_audio ? voce("tutto", "Ricomincia da capo", "Ritrascrive anche l'audio: richiede più tempo.") : null)));
     }
     barra.append(h("button", { class: "tasto", type: "button", onclick: () => mostraGlossario(l.corso) },
       icona("glossario"), "Glossario"));
@@ -1144,7 +1151,7 @@
       aiuto: "m4a, mp3, wav e altri formati. Più file diventano più lezioni.",
     });
     const materiali = vanoFile({
-      nome: "materiali", accetta: ".pdf,.txt,.md,.jpg,.jpeg,.png,.webp", multiplo: true, obbligatorio: false, icona: "graffetta",
+      nome: "materiali", accetta: ACCETTA_MATERIALI, multiplo: true, obbligatorio: false, icona: "graffetta",
       titolo: "Slide, dispense o foto della lavagna",
       aiuto: "Facoltativi, ma migliorano molto i termini tecnici.",
     });
@@ -1155,6 +1162,29 @@
       campoTitolo.disabled = tanti;
       campoTitolo.placeholder = tanti ? "Preso dal nome di ogni file" : "es. Lezione 5, Derivate";
     });
+    // Senza registrazione: la lezione nasce dagli appunti scritti, dai PDF o dalle foto.
+    const testo = h("label", { class: "campo", hidden: true }, h("span", {}, "I tuoi appunti ", h("small", {}, "(facoltativo se carichi file)")),
+      h("textarea", { name: "testo", rows: "6", disabled: true, placeholder: "Incolla o scrivi qui gli appunti presi a lezione, anche disordinati" }));
+    const inCima = h("div", { class: "modulo-form", hidden: true });
+    const sottotitolo = h("p", {}, "Scegli l'audio e il corso. Al resto pensa Sbobina, sul tuo computer.");
+    const origine = scelte("origine", [["audio", "Registrazione"], ["materiali", "Appunti, PDF o foto"]], "audio", (v) => {
+      const soloMateriali = v === "materiali";
+      audio.vano.hidden = soloMateriali;
+      audio.input.required = !soloMateriali;
+      if (soloMateriali && audio.input.files.length) { audio.input.value = ""; audio.input.dispatchEvent(new Event("change")); }
+      inCima.hidden = !soloMateriali;
+      if (soloMateriali) inCima.prepend(materiali.vano); else campiFacoltativi.prepend(materiali.vano);
+      testo.hidden = !soloMateriali;
+      testo.querySelector("textarea").disabled = !soloMateriali;  // nascosto non va inviato
+      materiali.vano.querySelector("strong").textContent = soloMateriali ? "Scegli o trascina appunti, PDF o foto" : "Slide, dispense o foto della lavagna";
+      materiali.vano.querySelector(".spiegazione").textContent = soloMateriali
+        ? "PDF (anche scansionati), foto di appunti o lavagna, file di testo. Più file diventano una lezione."
+        : "Facoltativi, ma migliorano molto i termini tecnici.";
+      sottotitolo.textContent = soloMateriali
+        ? "Carica appunti, PDF o foto della lavagna, o incolla il testo: Sbobina li trasforma in appunti completi."
+        : "Scegli l'audio e il corso. Al resto pensa Sbobina, sul tuo computer.";
+    });
+    inCima.append(testo);
     const barra = h("div");
     const testoCaricamento = h("span", {}, "");
     const caricamento = h("div", { class: "meter-caricamento", hidden: true, role: "status" },
@@ -1162,8 +1192,16 @@
     const errore = h("p", { class: "errore-modulo", role: "alert", hidden: true });
     const invia = h("button", { class: "tasto grande", type: "submit" }, icona("onda"), "Carica ed elabora");
 
+    const campiFacoltativi = h("div", { class: "campi" },
+      materiali.vano,
+      h("label", { class: "campo" }, h("span", {}, "Nomi e termini difficili"),
+        h("textarea", { name: "termini", rows: "2", placeholder: "Nome del docente, autori, sigle, termini tecnici, separati da virgola" })),
+      h("label", { class: "campo" }, h("span", {}, "Indicazioni per gli appunti"),
+        h("textarea", { name: "note", rows: "2", placeholder: "es. argomento della lezione, cose su cui insistere" })));
     const form = h("form", { class: "modulo-form" },
+      origine,
       audio.vano,
+      inCima,
       h("div", { class: "due" },
         h("label", { class: "campo" }, h("span", {}, "Corso"),
           h("input", { name: "corso", list: "elenco-corsi", required: true, placeholder: "es. Diritto privato", autocomplete: "off",
@@ -1173,12 +1211,7 @@
       h("label", { class: "campo" }, h("span", {}, "Titolo ", h("small", {}, "(facoltativo)")), campoTitolo),
       h("details", { class: "facoltativi" },
         h("summary", {}, icona("freccia"), "Aggiungi slide, termini difficili o indicazioni"),
-        h("div", { class: "campi" },
-          materiali.vano,
-          h("label", { class: "campo" }, h("span", {}, "Nomi e termini difficili"),
-            h("textarea", { name: "termini", rows: "2", placeholder: "Nome del docente, autori, sigle, termini tecnici, separati da virgola" })),
-          h("label", { class: "campo" }, h("span", {}, "Indicazioni per gli appunti"),
-            h("textarea", { name: "note", rows: "2", placeholder: "es. argomento della lezione, cose su cui insistere" })))),
+        campiFacoltativi),
       caricamento,
       errore,
       h("div", { class: "azioni-form" },
@@ -1190,13 +1223,25 @@
       ...avvisiConfigurazione(),
       h("section", { "data-titolo": "Nuova lezione 1.1", class: "pannello", "aria-labelledby": "titolo-nuova" },
         h("h2", { id: "titolo-nuova" }, "Nuova lezione"),
-        h("p", {}, "Scegli l'audio e il corso. Al resto pensa Sbobina, sul tuo computer."),
+        sottotitolo,
         form)]);
     if (fileIniziali && fileIniziali.length) {
-      const trasferimento = new DataTransfer();
-      for (const file of fileIniziali) trasferimento.items.add(file);
-      audio.input.files = trasferimento.files;
-      audio.input.dispatchEvent(new Event("change"));
+      // Audio e documenti trascinati insieme vanno ognuno nel suo vano; solo documenti: lezione dai materiali.
+      const documenti = [...fileIniziali].filter((f) => ESTENSIONI_MATERIALI.test(f.name));
+      const registrazioni = [...fileIniziali].filter((f) => !ESTENSIONI_MATERIALI.test(f.name));
+      if (!registrazioni.length) {
+        const scelta = origine.querySelector('input[value="materiali"]');
+        scelta.checked = true;
+        scelta.dispatchEvent(new Event("change"));
+      }
+      for (const [input, file] of [[audio.input, registrazioni], [materiali.input, documenti]]) {
+        if (!file.length) continue;
+        const trasferimento = new DataTransfer();
+        for (const f of file) trasferimento.items.add(f);
+        input.files = trasferimento.files;
+        input.dispatchEvent(new Event("change"));
+      }
+      if (registrazioni.length && documenti.length) form.querySelector("details.facoltativi").open = true;
       form.querySelector('[name="corso"]').focus();
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1319,7 +1364,7 @@
     if (chiave === "modello") return String(v).replace(/^mlx-community\//, "");
     if (chiave === "json") return v ? "JSON" : "testo";
     if (chiave === "fine") return FINI[v] || String(v);
-    return typeof v === "number" ? v.toLocaleString("it-IT", { maximumFractionDigits: 2 }) : String(v);
+    return typeof v === "number" ? v.toLocaleString(LOCALE(), { maximumFractionDigits: 2 }) : String(v);
   }
 
   /** I numeri di una richiesta all'AI: tutti in una griglia, o i principali in una riga sola mentre lavora. */
@@ -1775,6 +1820,7 @@
     if (i.griglia === false) radice.dataset.griglia = "no"; else delete radice.dataset.griglia;
     if (i.vetro === false) radice.dataset.vetro = "no"; else delete radice.dataset.vetro;
     if (i.animazioni_ridotte) radice.dataset.movimento = "ridotto"; else delete radice.dataset.movimento;
+    if (window.SbobinaLingua) window.SbobinaLingua(i.lingua || "it");
     radice.style.fontSize = i.scala_testo && i.scala_testo !== 100 ? `${i.scala_testo}%` : "";
     if (window.pywebview && window.pywebview.api.tema) {
       const scuro = i.tema === "scuro" || (i.tema !== "chiaro" && matchMedia("(prefers-color-scheme: dark)").matches);
@@ -1863,7 +1909,7 @@
           h("strong", {}, m.nome),
           m.consigliato ? h("span", { class: "distintivo" }, "Consigliato") : null,
           m.installato ? h("span", { class: "distintivo pieno" }, "Scaricato") : null),
-        h("span", { class: "modello-dati" }, `${m.gb.toLocaleString("it-IT")} GB · da ${m.ram} GB di memoria`),
+        h("span", { class: "modello-dati" }, `${m.gb.toLocaleString(LOCALE())} GB · da ${m.ram} GB di memoria`),
         h("small", {}, m.adatto ? m.descrizione : MAC ? `Serve un Mac con almeno ${m.ram} GB di memoria.` : "Troppo grande per la scheda video di questo PC: sarebbe molto lento.")));
     }
     return gruppo;
@@ -1943,7 +1989,7 @@
           h("small", {}, `Resta solo su questo ${PC}, nel file impostazioni.json.`)));
       } else {
         pezzi.push(h("p", { class: "mac" }, icona("info"),
-          `${mac.chip} · ${mac.ram_gb} GB di memoria · ${mac.disco_libero_gb.toLocaleString("it-IT")} GB liberi`),
+          `${mac.chip} · ${mac.ram_gb} GB di memoria · ${mac.disco_libero_gb.toLocaleString(LOCALE())} GB liberi`),
         schedeModelli(sistema, c.modello || sistema.consigliato, (v) => cambia({ modello: v }, disegnaAI)));
       }
       pezzi.push(riga("Riconoscimento vocale", "Il modello Whisper che trascrive l'audio.",
@@ -2044,6 +2090,8 @@
         scelte("pdf", [["appunti", "Solo appunti"], ["approfondimento", "Appunti + approfondimento"], ["trascrizione", "Con la trascrizione"]],
           i.pdf, (v) => cambia({ pdf: v }))),
       sezione("imp-aspetto", "Aspetto", null,
+        riga("Lingua", "Dell'app, delle lezioni e degli appunti. Cambiando lingua l'app si ricarica.",
+          scelte("lingua", [["it", "Italiano"], ["en", "English"]], i.lingua || "it", (v) => cambia({ lingua: v }, () => location.reload()))),
         riga("Tema", null, scelte("tema", [["sistema", `Come il ${PC}`], ["chiaro", "Chiaro"], ["scuro", "Scuro"]], i.tema, (v) => cambia({ tema: v }))),
         riga("Colore", "L'accento e il rosa del desktop mentre registri.", accenti),
         riga("Tuo colore", "Scegli un accento qualsiasi: vale per il tema «Tuo colore».", personalizza),
@@ -2128,6 +2176,8 @@
         h("h1", {}, "Ciao, sono ", h("em", {}, "Sbobina.")),
         h("p", { class: "sottotitolo" }, `Trasformo le registrazioni delle lezioni in appunti chiari, con schemi, glossario e domande di ripasso. Lavoro tutto sul tuo ${PC}: gratis, senza account, e l'audio non esce dal computer.`),
         h("p", { class: "sottotitolo" }, "Ti faccio tre domande e preparo l'AI. Ci vogliono un paio di minuti più il download."),
+        scelte("lingua-avvio", [["it", "Italiano"], ["en", "English"]], i.lingua || "it",
+          (v) => salvaImpostazioni({ lingua: v }).then(() => location.reload())),
         piede(h("button", { class: "tasto grande", type: "button", onclick: () => avanti(1) }, icona("freccia"), "Iniziamo")),
       ];
     } else if (passo === 1) {
@@ -2156,7 +2206,7 @@
       let modello = sistema.consigliato;
       corpo = [
         h("h1", {}, `Scegliamo l'AI per il tuo ${PC}`),
-        h("p", { class: "mac" }, icona("info"), `${mac.chip} · ${mac.ram_gb} GB di memoria · ${mac.disco_libero_gb.toLocaleString("it-IT")} GB liberi`),
+        h("p", { class: "mac" }, icona("info"), `${mac.chip} · ${mac.ram_gb} GB di memoria · ${mac.disco_libero_gb.toLocaleString(LOCALE())} GB liberi`),
         mac.ai_locale ? null
           : h("p", { class: "avviso", role: "status" }, icona("info"),
               "L'AI gratuita gira sui Mac con chip Apple (M1 o più recenti) e sui PC Windows: su questo computer serve Claude, a pagamento."),

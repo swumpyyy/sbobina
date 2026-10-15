@@ -191,7 +191,8 @@ def chiedi(archivio: Archivio, lezione: Lezione, llm: ModelloLinguistico, domand
         "Rispondi alla domanda dello studente usando solo questa lezione. Cita sempre il punto dell'audio "
         "tra parentesi quadre nel formato [mm:ss] preso dai marcatori della trascrizione, così lo studente "
         "può riascoltarlo. Se la lezione non ne parla, dillo chiaramente invece di inventare. Sii conciso "
-        "(massimo 8 frasi) e usa elenchi se aiutano. Formule in LaTeX.\n\n"
+        "(massimo 8 frasi) e usa elenchi se aiutano. Formule in LaTeX. Se non ci sono marcatori di tempo "
+        "(lezione creata dagli appunti, senza registrazione), non citare minuti.\n\n"
         + (f"Conversazione finora:\n{precedenti}\n\n" if precedenti else "")
         + f"Domanda: {domanda}"
     )
@@ -245,7 +246,8 @@ def chiedi_tutte(archivio: Archivio, llm: ModelloLinguistico, domanda: str, cors
         "Rispondi alla domanda dello studente usando solo gli appunti di queste lezioni. Per ogni "
         "informazione indica da quale lezione viene, col titolo in grassetto, e il minuto tra parentesi "
         "quadre nel formato [mm:ss] preso dai marcatori ⏱ degli appunti. Se le lezioni non ne parlano, dillo "
-        "chiaramente invece di inventare. Sii conciso (massimo 10 frasi) e usa elenchi se aiutano. Formule in LaTeX.\n\n"
+        "chiaramente invece di inventare. Sii conciso (massimo 10 frasi) e usa elenchi se aiutano. Formule in LaTeX. "
+        "Per le lezioni senza marcatori ⏱ (create dagli appunti) non citare minuti.\n\n"
         + (f"Conversazione finora:\n{precedenti}\n\n" if precedenti else "")
         + f"Domanda: {domanda}"
     )

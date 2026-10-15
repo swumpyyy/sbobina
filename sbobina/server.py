@@ -33,7 +33,7 @@ from sbobina.archivio import (
 from sbobina.audio import ffmpeg_disponibile
 from sbobina.coda import ATTIVI, Coda
 from sbobina.config import Config
-from sbobina.esporta import LIBRERIE, crea_pdf, esporta_html, esporta_pdf_html
+from sbobina.esporta import LIBRERIE, crea_pdf, esporta_html, esporta_pdf_html, traduci
 from sbobina import impostazioni, sistema, studio
 from sbobina.registrazione import Registratore
 from sbobina.llm import DIRETTA, FERMA, PREPARAZIONE, costo_stimato, prepara
@@ -86,13 +86,14 @@ class Glossario(BaseModel):
 
 
 MESI = ("gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic")
+MESI_EN = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
 
-def data_leggibile(iso: str) -> str:
+def data_leggibile(iso: str, lingua: str = "it") -> str:
     """2026-10-12 → 12 ott 2026 (testo libero lasciato com'è)."""
     try:
         anno, mese, giorno = (int(x) for x in iso.split("-"))
-        return f"{giorno} {MESI[mese - 1]} {anno}"
+        return f"{giorno} {(MESI_EN if lingua == 'en' else MESI)[mese - 1]} {anno}"
     except (ValueError, IndexError):
         return iso
 
@@ -113,7 +114,7 @@ def stime(lezioni: list[Lezione]) -> dict[str, float]:
     accumulato = 0.0
     attive = sorted((l for l in lezioni if l.stato in ATTIVI), key=lambda l: (l.stato != "in_elaborazione", l.creata))
     for l in attive:
-        totale = (l.durata_secondi or 3600) * ritmo
+        totale = (l.durata_secondi or (3600 if l.file_audio else 300)) * ritmo  # senza audio: solo gli appunti
         resto = totale * (1 - l.progresso) if l.stato == "in_elaborazione" else totale
         accumulato += resto
         attese[l.id] = round(accumulato)
@@ -158,7 +159,8 @@ def crea_app(
 
             imp = impostazioni.carica(config.cartella_dati)
             effettiva = imp.applica(config)
-            modello = crea_modello(effettiva.modello, temperatura=imp.temperatura, contesto=imp.contesto_effettivo())
+            modello = crea_modello(effettiva.modello, temperatura=imp.temperatura, contesto=imp.contesto_effettivo(),
+                                   lingua=imp.lingua)
             return Elaborazione(effettiva, archivio, modello, crea_motori(effettiva))
 
     def effettiva() -> Config:
@@ -175,6 +177,15 @@ def crea_app(
     app = FastAPI(title="Sbobina", lifespan=ciclo_di_vita, docs_url=None, redoc_url=None, openapi_url=None)
     # Contro il DNS rebinding: un sito esterno che punta a 127.0.0.1 arriva con un Host diverso.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(host_ammessi))
+
+    @app.middleware("http")
+    async def sempre_aggiornato(request, call_next):
+        risposta = await call_next(request)
+        # Dopo un aggiornamento dell'app la webview non deve riusare l'app.js della versione prima.
+        if request.url.path == "/" or request.url.path.startswith("/static/"):
+            risposta.headers["Cache-Control"] = "no-cache"
+        return risposta
+
     app.state.archivio = archivio
     app.state.coda = coda
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
@@ -260,18 +271,19 @@ def crea_app(
 
     @app.post("/api/lezioni", dependencies=protetto)
     def nuova(
-        audio: list[UploadFile] = CampoFile(...),
+        audio: list[UploadFile] = CampoFile(default=[]),
         corso: str = Form(...),
         titolo: str = Form(""),
         data: str = Form(""),
         note: str = Form(""),
         termini: str = Form(""),
         materiali: list[UploadFile] = CampoFile(default=[]),
+        testo: str = Form(""),
     ) -> list[dict]:
         audio = [a for a in audio if a.filename]
         materiali = [m for m in materiali if m.filename]
-        if not audio:
-            raise HTTPException(400, "Seleziona almeno una registrazione audio.")
+        if not audio and not materiali and not testo.strip():
+            raise HTTPException(400, "Scegli una registrazione, oppure aggiungi appunti, PDF o foto.")
         if not corso.strip():
             raise HTTPException(400, "Indica il corso.")
         for upload in audio:
@@ -288,7 +300,15 @@ def crea_app(
         with tempfile.TemporaryDirectory(dir=temporanea) as cartella:
             cartella = Path(cartella)
             file_materiali = [(m.filename, _salva_upload(m, cartella)) for m in materiali]
+            if testo.strip():
+                incollati = cartella / "appunti-incollati.md"
+                incollati.write_text(testo.strip() + "\n", encoding="utf-8")
+                file_materiali.insert(0, ("appunti.md", incollati))
             create = []
+            if not audio:
+                create.append(archivio.crea_lezione(
+                    audio=None, corso=corso, titolo=titolo, data_lezione=data, note=note, materiali=file_materiali,
+                ))
             for upload in audio:
                 percorso = _salva_upload(upload, cartella)
                 lezione = archivio.crea_lezione(
@@ -368,14 +388,17 @@ def crea_app(
             parti.append(("Approfondimento", leggi(f.approfondimento)))
         if contenuto == "trascrizione" and f.trascrizione.is_file():
             parti.append(("Trascrizione revisionata", leggi(f.trascrizione)))
+        lingua = impostazioni.carica(config.cartella_dati).lingua
         destinazione = f.pdf if contenuto == "appunti" else f.pdf.with_name(f"appunti-{contenuto}.pdf")
+        if lingua == "en":  # copertina e legenda in inglese: un PDF a parte, non quello italiano già pronto
+            destinazione = destinazione.with_name(f"{destinazione.stem}-en.pdf")
         fonti = [f.appunti, f.approfondimento, f.trascrizione]
         if not destinazione.is_file() or any(
             p.is_file() and p.stat().st_mtime > destinazione.stat().st_mtime for p in fonti
         ):
             pagina = esporta_pdf_html(
-                titolo=lezione.titolo, corso=lezione.corso, data=data_leggibile(lezione.data), parti=parti,
-                durata=durata_leggibile(lezione.durata_secondi),
+                titolo=lezione.titolo, corso=lezione.corso, data=data_leggibile(lezione.data, lingua), parti=parti,
+                durata=durata_leggibile(lezione.durata_secondi), lingua=lingua,
             )
             try:
                 crea_pdf(pagina, destinazione)
@@ -391,19 +414,20 @@ def crea_app(
             (l for l in archivio.elenco() if l.corso == corso and l.stato == "completata"),
             key=lambda l: (l.data or "", l.creata),
         )
+        lingua = impostazioni.carica(config.cartella_dati).lingua
         parti = []
         for l in lezioni:
             appunti = File(archivio.cartella(l.id)).appunti
             if appunti.is_file():
-                parti.append((f"{l.titolo} · {data_leggibile(l.data)}" if l.data else l.titolo, appunti.read_text(encoding="utf-8")))
+                parti.append((f"{l.titolo} · {data_leggibile(l.data, lingua)}" if l.data else l.titolo, appunti.read_text(encoding="utf-8")))
         if not parti:
             raise HTTPException(404, "Questo corso non ha ancora lezioni pronte.")
         ore = sum(l.durata_secondi or 0 for l in lezioni)
         pagina = esporta_pdf_html(
-            titolo="Tutte le lezioni", corso=corso, data=f"{len(parti)} lezioni", parti=parti,
-            durata=durata_leggibile(ore),
+            titolo=traduci("Tutte le lezioni", lingua), corso=corso, data=f"{len(parti)} {traduci('lezioni', lingua)}",
+            parti=parti, durata=durata_leggibile(ore), lingua=lingua,
         )
-        destinazione = config.cartella_dati / "esportazioni" / f"{slug(corso, 80)}.pdf"
+        destinazione = config.cartella_dati / "esportazioni" / f"{slug(corso, 80)}{'-en' if lingua == 'en' else ''}.pdf"
         destinazione.parent.mkdir(parents=True, exist_ok=True)
         try:
             crea_pdf(pagina, destinazione)
@@ -476,7 +500,7 @@ def crea_app(
             raise HTTPException(409, "L'AI non è pronta: preparala dalle Impostazioni.")
         if cfg.locale and any(l.stato == "in_elaborazione" for l in archivio.elenco()):
             raise HTTPException(409, "L'AI sta scrivendo gli appunti di una lezione: riprova quando ha finito.")
-        return crea_modello(cfg.modello, temperatura=imp.temperatura, contesto=imp.contesto_effettivo())
+        return crea_modello(cfg.modello, temperatura=imp.temperatura, contesto=imp.contesto_effettivo(), lingua=imp.lingua)
 
     def genera(funzione, *argomenti):
         if not studio.OCCUPATO.acquire(blocking=False):

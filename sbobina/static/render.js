@@ -101,11 +101,11 @@
   // Riquadri colorati: distinguono definizioni, teoremi e integrazioni non dette a lezione.
   function classificaRiquadri(radice) {
     const tipi = [
-      [/^(definizion)/i, "riquadro-definizione"],
-      [/^(teorema|lemma|corollario|proposizione|legge|propriet|regola|principio|formula)/i, "riquadro-teorema"],
-      [/^integrazion/i, "riquadro-integrazione"],
-      [/^in sintesi/i, "riquadro-sintesi"],
-      [/^(attenzione|importante|nota)/i, "riquadro-attenzione"],
+      [/^(definizion|definition)/i, "riquadro-definizione"],
+      [/^(teorema|lemma|corollario|proposizione|legge|propriet|regola|principio|formula|theorem|corollary|proposition|law|rule|principle)/i, "riquadro-teorema"],
+      [/^(integrazion|integration)/i, "riquadro-integrazione"],
+      [/^(in sintesi|summary|in short)/i, "riquadro-sintesi"],
+      [/^(attenzione|importante|nota|warning|important|note)/i, "riquadro-attenzione"],
     ];
     radice.querySelectorAll("blockquote").forEach((bq) => {
       const primo = bq.querySelector("strong");

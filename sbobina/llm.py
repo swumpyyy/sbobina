@@ -183,10 +183,21 @@ class Claude:
         return testo, utilizzo
 
 
+def _testo_pagina(pagina) -> str:
+    try:
+        if testo := (pagina.extract_text() or "").strip():
+            return testo
+        # PDF scansionato (appunti a mano, foto in PDF): la pagina è un'immagine, la legge l'OCR del sistema.
+        return "\n".join(testo_immagine(base64.standard_b64encode(im.data).decode()) for im in pagina.images)
+    except Exception as e:  # noqa: BLE001 - pagina o immagine non decodificabile: la pagina resta vuota
+        log.warning("Pagina del PDF non leggibile: %s", e)
+        return ""
+
+
 def _testo_documento(blocco: dict) -> str:
     """I modelli locali non leggono i PDF: ne passiamo il testo estratto."""
     pdf = PdfReader(io.BytesIO(base64.standard_b64decode(blocco["source"]["data"])))
-    testo = "\n".join((p.extract_text() or "") for p in pdf.pages).strip()
+    testo = "\n".join(_testo_pagina(p) for p in pdf.pages).strip()
     return f"<materiale nome=\"{blocco.get('title', 'documento')}\">\n{testo}\n</materiale>" if testo else ""
 
 
@@ -842,8 +853,40 @@ def prepara(modello: str, whisper: str = "") -> None:
     _prepara(*([appunti] if not modello.startswith("claude") else []), riconoscimento)
 
 
-def crea_modello(modello: str, *, temperatura: float | None = None, contesto: int = 65536) -> ModelloLinguistico:
+class InInglese:
+    """La versione inglese dell'app: stessi prompt italiani, risposte in inglese."""
+
+    NOTA = (
+        "\n\nLANGUAGE: the student uses Sbobina in English and the lectures are in English. Write everything in "
+        "English, even though these instructions are in Italian: notes, section titles (e.g. \"## Concept map\", "
+        "\"## Lecturer's remarks\", \"## Glossary\", \"## Review questions\", \"## Points to check\"), labels such as "
+        "\"> **In short:**\", \"> **Definition (…):**\", \"> **Integration:**\", \"<summary>Answer</summary>\", "
+        "answers and JSON string values. Keep the ```mappa / ```mermaid fences, ⏱ markers, JSON keys and enum values "
+        "exactly as specified; write [to check] instead of [da verificare]. When correcting a transcript, keep the speaker's words: never translate them."
+    )
+
+    def __init__(self, modello: ModelloLinguistico):
+        self._modello = modello
+
+    def __getattr__(self, nome: str):
+        return getattr(self._modello, nome)
+
+    def _system(self, system: str | list[dict]) -> str | list[dict]:
+        return system + self.NOTA if isinstance(system, str) else [*system, {"type": "text", "text": self.NOTA}]
+
+    def testo(self, *, system: str | list[dict], **argomenti) -> tuple[str, Utilizzo]:
+        return self._modello.testo(system=self._system(system), **argomenti)
+
+    def json(self, *, system: str | list[dict], **argomenti) -> tuple[dict, Utilizzo]:
+        return self._modello.json(system=self._system(system), **argomenti)
+
+
+def crea_modello(
+    modello: str, *, temperatura: float | None = None, contesto: int = 65536, lingua: str = "it"
+) -> ModelloLinguistico:
     if modello.startswith("claude"):
-        return Claude(modello)
-    classe = MLX if usa_mlx() else LlamaCpp
-    return classe(repo_mlx(modello), temperatura=0.3 if temperatura is None else temperatura, contesto=contesto)
+        scelto = Claude(modello)
+    else:
+        classe = MLX if usa_mlx() else LlamaCpp
+        scelto = classe(repo_mlx(modello), temperatura=0.3 if temperatura is None else temperatura, contesto=contesto)
+    return InInglese(scelto) if lingua == "en" else scelto

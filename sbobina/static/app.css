@@ -1726,8 +1726,8 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14p
   border-top: 1px solid var(--filo-scuro); border-left: 1px solid var(--filo-scuro);
 }
 .nerd > div { background: var(--carta); padding: 8px 10px; min-width: 0; border-right: 1px solid var(--filo-scuro); border-bottom: 1px solid var(--filo-scuro); }
-.tasto-nerd[aria-expanded="true"] + .nerd { animation: compare 260ms var(--uscita) both; }
-@keyframes compare { from { opacity: 0; transform: translateY(4px); } }
+.tasto-nerd[aria-expanded="true"] + .nerd { animation: compare-nerd 260ms var(--uscita) both; }
+@keyframes compare-nerd {  /* nome proprio: "compare" è già delle mappe in appunti.css */ from { opacity: 0; transform: translateY(4px); } }
 .nerd dt { font-family: var(--font-mono); font-size: 11px; letter-spacing: .03em; text-transform: uppercase; color: var(--inchiostro-lieve); }
 .nerd dd { margin: 3px 0 0; font-family: var(--font-mono); font-size: 14px; color: var(--inchiostro); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .nerd dd small { font-size: 11px; color: var(--inchiostro-lieve); }

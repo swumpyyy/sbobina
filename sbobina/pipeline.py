@@ -190,13 +190,17 @@ class Elaborazione:
         lezione = self.archivio.carica(id_lezione)
         f = File(self.archivio.cartella(id_lezione))
 
-        self._fase_audio(lezione, f)
         materiali = carica_materiali(f.materiali, lezione.materiali, f.lavoro)
         for avviso in materiali.avvisi:
             self._avviso(lezione.id, avviso)
-        termini = self._fase_termini(lezione, f, materiali)
-        trascrizioni = self._fase_trascrizione(lezione, f, termini)
-        trascrizione = self._fase_revisione(lezione, f, trascrizioni, termini, materiali)
+        trascrizione = ""  # lezione dai soli materiali: niente audio da trascrivere
+        if lezione.file_audio:
+            self._fase_audio(lezione, f)
+            termini = self._fase_termini(lezione, f, materiali)
+            trascrizioni = self._fase_trascrizione(lezione, f, termini)
+            trascrizione = self._fase_revisione(lezione, f, trascrizioni, termini, materiali)
+        elif not materiali.presenti:
+            raise ValueError("I materiali di questa lezione non si leggono: niente da cui scrivere gli appunti.")
 
         base = prompt.contenuto_lezione(
             corso=lezione.corso,
@@ -463,10 +467,11 @@ class Elaborazione:
             return None
         if f.verifica.is_file():
             return leggi_json(f.verifica)
-        self._avanza(lezione.id, "verifica", 0.05, "Confronto degli appunti con la trascrizione")
+        fonte = "la trascrizione" if lezione.file_audio else "i materiali"
+        self._avanza(lezione.id, "verifica", 0.05, f"Confronto degli appunti con {fonte}")
         dati, uso = self.llm.json(
             system=prompt.SYSTEM_APPUNTI,
-            contenuto=[*base, {"type": "text", "text": prompt.istruzioni_verifica(bozza, self.imp)}],
+            contenuto=[*base, {"type": "text", "text": prompt.istruzioni_verifica(bozza, self.imp, senza_audio=not lezione.file_audio)}],
             schema=prompt.SCHEMA_VERIFICA,
             sforzo=self.config.sforzo_appunti,
             max_tokens=48000,

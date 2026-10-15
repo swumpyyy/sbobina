@@ -207,3 +207,27 @@ def test_versione_una_sola_in_tutto_il_progetto():
     assert tomllib.loads((radice / "pyproject.toml").read_text())["project"]["version"] == sbobina.__version__
     breve = ".".join(sbobina.__version__.split(".")[:2])
     assert f"SBOBINA.OS {breve}<" in (radice / "sbobina/static/index.html").read_text()
+
+
+def test_lezione_solo_da_appunti_e_materiali(client):
+    risposta = client.post(
+        "/api/lezioni", headers=PROTETTO,
+        data={"corso": "Analisi 1", "titolo": "Rolle dagli appunti", "testo": "rolle: f cont. [a,b], deriv. (a,b)"},
+        files=[("materiali", ("slide.txt", b"Teorema di Rolle", "text/plain"))],
+    )
+    assert risposta.status_code == 200, risposta.text
+    [creata] = risposta.json()
+    lezione = _attendi(client, creata["id"])
+    assert lezione["stato"] == "completata", lezione["errore"]
+    assert lezione["file_audio"] == "" and lezione["materiali"] == ["appunti.md", "slide.txt"]
+    dettaglio = client.get(f"/api/lezioni/{creata['id']}").json()
+    assert dettaglio["appunti"].startswith("# Il teorema di Rolle")
+    assert dettaglio["audio"] is False and dettaglio["trascrizione"] is None
+
+    vuota = client.post("/api/lezioni", headers=PROTETTO, data={"corso": "Analisi 1", "testo": "  "})
+    assert vuota.status_code == 400
+
+
+def test_pagina_e_statici_senza_cache_vecchia(client):
+    for percorso in ("/", "/static/app.js", "/static/inglese.js"):
+        assert client.get(percorso).headers["cache-control"] == "no-cache"
