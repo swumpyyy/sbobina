@@ -369,10 +369,13 @@ SCHEMA_VERIFICA = {
 }
 
 
-def istruzioni_verifica(bozza: str, imp=None) -> str:
+def istruzioni_verifica(bozza: str, imp=None, senza_audio: bool = False) -> str:
     escluse = sezioni_escluse(imp)
     nota = (f"\nLo studente ha escluso queste sezioni: {', '.join(escluse)}. Non segnalarle come mancanti."
             if escluse else "")
+    if senza_audio:
+        nota += ("\nQuesta lezione non ha registrazione: confronta gli appunti con i materiali, e non segnalare "
+                 "come problemi i tempi ⏱ assenti o le Indicazioni del docente mancanti.")
     return f"{ISTRUZIONI_VERIFICA}{nota}\n\n<bozza_appunti>\n{bozza}\n</bozza_appunti>"
 
 

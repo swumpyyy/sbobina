@@ -184,13 +184,13 @@ class Claude:
 
 
 def _testo_pagina(pagina) -> str:
-    if testo := (pagina.extract_text() or "").strip():
-        return testo
-    # PDF scansionato (appunti a mano, foto in PDF): la pagina è un'immagine, la legge l'OCR del sistema.
     try:
+        if testo := (pagina.extract_text() or "").strip():
+            return testo
+        # PDF scansionato (appunti a mano, foto in PDF): la pagina è un'immagine, la legge l'OCR del sistema.
         return "\n".join(testo_immagine(base64.standard_b64encode(im.data).decode()) for im in pagina.images)
-    except Exception as e:  # noqa: BLE001 - formato d'immagine non decodificabile: la pagina resta vuota
-        log.warning("Immagini del PDF non leggibili: %s", e)
+    except Exception as e:  # noqa: BLE001 - pagina o immagine non decodificabile: la pagina resta vuota
+        log.warning("Pagina del PDF non leggibile: %s", e)
         return ""
 
 

@@ -427,7 +427,7 @@ def crea_app(
             titolo=traduci("Tutte le lezioni", lingua), corso=corso, data=f"{len(parti)} {traduci('lezioni', lingua)}",
             parti=parti, durata=durata_leggibile(ore), lingua=lingua,
         )
-        destinazione = config.cartella_dati / "esportazioni" / f"{slug(corso, 80)}.pdf"
+        destinazione = config.cartella_dati / "esportazioni" / f"{slug(corso, 80)}{'-en' if lingua == 'en' else ''}.pdf"
         destinazione.parent.mkdir(parents=True, exist_ok=True)
         try:
             crea_pdf(pagina, destinazione)

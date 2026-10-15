@@ -471,7 +471,7 @@ class Elaborazione:
         self._avanza(lezione.id, "verifica", 0.05, f"Confronto degli appunti con {fonte}")
         dati, uso = self.llm.json(
             system=prompt.SYSTEM_APPUNTI,
-            contenuto=[*base, {"type": "text", "text": prompt.istruzioni_verifica(bozza, self.imp)}],
+            contenuto=[*base, {"type": "text", "text": prompt.istruzioni_verifica(bozza, self.imp, senza_audio=not lezione.file_audio)}],
             schema=prompt.SCHEMA_VERIFICA,
             sforzo=self.config.sforzo_appunti,
             max_tokens=48000,

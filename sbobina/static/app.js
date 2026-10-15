@@ -1164,7 +1164,7 @@
     });
     // Senza registrazione: la lezione nasce dagli appunti scritti, dai PDF o dalle foto.
     const testo = h("label", { class: "campo", hidden: true }, h("span", {}, "I tuoi appunti ", h("small", {}, "(facoltativo se carichi file)")),
-      h("textarea", { name: "testo", rows: "6", placeholder: "Incolla o scrivi qui gli appunti presi a lezione, anche disordinati" }));
+      h("textarea", { name: "testo", rows: "6", disabled: true, placeholder: "Incolla o scrivi qui gli appunti presi a lezione, anche disordinati" }));
     const inCima = h("div", { class: "modulo-form", hidden: true });
     const sottotitolo = h("p", {}, "Scegli l'audio e il corso. Al resto pensa Sbobina, sul tuo computer.");
     const origine = scelte("origine", [["audio", "Registrazione"], ["materiali", "Appunti, PDF o foto"]], "audio", (v) => {
@@ -1175,6 +1175,7 @@
       inCima.hidden = !soloMateriali;
       if (soloMateriali) inCima.prepend(materiali.vano); else campiFacoltativi.prepend(materiali.vano);
       testo.hidden = !soloMateriali;
+      testo.querySelector("textarea").disabled = !soloMateriali;  // nascosto non va inviato
       materiali.vano.querySelector("strong").textContent = soloMateriali ? "Scegli o trascina appunti, PDF o foto" : "Slide, dispense o foto della lavagna";
       materiali.vano.querySelector(".spiegazione").textContent = soloMateriali
         ? "PDF (anche scansionati), foto di appunti o lavagna, file di testo. Più file diventano una lezione."
