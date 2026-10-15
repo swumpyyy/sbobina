@@ -65,6 +65,23 @@ def test_quiz_carte_e_domande(archivio, lezione):
     assert "#deck:Sbobina::Diritto pubblico" in anki and "Art. 18\tLibertà di associazione\tdiritto-pubblico" in anki
 
 
+def test_chiedi_a_tutte_le_lezioni(archivio, lezione, audio_prova):
+    altra = archivio.crea_lezione(audio=audio_prova, nome_audio="b.wav", corso="Matematica", titolo="Derivate",
+                                  data_lezione="2026-10-13")
+    (archivio.cartella(altra.id) / "appunti.md").write_text("# Derivate\nLa derivata misura la pendenza.\n", encoding="utf-8")
+    archivio.aggiorna(altra.id, stato="completata")
+    llm = LLMStudio()
+    storia = studio.chiedi_tutte(archivio, llm, "Cosa dice l'articolo 18 sulle associazioni?")
+    assert [f["titolo"] for f in storia[-1]["fonti"]] == ["Associazioni"]  # solo la lezione che ne parla
+    assert "Derivate" not in llm.contenuti[-1][0]["text"]
+    storia = studio.chiedi_tutte(archivio, llm, "Riassumi tutto")  # nessuna parola trovata: tutte le lezioni
+    assert {f["titolo"] for f in storia[-1]["fonti"]} == {"Associazioni", "Derivate"}
+    assert len(storia) == 4 and (archivio.radice / "chat.json").is_file()
+    assert studio.chiedi_tutte(archivio, llm, "Riassumi tutto", corso="Matematica")[-1]["fonti"][0]["titolo"] == "Derivate"
+    with pytest.raises(ValueError):
+        studio.chiedi_tutte(archivio, llm, "Ciao", corso="Storia")
+
+
 def test_leitner(archivio, lezione):
     studio.genera_carte(archivio, lezione, LLMStudio())
     ripasso = studio.Ripasso(archivio)

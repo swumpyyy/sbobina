@@ -50,6 +50,7 @@
     ferma: '<rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/>',
     carica: '<path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9"/><path d="M4.5 14.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/>',
     puntini: '<circle cx="5.5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="18.5" cy="12" r="1.3" fill="currentColor"/>',
+    bolla: '<path d="M4.5 5h15v10.5h-8.5L6.5 19.5v-4h-2z"/><path d="M8.5 9.5h7M8.5 12.5h4.5"/>',
     cuffie: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6.5" rx="2"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="2"/>',
   };
 
@@ -1278,7 +1279,20 @@
 
   /** Un'attesa onesta mentre l'AI genera: con un modello locale può volerci qualche minuto. */
   function attesa(testo) {
-    return h("div", { class: "attesa", role: "status" }, h("span", { class: "puntini", "aria-hidden": "true" }, h("i"), h("i"), h("i")), testo);
+    const secondi = h("span", { class: "dati secondi" });
+    const el = h("div", { class: "attesa", role: "status" }, bobinaPensa(), h("span", {}, testo), secondi);
+    const inizio = Date.now();
+    const conta = setInterval(() => {
+      if (!el.isConnected) { clearInterval(conta); return; }
+      const s = Math.round((Date.now() - inizio) / 1000);
+      if (s >= 5) secondi.textContent = `${s} s`;
+    }, 1000);
+    return el;
+  }
+
+  /** Mentre l'AI pensa: il marchio su bianco, solo le cinque linee audio che ondeggiano. */
+  function bobinaPensa() {
+    return h("span", { class: "bobina-pensa", "aria-hidden": "true" }, h("i"), h("i"), h("i"), h("i"), h("i"));
   }
 
   async function mostraRipasso(foglio, d) {
@@ -1423,35 +1437,47 @@
     }
     let storia = [];
     try { storia = (await api(`/api/lezioni/${l.id}/studio`)).chat; } catch (e) { /* conversazione vuota */ }
+    conversazione(foglio, {
+      titolo: "Chiedi alla lezione",
+      storia,
+      vuoto: () => [h("p", { class: "segnaposto" }, "Chiedi qualcosa su questa lezione: \"che differenza c'è tra…\", \"dove spiega…\", \"fammi un esempio di…\". Ti rispondo solo con ciò che è stato detto, citando il minuto.")],
+      testoAttesa: "Cerco nella lezione…",
+      chiedi: (domanda) => api(`/api/lezioni/${l.id}/chiedi`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ domanda }) }),
+      cancella: () => api(`/api/lezioni/${l.id}/chat`, { method: "DELETE" }),
+      onTempo: d.audio ? vaiA : null,
+    });
+  }
+
+  /** Una conversazione con l'AI: bolle, attesa con la bobina, campo in basso. */
+  function conversazione(foglio, { titolo, storia, vuoto, testoAttesa, chiedi, cancella, onTempo = null, testa = null }) {
     const elenco = h("div", { class: "chat", "aria-live": "polite" });
     const disegna = () => {
       elenco.replaceChildren(...(storia.length ? storia.map((m) => {
         const bolla = h("div", { class: `bolla ${m.ruolo}` });
-        // "[05:40, 06:18]" → due tempi cliccabili
-        const testo = m.testo.replace(/\[(\d{1,2}:\d{2}(?:,\s*\d{1,2}:\d{2})+)\]/g, (_, l) => l.split(/,\s*/).map((x) => `[${x}]`).join(" "));
-        if (m.ruolo === "sbobina") window.Sbobina.render(bolla, testo, { onTempo: d.audio ? vaiA : null });
-        else bolla.textContent = m.testo;
+        if (m.ruolo !== "sbobina") { bolla.textContent = m.testo; return bolla; }
+        // "[05:40, 06:18]" → due tempi
+        const testo = m.testo.replace(/\[(\d{1,2}:\d{2}(?:,\s*\d{1,2}:\d{2})+)\]/g, (_, t) => t.split(/,\s*/).map((x) => `[${x}]`).join(" "));
+        window.Sbobina.render(bolla, testo, { onTempo }); // riempie la bolla subito; gli schemi arrivano dopo, al loro posto
+        const fonti = (m.fonti || []).filter((f) => stato.lezioni.some((x) => x.id === f.id));
+        if (fonti.length) bolla.append(h("div", { class: "fonti" }, h("span", {}, "Dagli appunti di"),
+          ...fonti.map((f) => h("button", { class: "fonte", type: "button", title: f.corso, onclick: () => apriLezione(f.id) }, f.titolo))));
         return bolla;
-      }) : [h("p", { class: "segnaposto" }, "Chiedi qualcosa su questa lezione: \"che differenza c'è tra…\", \"dove spiega…\", \"fammi un esempio di…\". Ti rispondo solo con ciò che è stato detto, citando il minuto.")]));
+      }) : vuoto(invia)));
     };
-    disegna();
     const campo = h("textarea", { rows: "2", maxlength: "1000", placeholder: "Scrivi la tua domanda…", "aria-label": "Domanda" });
-    const invia = h("button", { class: "tasto grande", type: "submit" }, icona("freccia"), "Chiedi");
+    const tasto = h("button", { class: "tasto grande", type: "submit" }, icona("freccia"), "Chiedi");
     const errore = h("p", { class: "errore-modulo", role: "alert", hidden: true });
-    const form = h("form", { class: "chiedi" }, campo, invia);
-    campo.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const domanda = campo.value.trim();
-      if (!domanda) return;
+    const form = h("form", { class: "chiedi" }, campo, tasto);
+    async function invia(domanda) {
+      if (!domanda || tasto.disabled) return;
       errore.hidden = true;
-      invia.disabled = true;
+      tasto.disabled = true;
       storia = [...storia, { ruolo: "studente", testo: domanda }];
       disegna();
-      elenco.append(attesa("Cerco nella lezione…"));
+      elenco.append(attesa(testoAttesa));
       campo.value = "";
       try {
-        storia = await api(`/api/lezioni/${l.id}/chiedi`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ domanda }) });
+        storia = await chiedi(domanda);
       } catch (err) {
         storia = storia.slice(0, -1);
         campo.value = domanda;
@@ -1459,15 +1485,55 @@
         errore.hidden = false;
       }
       disegna();
-      invia.disabled = false;
+      tasto.disabled = false;
       campo.focus();
-    });
-    const cancella = h("button", { class: "tasto trasparente", type: "button", onclick: async () => {
-      await api(`/api/lezioni/${l.id}/chat`, { method: "DELETE" });
+    }
+    disegna();
+    campo.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
+    form.addEventListener("submit", (e) => { e.preventDefault(); invia(campo.value.trim()); });
+    const nuova = h("button", { class: "tasto trasparente", type: "button", onclick: async () => {
+      await cancella();
       storia = [];
       disegna();
+      campo.focus();
     } }, icona("cestino"), "Nuova conversazione");
-    foglio.append(h("div", { class: "testa-studio" }, h("h3", {}, "Chiedi alla lezione"), cancella), elenco, errore, form);
+    foglio.append(h("div", { class: "testa-studio" }, h("h3", {}, titolo), nuova), testa, elenco, errore, form);
+    return campo;
+  }
+
+  /** Chiedi alle tue lezioni: l'AI risponde con gli appunti di tutte le lezioni pronte, o di un corso. */
+  async function mostraChiediTutte() {
+    let storia;
+    try { storia = await api("/api/chat"); } catch (e) { alert(e.message); return; }
+    stato.vista = "chiedi";
+    const pronte = stato.lezioni.filter((l) => l.stato === "completata");
+    const corsi = [...new Set(pronte.map((l) => l.corso))].sort((a, b) => a.localeCompare(b, "it"));
+    let corso = corsi.includes(stato.corsoChiedi) ? stato.corsoChiedi : "";
+    const foglio = h("section", { "data-titolo": "Chiedi 1.1", class: "foglio conversazione" });
+    riempiPiastra([
+      h("header", { class: "intestazione" }, h("h1", {}, "Chiedi alle tue lezioni"),
+        h("p", { class: "sottotitolo" }, "Rispondo solo con quello che c'è nei tuoi appunti, e ti dico in quale lezione e a che minuto.")),
+      foglio,
+    ]);
+    if (!pronte.length) {
+      foglio.append(h("p", { class: "segnaposto" }, "Quando una lezione è pronta potrai farle domande qui."));
+      return;
+    }
+    const filtro = corsi.length > 1 ? h("div", { class: "filtro-corso" }, h("span", { class: "dati" }, "Cerca in"),
+      scelte("corso-chiedi", [["", "Tutti i corsi"], ...corsi.map((c) => [c, c])], corso, (c) => { corso = stato.corsoChiedi = c; })) : null;
+    const campo = conversazione(foglio, {
+      titolo: "La tua conversazione",
+      storia,
+      testa: filtro,
+      vuoto: (invia) => [h("div", { class: "spunti-chat" },
+        h("p", { class: "segnaposto" }, "Da dove parti? Tocca una domanda o scrivine una tua."),
+        ...["Quali argomenti ha detto che chiederà all'esame?", "Riassumimi i concetti chiave, lezione per lezione", "Quali definizioni devo sapere a memoria?"]
+          .map((q) => h("button", { class: "spunto", type: "button", onclick: () => invia(q) }, icona("bolla"), q)))],
+      testoAttesa: "Sfoglio i tuoi appunti…",
+      chiedi: (domanda) => api("/api/chiedi", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ domanda, corso }) }),
+      cancella: () => api("/api/chat", { method: "DELETE" }),
+    });
+    campo.focus();
   }
 
   /** Modifica a mano degli appunti, con ritorno alla versione dell'AI. */
@@ -2021,6 +2087,7 @@
     $("#btn-nuova").addEventListener("click", () => mostraNuova());
     $("#btn-impostazioni").addEventListener("click", mostraImpostazioni);
     $("#btn-registra").addEventListener("click", mostraRegistrazione);
+    $("#btn-chiedi").addEventListener("click", mostraChiediTutte);
     $("#marchio").addEventListener("click", (e) => {
       e.preventDefault();
       stato.selezionata = null;
@@ -2060,6 +2127,7 @@
     if (daHash === "impostazioni") mostraImpostazioni();
     else if (daHash === "registra") mostraRegistrazione();
     else if (daHash === "ripasso") mostraRipassoGenerale();
+    else if (daHash === "chiedi") mostraChiediTutte();
     else if (daHash === "primo-avvio" || (!imp().configurato && !stato.lezioni.length)) mostraPrimoAvvio();
     else if (daHash && stato.lezioni.some((l) => l.id === daHash)) await apriLezione(daHash, { mantieniScheda: !!schedaHash });
     else mostraBenvenuto();
