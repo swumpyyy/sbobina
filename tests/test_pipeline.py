@@ -288,3 +288,18 @@ def test_glossario_senza_perdite_tra_thread(archivio):
     [f.start() for f in fili]
     [f.join() for f in fili]
     assert len(archivio.carica_corso("Fisica").glossario) == 30
+
+
+def test_lezione_senza_audio_salta_trascrizione(config, archivio, tmp_path):
+    appunti = tmp_path / "appunti.md"
+    appunti.write_text("Rolle: f continua in [a,b]", encoding="utf-8")
+    lezione = archivio.crea_lezione(audio=None, corso="Analisi 1", materiali=[("appunti miei.md", appunti)])
+    assert lezione.titolo == "appunti miei" and lezione.file_audio == ""
+    motore, llm = FintoMotore(), FintoLLM()
+    risultato = Elaborazione(config, archivio, llm, [motore]).esegui(lezione.id)
+
+    assert risultato.stato == "completata", risultato.errore
+    assert motore.chiamate == []
+    assert llm.fasi() == ["appunti", "verifica", "correzione", "approfondimento"]
+    fonte = llm.chiamate[0]["contenuto"][-2]["text"]
+    assert "<trascrizione>" not in fonte and "non ha una registrazione" in fonte

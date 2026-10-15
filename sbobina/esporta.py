@@ -130,19 +130,37 @@ document.querySelectorAll('.appunti').forEach(function (radice) {
   var giro = document.createTreeWalker(radice, NodeFilter.SHOW_TEXT);
   var nodi = []; while (giro.nextNode()) nodi.push(giro.currentNode);
   nodi.forEach(function (n) {
-    if (!/\\[(da verificare|incerto|incomprensibile)\\]/i.test(n.nodeValue)) return;
+    if (!/\\[(da verificare|to check|incerto|incomprensibile)\\]/i.test(n.nodeValue)) return;
     var span = document.createElement('span');
     span.innerHTML = n.nodeValue.replace(/[&<>]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; })
-      .replace(/\\[(da verificare|incerto|incomprensibile)\\]/gi, '<span class="q">$1</span>');
+      .replace(/\\[(da verificare|to check|incerto|incomprensibile)\\]/gi, '<span class="q">$1</span>');
     n.replaceWith(span);
   });
 });
 """
 
 
+# Le scritte del PDF nella versione inglese dell'app.
+INGLESE = {
+    "Appunti della lezione": "Lecture notes",
+    "Approfondimento": "Deep dive",
+    "Trascrizione revisionata": "Revised transcript",
+    "Tutte le lezioni": "All lectures",
+    "lezioni": "lectures",
+    "⭐ indicato dal docente": "⭐ flagged by the lecturer",
+    "Integrazione: oltre la lezione": "Integration: beyond the lecture",
+    "da verificare": "to check",
+    " controlla sul libro": " check the textbook",
+}
+
+
+def traduci(testo: str, lingua: str) -> str:
+    return INGLESE.get(testo, testo) if lingua == "en" else testo
+
+
 def esporta_pdf_html(
     *, titolo: str, corso: str, data: str, appunti: str = "", approfondimento: str | None = None,
-    parti: list[tuple[str, str]] | None = None, durata: str = "", base: str | None = None,
+    parti: list[tuple[str, str]] | None = None, durata: str = "", base: str | None = None, lingua: str = "it",
 ) -> str:
     """Pagina impaginata per il PDF: copertina con indice, poi una sezione per parte.
 
@@ -155,7 +173,8 @@ def esporta_pdf_html(
     font = f"{base}/fonts/SchibstedGrotesk-Variable.woff2"
     if parti is None:
         parti = [("Appunti della lezione", appunti)] + ([("Approfondimento", approfondimento)] if approfondimento else [])
-    parti = [(f"parte-{i}", nome, testo) for i, (nome, testo) in enumerate(parti)]
+    t = lambda testo: traduci(testo, lingua)  # noqa: E731
+    parti = [(f"parte-{i}", t(nome), testo) for i, (nome, testo) in enumerate(parti)]
     indice = "".join(f"<li>{html.escape(nome)}</li>" for _, nome, _ in parti)
     sezioni = "".join(
         f'<section class="parte"><h1 class="titolo-parte">{html.escape(nome)}</h1>'
@@ -167,14 +186,14 @@ def esporta_pdf_html(
         for chiave, _, testo in parti
     ) + "]);\n"
     return (
-        "<!doctype html>\n<html lang=\"it\" data-tema=\"chiaro\">\n<head>\n<meta charset=\"utf-8\">\n"
+        f"<!doctype html>\n<html lang=\"{lingua}\" data-tema=\"chiaro\">\n<head>\n<meta charset=\"utf-8\">\n"
         f"<title>{html.escape(titolo)} · {html.escape(corso)}</title>\n{librerie(base)}\n<style>\n"
         f"@font-face {{ font-family: 'Schibsted Grotesk'; src: url('{font}') format('woff2'); font-weight: 100 900; }}\n"
         f"{css}\n:root {{ --c: {colore_corso(corso)}; }}\n{CSS_PDF}\n</style>\n</head>\n<body>\n"
         f'<div class="copertina"><div class="corso">{html.escape(corso)}</div><h1>{html.escape(titolo)}</h1>'
         f'<div class="data">{html.escape(" · ".join(x for x in (data, durata) if x))}</div><div class="barra"></div><ol>{indice}</ol>'
-        '<div class="legenda"><span>⭐ indicato dal docente</span><span>Integrazione: oltre la lezione</span>'
-        '<span><span class="q">da verificare</span> controlla sul libro</span></div></div>\n'
+        f'<div class="legenda"><span>{t("⭐ indicato dal docente")}</span><span>{t("Integrazione: oltre la lezione")}</span>'
+        f'<span><span class="q">{t("da verificare")}</span>{t(" controlla sul libro")}</span></div></div>\n'
         f"{sezioni}\n<script>\n{render_js}\n</script>\n<script>\n{render}{MARCA_INCERTI}</script>\n"
         "</body>\n</html>\n"
     )

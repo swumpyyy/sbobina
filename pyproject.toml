@@ -14,7 +14,7 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "python-multipart>=0.0.9",
-    "pypdf>=5.0",
+    "pypdf[image]>=5.0",  # [image]: le pagine scansionate passano all'OCR
 ]
 
 [project.optional-dependencies]

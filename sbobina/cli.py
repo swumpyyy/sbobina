@@ -17,7 +17,7 @@ def _elaborazione(config: Config, archivio: Archivio):
     from sbobina.pipeline import Elaborazione
     from sbobina.trascrizione import crea_motori
 
-    return Elaborazione(config, archivio, crea_modello(config.modello), crea_motori(config))
+    return Elaborazione(config, archivio, crea_modello(config.modello, lingua=config.lingua), crea_motori(config))
 
 
 def _file_audio(percorsi: list[Path]) -> list[Path]:

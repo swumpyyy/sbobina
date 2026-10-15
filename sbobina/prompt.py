@@ -146,6 +146,14 @@ preparerà l'esame. Le fonti sono la trascrizione revisionata della lezione e gl
 del corso (slide, dispense, foto della lavagna) forniti con essa."""
 
 
+SENZA_AUDIO = """\
+Questa lezione non ha una registrazione: le uniche fonti sono i materiali qui sopra (appunti dello \
+studente, PDF, foto). Dove le regole parlano di trascrizione intendi i materiali; non scrivere tempi \
+⏱, né "Indicazioni del docente" che non compaiono nei materiali. Gli appunti dello studente possono \
+essere disordinati o abbreviati: riscrivili completi e chiari senza aggiungere contenuti, e ciò che \
+spieghi oltre i materiali va nei riquadri Integrazione."""
+
+
 def contenuto_lezione(
     *, corso: str, titolo: str, data: str, note: str, blocchi_materiali: list[dict], trascrizione: str
 ) -> list[dict]:
@@ -156,12 +164,12 @@ def contenuto_lezione(
     materiali = (
         "I materiali del corso sono allegati qui sopra." if blocchi_materiali else "Nessun materiale allegato."
     )
+    fonte = f"<trascrizione>\n{trascrizione}\n</trascrizione>" if trascrizione else SENZA_AUDIO
     return [
         *blocchi_materiali,
         {
             "type": "text",
-            "text": "\n".join(intestazione)
-            + f"\n{materiali}\n\n<trascrizione>\n{trascrizione}\n</trascrizione>",
+            "text": "\n".join(intestazione) + f"\n{materiali}\n\n{fonte}",
             "cache_control": {"type": "ephemeral"},
         },
     ]

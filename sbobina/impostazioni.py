@@ -16,6 +16,7 @@ MOTORI_LLM = ("mlx", "claude")
 LUNGHEZZE = ("essenziale", "normale", "dettagliata")
 STILI = ("discorsivo", "schematico")
 TEMI = ("sistema", "chiaro", "scuro")
+LINGUE = ("it", "en")  # dell'app, delle lezioni (Whisper) e degli appunti
 # Temi colore (stile Lectio): l'accento e il rosa del desktop mentre si registra. "personalizzato" usa `colore`.
 ACCENTI = ("rosa", "menta", "arancio", "cobalto", "limone", "seppia", "personalizzato")
 _ACCENTI_VECCHI = {"blu": "cobalto", "indaco": "cobalto", "azzurro": "cobalto", "verde": "menta"}
@@ -39,6 +40,7 @@ ANNI = ("1", "2", "3", "4", "5", "6", "fuori corso", "magistrale")
 class Impostazioni:
     # Profilo (dal primo avvio)
     configurato: bool = False
+    lingua: str = "it"
     nome: str = ""
     universita: str = ""
     corso_di_laurea: str = ""
@@ -119,7 +121,7 @@ class Impostazioni:
     def _valida(self) -> None:
         for nome, ammessi in (
             ("motore_llm", MOTORI_LLM), ("lunghezza", LUNGHEZZE), ("stile", STILI),
-            ("tema", TEMI), ("accento", ACCENTI), ("pdf", PDF), ("area", tuple(AREE)),
+            ("tema", TEMI), ("accento", ACCENTI), ("pdf", PDF), ("area", tuple(AREE)), ("lingua", LINGUE),
         ):
             if getattr(self, nome) not in ammessi:
                 raise ValueError(f"Valore non valido per {nome}: {getattr(self, nome)!r} (ammessi: {', '.join(ammessi)})")
@@ -150,6 +152,7 @@ class Impostazioni:
         return replace(
             config,
             modello=modello,
+            lingua=self.lingua,
             whisper_modello=self.whisper or config.whisper_modello,
             verifica=config.verifica and self.sezione("verifica"),
         )

@@ -217,3 +217,20 @@ def test_llama_cpp_legge_lo_stream_di_llama_server(monkeypatch):
     assert numeri["motore"] == "llama.cpp" and numeri["token_al_secondo"] == 31.2 and numeri["prompt_tps"] == 240.0
     assert numeri["fine"] == "stop" and "primo_token_s" in numeri and numeri["durata_s"] >= 0
     assert ricevuto["messages"][0] == {"role": "system", "content": "Sei un tutor."} and ricevuto["stream"] is True
+
+
+def test_versione_inglese_aggiunge_la_lingua_al_system():
+    from sbobina.llm import InInglese
+
+    class Eco:
+        modello = "finto"
+
+        def testo(self, *, system, contenuto, sforzo, max_tokens=64000):
+            return system, None
+
+    inglese = InInglese(Eco())
+    assert inglese.modello == "finto"
+    testo, _ = inglese.testo(system="Scrivi appunti.", contenuto=[], sforzo="alto")
+    assert testo.startswith("Scrivi appunti.") and "in English" in testo
+    blocchi, _ = inglese.testo(system=[{"type": "text", "text": "a", "cache_control": {}}], contenuto=[], sforzo="alto")
+    assert blocchi[0]["cache_control"] == {} and "in English" in blocchi[-1]["text"]
