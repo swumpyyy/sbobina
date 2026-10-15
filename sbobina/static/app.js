@@ -50,6 +50,8 @@
     ferma: '<rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/>',
     carica: '<path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9"/><path d="M4.5 14.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/>',
     puntini: '<circle cx="5.5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="18.5" cy="12" r="1.3" fill="currentColor"/>',
+    grafico: '<path d="M4 20h16"/><path d="M7.5 16v-4M12 16V6M16.5 16V9.5"/>',
+    su: '<path d="M12 19V5M6 11l6-6 6 6"/>',
     cuffie: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6.5" rx="2"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="2"/>',
   };
 
@@ -524,9 +526,16 @@
     const flusso = h("div", { class: "flusso", role: "log", "aria-live": "off", tabindex: "0", "aria-label": "Testo in diretta" },
       h("p", { class: "attesa" }, "Tra poco qui compaiono le parole, man mano che l'AI le scrive."));
     const marchio = marchioVoce();
+    const numeri = h("div", { class: "nerd-quinte", hidden: true });
+    let ultimiNumeri = {};
     const sezione = h("details", { class: "quinte", open: localStorage.getItem("sbobina-quinte") !== "chiuse" },
       h("summary", {}, marchio, h("span", { class: "riga-verbo" }, verbo, tempo), chi,
         h("span", { class: "apri" }, icona("freccia"))),
+      nerdAttivo() ? h("div", { class: "azioni-quinte" }, tastoNerd((si) => {
+        numeri.hidden = !si;
+        numeri.replaceChildren(numeriNerd(ultimiNumeri));
+      })) : null,
+      numeri,
       flusso);
     sezione.addEventListener("toggle", () => localStorage.setItem("sbobina-quinte", sezione.open ? "aperte" : "chiuse"));
 
@@ -560,6 +569,10 @@
         try {
           const d = await api("/api/diretta");
           if (!stato.diretta || stato.diretta.turno !== d.turno) stato.diretta = { turno: d.turno, inizio: Date.now() };
+          // si ridisegna solo se un numero cambia: ridisegnare a ogni giro faceva ripartire l'animazione (sfocata)
+          const cambiati = JSON.stringify(d.nerd || {}) !== JSON.stringify(ultimiNumeri);
+          ultimiNumeri = d.nerd || {};
+          if (cambiati && !numeri.hidden) numeri.replaceChildren(numeriNerd(ultimiNumeri));
           if (d.testo !== ultimoTesto) {
             const nuovi = d.testo.startsWith(ultimoTesto) ? d.testo.length - ultimoTesto.length : 0;
             marchio.parla(nuovi);
@@ -1278,7 +1291,63 @@
 
   /** Un'attesa onesta mentre l'AI genera: con un modello locale può volerci qualche minuto. */
   function attesa(testo) {
-    return h("div", { class: "attesa", role: "status" }, h("span", { class: "puntini", "aria-hidden": "true" }, h("i"), h("i"), h("i")), testo);
+    const secondi = h("span", { class: "dati secondi" });
+    const el = h("div", { class: "attesa", role: "status" }, bobinaPensa(), h("span", {}, testo), secondi);
+    const inizio = Date.now();
+    const conta = setInterval(() => {
+      if (!el.isConnected) { clearInterval(conta); return; }
+      const s = Math.round((Date.now() - inizio) / 1000);
+      if (s >= 5) secondi.textContent = `${s} s`;
+    }, 1000);
+    return el;
+  }
+
+  // --- sezione nerd: i numeri del modello -------------------------------------
+
+  const nerdAttivo = () => !!imp().nerd;
+  const NUMERI_NERD = [
+    ["motore", "Motore"], ["modello", "Modello"], ["token_prompt", "Token letti"], ["prompt_tps", "Lettura", "tok/s"],
+    ["primo_token_s", "Primo token", "s"], ["token_generati", "Token scritti"], ["token_al_secondo", "Scrittura", "tok/s"],
+    ["memoria_gb", "Memoria al picco", "GB"], ["durata_s", "Durata", "s"], ["contesto", "Contesto", "tok"],
+    ["max_token", "Limite risposta", "tok"], ["temperatura", "Temperatura"], ["json", "Formato"],
+    ["audio_ascoltato_s", "Audio ascoltato", "s"], ["audio_totale_s", "Audio totale", "s"], ["velocita_x", "Velocità", "× tempo reale"],
+    ["lezioni_lette", "Lezioni lette"], ["caratteri_letti", "Caratteri letti"], ["cache_letti", "Token dalla cache"], ["fine", "Fine"],
+  ];
+  const FINI = { stop: "naturale", end_turn: "naturale", length: "troncata", max_tokens: "troncata" };
+
+  function valoreNerd(chiave, v) {
+    if (chiave === "modello") return String(v).replace(/^mlx-community\//, "");
+    if (chiave === "json") return v ? "JSON" : "testo";
+    if (chiave === "fine") return FINI[v] || String(v);
+    return typeof v === "number" ? v.toLocaleString("it-IT", { maximumFractionDigits: 2 }) : String(v);
+  }
+
+  /** I numeri di una richiesta all'AI: tutti in una griglia, o i principali in una riga sola mentre lavora. */
+  function numeriNerd(n, { riga = false } = {}) {
+    const voci = NUMERI_NERD.filter(([k]) => n && n[k] !== undefined && n[k] !== null && n[k] !== "");
+    if (riga) {
+      const brevi = ["token_prompt", "primo_token_s", "token_generati", "token_al_secondo", "memoria_gb", "audio_ascoltato_s", "velocita_x"];
+      return h("p", { class: "nerd-riga dati" }, ...voci.filter(([k]) => brevi.includes(k))
+        .map(([k, nome, unita]) => h("span", {}, h("b", {}, valoreNerd(k, n[k])), ` ${unita || ""} ${nome.toLowerCase()}`)));
+    }
+    return h("dl", { class: "nerd" }, ...voci.map(([k, nome, unita]) =>
+      h("div", {}, h("dt", {}, nome), h("dd", {}, valoreNerd(k, n[k]), unita ? h("small", {}, ` ${unita}`) : null))));
+  }
+
+  /** Il tasto che apre e chiude i numeri: esiste solo con la sezione nerd accesa. */
+  function tastoNerd(apri) {
+    const tasto = h("button", { class: "tasto-nerd", type: "button", "aria-expanded": "false" }, icona("grafico"), "Statistiche");
+    tasto.addEventListener("click", () => {
+      const aperto = tasto.getAttribute("aria-expanded") === "true";
+      tasto.setAttribute("aria-expanded", String(!aperto));
+      apri(!aperto);
+    });
+    return tasto;
+  }
+
+  /** Mentre l'AI pensa: il marchio su bianco, solo le cinque linee audio che ondeggiano. */
+  function bobinaPensa(ferma = false) {
+    return h("span", { class: ferma ? "bobina-pensa ferma" : "bobina-pensa", "aria-hidden": "true" }, h("i"), h("i"), h("i"), h("i"), h("i"));
   }
 
   async function mostraRipasso(foglio, d) {
@@ -1423,51 +1492,134 @@
     }
     let storia = [];
     try { storia = (await api(`/api/lezioni/${l.id}/studio`)).chat; } catch (e) { /* conversazione vuota */ }
+    conversazione(foglio, {
+      titolo: "Chiedi alla lezione",
+      storia,
+      vuoto: () => [h("p", { class: "segnaposto" }, "Chiedi qualcosa su questa lezione: \"che differenza c'è tra…\", \"dove spiega…\", \"fammi un esempio di…\". Ti rispondo solo con ciò che è stato detto, citando il minuto.")],
+      testoAttesa: "Cerco nella lezione…",
+      chiedi: (domanda) => api(`/api/lezioni/${l.id}/chiedi`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ domanda }) }),
+      cancella: () => api(`/api/lezioni/${l.id}/chat`, { method: "DELETE" }),
+      onTempo: d.audio ? vaiA : null,
+    });
+  }
+
+  /** Una conversazione con l'AI: bolle, attesa con la bobina, campo in basso. */
+  /** Una conversazione con l'AI, come in un terminale: la domanda dopo ">", la risposta accanto al marchio. */
+  function conversazione(foglio, { titolo, storia, vuoto, testoAttesa, chiedi, cancella, onTempo = null, piede = null }) {
     const elenco = h("div", { class: "chat", "aria-live": "polite" });
     const disegna = () => {
       elenco.replaceChildren(...(storia.length ? storia.map((m) => {
-        const bolla = h("div", { class: `bolla ${m.ruolo}` });
-        // "[05:40, 06:18]" → due tempi cliccabili
-        const testo = m.testo.replace(/\[(\d{1,2}:\d{2}(?:,\s*\d{1,2}:\d{2})+)\]/g, (_, l) => l.split(/,\s*/).map((x) => `[${x}]`).join(" "));
-        if (m.ruolo === "sbobina") window.Sbobina.render(bolla, testo, { onTempo: d.audio ? vaiA : null });
-        else bolla.textContent = m.testo;
-        return bolla;
-      }) : [h("p", { class: "segnaposto" }, "Chiedi qualcosa su questa lezione: \"che differenza c'è tra…\", \"dove spiega…\", \"fammi un esempio di…\". Ti rispondo solo con ciò che è stato detto, citando il minuto.")]));
+        if (m.ruolo !== "sbobina") return h("div", { class: "riga-chat studente" }, h("span", { class: "prompt", "aria-hidden": "true" }, ">"), h("p", {}, m.testo));
+        // "[05:40, 06:18]" → due tempi
+        const testo = m.testo.replace(/\[(\d{1,2}:\d{2}(?:,\s*\d{1,2}:\d{2})+)\]/g, (_, t) => t.split(/,\s*/).map((x) => `[${x}]`).join(" "));
+        const corpo = h("div", { class: "risposta" });
+        window.Sbobina.render(corpo, testo, { onTempo }); // riempie subito; gli schemi arrivano dopo, al loro posto
+        const fonti = (m.fonti || []).filter((f) => stato.lezioni.some((x) => x.id === f.id));
+        if (fonti.length) corpo.append(h("div", { class: "fonti" }, h("span", {}, "Dagli appunti di"),
+          ...fonti.map((f) => h("button", { class: "fonte", type: "button", onclick: () => apriLezione(f.id) }, f.titolo, h("small", {}, f.corso)))));
+        if (nerdAttivo() && m.nerd && Object.keys(m.nerd).length > 1) {
+          const griglia = numeriNerd(m.nerd);
+          griglia.hidden = true;
+          corpo.append(tastoNerd((si) => { griglia.hidden = !si; }), griglia);
+        }
+        return h("div", { class: "riga-chat sbobina" }, bobinaPensa(true), corpo);
+      }) : vuoto(invia)));
     };
-    disegna();
-    const campo = h("textarea", { rows: "2", maxlength: "1000", placeholder: "Scrivi la tua domanda…", "aria-label": "Domanda" });
-    const invia = h("button", { class: "tasto grande", type: "submit" }, icona("freccia"), "Chiedi");
+    const campo = h("textarea", { rows: "1", maxlength: "1000", placeholder: "Scrivi la tua domanda…", "aria-label": "Domanda" });
+    const tasto = h("button", { class: "invia", type: "submit", "aria-label": "Chiedi", title: "Chiedi (Invio)" }, icona("su"));
     const errore = h("p", { class: "errore-modulo", role: "alert", hidden: true });
-    const form = h("form", { class: "chiedi" }, campo, invia);
-    campo.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const domanda = campo.value.trim();
-      if (!domanda) return;
+    const form = h("form", { class: "chiedi" }, h("span", { class: "prompt", "aria-hidden": "true" }, ">"), campo, tasto);
+    const adatta = () => { campo.style.height = "auto"; campo.style.height = `${campo.scrollHeight}px`; };
+    campo.addEventListener("input", adatta);
+    async function invia(domanda) {
+      if (!domanda || tasto.disabled) return;
+      const daCampo = domanda === campo.value.trim(); // una domanda di partenza non cancella quello che stavi scrivendo
       errore.hidden = true;
-      invia.disabled = true;
+      tasto.disabled = true;
       storia = [...storia, { ruolo: "studente", testo: domanda }];
       disegna();
-      elenco.append(attesa("Cerco nella lezione…"));
-      campo.value = "";
+      const inAttesa = attesa(testoAttesa);
+      elenco.append(inAttesa);
+      if (nerdAttivo()) seguiNumeri(inAttesa);
+      if (daCampo) { campo.value = ""; adatta(); }
       try {
-        storia = await api(`/api/lezioni/${l.id}/chiedi`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ domanda }) });
+        storia = await chiedi(domanda);
       } catch (err) {
         storia = storia.slice(0, -1);
-        campo.value = domanda;
+        if (daCampo) { campo.value = domanda; adatta(); }
         errore.textContent = err.message;
         errore.hidden = false;
       }
       disegna();
-      invia.disabled = false;
+      tasto.disabled = false;
       campo.focus();
-    });
-    const cancella = h("button", { class: "tasto trasparente", type: "button", onclick: async () => {
-      await api(`/api/lezioni/${l.id}/chat`, { method: "DELETE" });
+    }
+    disegna();
+    campo.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
+    form.addEventListener("submit", (e) => { e.preventDefault(); invia(campo.value.trim()); });
+    const nuova = h("button", { class: "collegamento nuova-chat", type: "button", onclick: async () => {
+      if (tasto.disabled) return; // la risposta in arrivo riscriverebbe la conversazione appena cancellata
+      await cancella();
       storia = [];
       disegna();
+      campo.focus();
     } }, icona("cestino"), "Nuova conversazione");
-    foglio.append(h("div", { class: "testa-studio" }, h("h3", {}, "Chiedi alla lezione"), cancella), elenco, errore, form);
+    foglio.append(h("div", { class: "testa-studio" }, h("h3", {}, titolo), nuova), elenco, errore, form,
+      h("div", { class: "piede-chat" }, piede, h("span", { class: "tasti" }, h("kbd", {}, "↵"), " invia · ", h("kbd", {}, "⇧↵"), " a capo")));
+    return campo;
+  }
+
+  /** Sezione nerd: sotto l'attesa, i numeri del modello mentre legge e scrive. */
+  function seguiNumeri(contenitore) {
+    const posto = h("div", { class: "nerd-diretta" });
+    contenitore.after(posto);
+    const avvio = Date.now() - 1000; // server e pagina girano sullo stesso computer: stesso orologio
+    const giro = async () => {
+      if (!contenitore.isConnected) { posto.remove(); return; }
+      try {
+        const d = await api("/api/diretta");
+        // solo i numeri della nostra richiesta, non quelli rimasti dalla precedente
+        if (d.nerd && d.nerd.inizio * 1000 >= avvio) posto.replaceChildren(numeriNerd(d.nerd, { riga: true }));
+      } catch (e) { /* server occupato: si riprova */ }
+      setTimeout(giro, 600);
+    };
+    giro();
+  }
+
+  /** Chiedi alle tue lezioni: l'AI risponde con gli appunti di tutte le lezioni pronte, o di un corso. */
+  async function mostraChiediTutte() {
+    let storia;
+    try { storia = await api("/api/chat"); } catch (e) { alert(e.message); return; }
+    stato.vista = "chiedi";
+    const pronte = stato.lezioni.filter((l) => l.stato === "completata");
+    const corsi = [...new Set(pronte.map((l) => l.corso))].sort((a, b) => a.localeCompare(b, "it"));
+    let corso = corsi.includes(stato.corsoChiedi) ? stato.corsoChiedi : "";
+    const foglio = h("section", { "data-titolo": "Chiedi 1.1", class: "foglio conversazione" });
+    riempiPiastra([
+      h("header", { class: "intestazione" }, h("h1", {}, "Chiedi alle tue lezioni"),
+        h("p", { class: "sottotitolo" }, "Rispondo solo con quello che c'è nei tuoi appunti, e ti dico in quale lezione e a che minuto.")),
+      foglio,
+    ]);
+    if (!pronte.length) {
+      foglio.append(h("p", { class: "segnaposto" }, "Quando una lezione è pronta potrai farle domande qui."));
+      return;
+    }
+    const scegli = h("select", { "aria-label": "Cerca nel corso", onchange: (e) => { corso = stato.corsoChiedi = e.target.value; } },
+      ...[["", "tutti i corsi"], ...corsi.map((c) => [c, c])].map(([v, t]) => h("option", { value: v, selected: v === corso }, t)));
+    const filtro = corsi.length > 1 ? h("label", { class: "filtro-corso" }, "in", scegli) : null;
+    const campo = conversazione(foglio, {
+      titolo: "La tua conversazione",
+      storia,
+      piede: filtro,
+      vuoto: (invia) => [h("div", { class: "spunti-chat" },
+        h("p", {}, "Da dove parti? Tocca una domanda o scrivine una tua."),
+        h("ul", {}, ...["Quali argomenti ha detto che chiederà all'esame?", "Riassumimi i concetti chiave, lezione per lezione", "Quali definizioni devo sapere a memoria?"]
+          .map((q) => h("li", {}, h("button", { class: "spunto", type: "button", onclick: () => invia(q) }, h("span", {}, q), icona("freccia"))))))],
+      testoAttesa: "Sfoglio i tuoi appunti…",
+      chiedi: (domanda) => api("/api/chiedi", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ domanda, corso }) }),
+      cancella: () => api("/api/chat", { method: "DELETE" }),
+    });
+    campo.focus();
   }
 
   /** Modifica a mano degli appunti, con ritorno alla versione dell'AI. */
@@ -1844,8 +1996,26 @@
       return h("label", { class: "campo" }, h("span", {}, etichetta), input);
     };
 
+    let svelata = !!i.nerd;
+    try { svelata = svelata || localStorage.getItem("sbobina-nerd") === "svelata"; } catch (e) { /* niente */ }
+    const sezioneNerd = sezione("imp-nerd", "Sezione nerd", "Per chi vuole vedere i numeri del modello.",
+      h("div", { class: "griglia-interruttori" },
+        interruttore("Sezione nerd", i.nerd, (v) => cambia({ nerd: v }),
+          "Compare il tasto Statistiche: token letti e scritti, velocità, memoria e durata, sotto ogni risposta e mentre elabora una lezione.")));
+    sezioneNerd.hidden = !svelata;
+    let clic = 0;
+    const titolo = h("h1", { onclick: () => {
+      if (!sezioneNerd.hidden) return;
+      clic += 1;
+      if (clic < 5) { if (clic >= 2) salvato(`Ancora ${5 - clic} clic…`); return; }
+      sezioneNerd.hidden = false;
+      try { localStorage.setItem("sbobina-nerd", "svelata"); } catch (e) { /* niente */ }
+      salvato("Sezione nerd sbloccata");
+      sezioneNerd.scrollIntoView({ behavior: "smooth", block: "center" });
+    } }, "Impostazioni");
+
     riempiPiastra([
-      h("header", { class: "intestazione" }, h("h1", {}, "Impostazioni"),
+      h("header", { class: "intestazione" }, titolo,
         h("p", { class: "sottotitolo" }, "Ogni modifica si salva subito e vale dalla prossima lezione.")),
       sezione("imp-appunti", "Appunti", "Come vuoi che siano scritti.",
         riga("Lunghezza", null, scelte("lunghezza", [["essenziale", "Essenziale"], ["normale", "Normale"], ["dettagliata", "Dettagliata"]],
@@ -1892,6 +2062,7 @@
           h("code", {}, sistema.cartella_dati),
           h("button", { class: "tasto", type: "button", onclick: () => api("/api/cartella-dati", { method: "POST" }) },
             icona("graffetta"), MAC ? "Mostra nel Finder" : "Apri in Esplora file"))),
+      sezioneNerd,
     ]);
   }
 
@@ -2021,6 +2192,7 @@
     $("#btn-nuova").addEventListener("click", () => mostraNuova());
     $("#btn-impostazioni").addEventListener("click", mostraImpostazioni);
     $("#btn-registra").addEventListener("click", mostraRegistrazione);
+    $("#btn-chiedi").addEventListener("click", mostraChiediTutte);
     $("#marchio").addEventListener("click", (e) => {
       e.preventDefault();
       stato.selezionata = null;
@@ -2060,6 +2232,7 @@
     if (daHash === "impostazioni") mostraImpostazioni();
     else if (daHash === "registra") mostraRegistrazione();
     else if (daHash === "ripasso") mostraRipassoGenerale();
+    else if (daHash === "chiedi") mostraChiediTutte();
     else if (daHash === "primo-avvio" || (!imp().configurato && !stato.lezioni.length)) mostraPrimoAvvio();
     else if (daHash && stato.lezioni.some((l) => l.id === daHash)) await apriLezione(daHash, { mantieniScheda: !!schedaHash });
     else mostraBenvenuto();

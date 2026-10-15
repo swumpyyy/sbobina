@@ -69,6 +69,8 @@ class Impostazioni:
     # Fine lezione
     notifiche: bool = True
     suono: bool = True
+    # Sezione nerd: i numeri del modello (token, velocità, memoria) nelle risposte e mentre elabora
+    nerd: bool = False
 
     def sezione(self, nome: str) -> bool:
         return self.sezioni.get(nome, True)

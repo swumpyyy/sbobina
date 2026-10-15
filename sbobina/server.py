@@ -62,6 +62,7 @@ class Approfondimento(BaseModel):
 
 class Domanda(BaseModel):
     domanda: str
+    corso: str = ""
 
 
 class Testo(BaseModel):
@@ -550,6 +551,23 @@ def crea_app(
     @app.delete("/api/lezioni/{id_lezione}/chat", dependencies=protetto)
     def cancella_chat(id_lezione: str) -> Response:
         (archivio.cartella(trova(id_lezione).id) / "chat.json").unlink(missing_ok=True)
+        return Response(status_code=204)
+
+    @app.get("/api/chat")
+    def chat_generale() -> list[dict]:
+        file = archivio.radice / "chat.json"
+        return leggi_json(file) if file.is_file() else []
+
+    @app.post("/api/chiedi", dependencies=protetto)
+    def chiedi_alle_lezioni(corpo: Domanda) -> list[dict]:
+        domanda = " ".join(corpo.domanda.split())[:1000]
+        if not domanda:
+            raise HTTPException(400, "Scrivi una domanda.")
+        return genera(studio.chiedi_tutte, archivio, modello_interattivo(), domanda, corpo.corso.strip())
+
+    @app.delete("/api/chat", dependencies=protetto)
+    def cancella_chat_generale() -> Response:
+        (archivio.radice / "chat.json").unlink(missing_ok=True)
         return Response(status_code=204)
 
     @app.get("/api/ripasso")

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import subprocess
 import threading
+import time
 from pathlib import Path
 
 from sbobina.sistema import CARTELLA_APP
@@ -51,6 +52,12 @@ def campioni_16k(audio: Path):
     return np.frombuffer(risultato.stdout, dtype=np.float32)
 
 
+
+def _numeri_whisper(diretta: dict, nerd, ascoltati: float, durata: float) -> None:
+    """Sezione nerd: quanto audio ha già ascoltato Whisper e quante volte più veloce del tempo reale."""
+    trascorsi = max(time.time() - diretta["nerd"].get("inizio", time.time()), 0.01)
+    nerd(audio_ascoltato_s=round(ascoltati), audio_totale_s=round(durata), velocita_x=round(ascoltati / trascorsi, 1))
+
 class MotoreWhisper:
     nome = "whisper"
 
@@ -90,11 +97,11 @@ class MotoreWhisper:
     def _trascrivi_fw(
         self, dispositivo: str, audio: Path, lingua: str, termini: list[str], contesto: str, avanzamento: Avanzamento
     ) -> Trascrizione:
-        from sbobina.llm import ferma_llama, in_diretta, inizia_diretta
+        from sbobina.llm import DIRETTA, ferma_llama, in_diretta, inizia_diretta, nerd
 
         ferma_llama()  # 8 GB di VRAM non bastano per Whisper e il modello degli appunti insieme
         modello = self._carica(dispositivo)
-        inizia_diretta()
+        inizia_diretta(motore=f"faster-whisper ({dispositivo})", modello=self.modello)
         segmenti, info = modello.transcribe(
             campioni_16k(audio),
             language=lingua,
@@ -116,6 +123,7 @@ class MotoreWhisper:
                     parole.append(Parola(float(w.start), float(w.end), testo, float(w.probability)))
             if info.duration:
                 avanzamento(min(1.0, segmento.end / info.duration))
+                _numeri_whisper(DIRETTA, nerd, segmento.end, info.duration)
         avanzamento(1.0)
         _modelli.clear()  # libera la scheda video per il modello degli appunti (ricaricarlo costa pochi secondi)
         return Trascrizione(self.nome, parole, float(info.duration))
@@ -147,8 +155,9 @@ class MotoreWhisper:
             def update(self, n):
                 self.fatto += n
                 avanzamento(min(1.0, self.fatto / self.totale))
+                _numeri_whisper(DIRETTA, nerd, durata * min(1.0, self.fatto / self.totale), durata)
 
-        from sbobina.llm import in_diretta, inizia_diretta
+        from sbobina.llm import DIRETTA, in_diretta, inizia_diretta, nerd
 
         percorso = modello_pronto(self.modello)
         if percorso == repo_hf(self.modello):  # nessun modello sul disco: download con barra e tentativi
@@ -162,7 +171,7 @@ class MotoreWhisper:
                     PREPARAZIONE["attiva"] = False
             percorso = modello_pronto(self.modello)
 
-        inizia_diretta()
+        inizia_diretta(motore="mlx-whisper", modello=self.modello)
         originale = modulo.tqdm
         modulo.tqdm = type("tqdm", (), {"tqdm": _Barra})
         # Con verbose=True mlx-whisper stampa ogni frase riconosciuta: la mandiamo alla vista in diretta.

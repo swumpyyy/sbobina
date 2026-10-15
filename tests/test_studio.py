@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from sbobina import studio
 from sbobina.archivio import Lezione
+from sbobina.llm import Utilizzo
 from sbobina.registrazione import Registratore
 from sbobina.server import crea_app, stime
 
@@ -32,7 +33,7 @@ class LLMStudio:
 
     def testo(self, *, system, contenuto, sforzo, max_tokens=0):
         self.contenuti.append(contenuto)
-        return "Ne parla al minuto [00:24].", None
+        return "Ne parla al minuto [00:24].", Utilizzo()
 
 
 @pytest.fixture
@@ -59,10 +60,30 @@ def test_quiz_carte_e_domande(archivio, lezione):
     mazzo = studio.genera_carte(archivio, lezione, llm)
     assert [c["fronte"] for c in mazzo["carte"]] == ["Art. 18"]
     storia = studio.chiedi(archivio, lezione, llm, "Dove parla dell'art. 18?")
-    assert storia[-1] == {"ruolo": "sbobina", "testo": "Ne parla al minuto [00:24]."}
+    assert storia[-1]["testo"] == "Ne parla al minuto [00:24]." and "nerd" in storia[-1]
     assert "<trascrizione>" in llm.contenuti[-1][0]["text"]  # la domanda vede la trascrizione con i tempi
     anki = studio.esporta_anki(archivio, lezione)
     assert "#deck:Sbobina::Diritto pubblico" in anki and "Art. 18\tLibertà di associazione\tdiritto-pubblico" in anki
+
+
+def test_chiedi_a_tutte_le_lezioni(archivio, lezione, audio_prova):
+    altra = archivio.crea_lezione(audio=audio_prova, nome_audio="b.wav", corso="Matematica", titolo="Derivate",
+                                  data_lezione="2026-10-13")
+    (archivio.cartella(altra.id) / "appunti.md").write_text("# Derivate\nLa derivata misura la pendenza.\n", encoding="utf-8")
+    archivio.aggiorna(altra.id, stato="completata")
+    llm = LLMStudio()
+    storia = studio.chiedi_tutte(archivio, llm, "Cosa dice l'articolo 18 sulle associazioni?")
+    assert [f["titolo"] for f in storia[-1]["fonti"]] == ["Associazioni"]  # solo la lezione che ne parla
+    assert "Derivate" not in llm.contenuti[-1][0]["text"]
+    storia = studio.chiedi_tutte(archivio, llm, "Riassumi tutto")  # nessuna parola trovata: tutte le lezioni
+    assert {f["titolo"] for f in storia[-1]["fonti"]} == {"Associazioni", "Derivate"}
+    assert len(storia) == 4 and (archivio.radice / "chat.json").is_file()
+    assert storia[-1]["nerd"]["lezioni_lette"] == 2 and storia[-1]["nerd"]["caratteri_letti"] > 0
+    # numeri vecchi in diretta (di un altro lavoro) non finiscono nella risposta: restano i token di questa
+    assert storia[-1]["nerd"]["token_prompt"] == 0 and "motore" not in storia[-1]["nerd"]
+    assert studio.chiedi_tutte(archivio, llm, "Riassumi tutto", corso="Matematica")[-1]["fonti"][0]["titolo"] == "Derivate"
+    with pytest.raises(ValueError):
+        studio.chiedi_tutte(archivio, llm, "Ciao", corso="Storia")
 
 
 def test_leitner(archivio, lezione):

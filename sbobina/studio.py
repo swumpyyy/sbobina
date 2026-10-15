@@ -5,13 +5,14 @@ from __future__ import annotations
 import io
 import re
 import threading
+import time
 import unicodedata
 import zipfile
 from datetime import date, timedelta
 from pathlib import Path
 
 from sbobina.archivio import Archivio, Lezione, leggi_json, scrivi_json, slug
-from sbobina.llm import ModelloLinguistico
+from sbobina.llm import DIRETTA, ModelloLinguistico, Utilizzo
 
 # Una sola generazione interattiva alla volta: con un modello locale due insieme esauriscono la memoria.
 OCCUPATO = threading.Lock()
@@ -174,6 +175,13 @@ def genera_carte(archivio: Archivio, lezione: Lezione, llm: ModelloLinguistico) 
     return mazzo
 
 
+def _numeri(inizio: float, uso: Utilizzo) -> dict:
+    """I numeri della sezione nerd per questa risposta: quelli in diretta se sono suoi, altrimenti i token."""
+    if DIRETTA["nerd"].get("inizio", 0) >= inizio:
+        return dict(DIRETTA["nerd"])
+    return {"token_prompt": uso.input, "token_generati": uso.output, "durata_s": round(time.time() - inizio, 2)}
+
+
 def chiedi(archivio: Archivio, lezione: Lezione, llm: ModelloLinguistico, domanda: str) -> list[dict]:
     """Risponde a una domanda sulla lezione citando i minuti; salva la conversazione in chat.json."""
     file = _file(archivio, lezione, "chat.json")
@@ -187,12 +195,69 @@ def chiedi(archivio: Archivio, lezione: Lezione, llm: ModelloLinguistico, domand
         + (f"Conversazione finora:\n{precedenti}\n\n" if precedenti else "")
         + f"Domanda: {domanda}"
     )
-    risposta, _ = llm.testo(
+    inizio = time.time()
+    risposta, uso = llm.testo(
         system=SYSTEM_STUDIO,
         contenuto=[{"type": "text", "text": _testo(archivio, lezione, trascrizione=True)}, {"type": "text", "text": istruzioni}],
         sforzo="medium", max_tokens=4000,
     )
-    storia += [{"ruolo": "studente", "testo": domanda}, {"ruolo": "sbobina", "testo": risposta.strip()}]
+    storia += [{"ruolo": "studente", "testo": domanda}, {"ruolo": "sbobina", "testo": risposta.strip(), "nerd": _numeri(inizio, uso)}]
+    scrivi_json(file, storia)
+    return storia
+
+
+# Parole che compaiono in ogni domanda e non aiutano a scegliere la lezione giusta.
+VUOTE = set("della delle degli dello nella nelle negli sulla sulle quali quale quando quanto come cosa sono "
+            "questo questa quello quella perche spiega spiegami dimmi lezione lezioni professore docente corso "
+            "differenza esempio fammi parla parlato detto".split())
+
+
+def chiedi_tutte(archivio: Archivio, llm: ModelloLinguistico, domanda: str, corso: str = "") -> list[dict]:
+    """Risponde usando gli appunti di tutte le lezioni pronte (o di un corso); salva la conversazione in chat.json."""
+    file = archivio.radice / "chat.json"
+    storia: list[dict] = leggi_json(file) if file.is_file() else []
+    # shortcut: le prime 6 lettere come radice ("associazioni" trova "associazione"), niente stemmer vero
+    parole = {p[:6] for p in re.findall(r"\w{4,}", _piano(domanda)) if p not in VUOTE}
+    candidate = []
+    for lezione in archivio.elenco():
+        appunti = _file(archivio, lezione, "appunti.md")
+        if lezione.stato != "completata" or (corso and lezione.corso != corso) or not appunti.is_file():
+            continue
+        testo = appunti.read_text(encoding="utf-8")
+        piano = _piano(testo)
+        candidate.append((sum(piano.count(p) for p in parole), lezione, testo))
+    if not candidate:
+        raise ValueError(f"Non ci sono ancora appunti pronti{' per ' + corso if corso else ''}.")
+    # prima le lezioni che parlano delle parole della domanda; se nessuna ne parla, tutte (es. "riassumi il corso")
+    candidate = sorted([c for c in candidate if c[0]], key=lambda c: -c[0]) or candidate
+    # shortcut: un budget fisso di caratteri invece dei token veri; oltre, un modello locale diventa lento
+    resto = min(60_000, max(2000, getattr(llm, "contesto", 65536) - 4000) * 3)  # 4000 token: istruzioni e risposta
+    blocchi, fonti = [], []
+    for _, lezione, testo in candidate:
+        if resto < 2000:
+            break
+        pezzo = testo[:resto]
+        blocchi.append(f'<lezione titolo="{lezione.titolo}" corso="{lezione.corso}" data="{lezione.data}">\n{pezzo}\n</lezione>')
+        fonti.append({"id": lezione.id, "titolo": lezione.titolo, "corso": lezione.corso})
+        resto -= len(pezzo)
+    precedenti = "\n".join(f"{m['ruolo'].upper()}: {m['testo']}" for m in storia[-6:])
+    istruzioni = (
+        "Rispondi alla domanda dello studente usando solo gli appunti di queste lezioni. Per ogni "
+        "informazione indica da quale lezione viene, col titolo in grassetto, e il minuto tra parentesi "
+        "quadre nel formato [mm:ss] preso dai marcatori ⏱ degli appunti. Se le lezioni non ne parlano, dillo "
+        "chiaramente invece di inventare. Sii conciso (massimo 10 frasi) e usa elenchi se aiutano. Formule in LaTeX.\n\n"
+        + (f"Conversazione finora:\n{precedenti}\n\n" if precedenti else "")
+        + f"Domanda: {domanda}"
+    )
+    inizio = time.time()
+    risposta, uso = llm.testo(
+        system=SYSTEM_STUDIO,
+        contenuto=[{"type": "text", "text": "\n\n".join(blocchi)}, {"type": "text", "text": istruzioni}],
+        sforzo="medium", max_tokens=4000,
+    )
+    storia += [{"ruolo": "studente", "testo": domanda, "corso": corso},
+               {"ruolo": "sbobina", "testo": risposta.strip(), "fonti": fonti,
+                "nerd": {**_numeri(inizio, uso), "lezioni_lette": len(fonti), "caratteri_letti": sum(map(len, blocchi))}}]
     scrivi_json(file, storia)
     return storia
 

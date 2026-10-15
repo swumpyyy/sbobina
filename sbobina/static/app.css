@@ -549,13 +549,13 @@ a { color: var(--blu-testo); text-underline-offset: 3px; }
 /* il marchio che parla: le barre di Sbobina come il livello di un microfono */
 .marchio-voce {
   width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 2.5px;
-  background: #1e1e1e; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); /* il marchio resta d'inchiostro anche col tema scuro */
+  background: var(--tema, #1e1e1e); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
 }
 .marchio-voce i {
   width: 3px; height: calc(21px * var(--alto)); min-height: 4px; background: #fefefe;
   transform: scaleY(.55); transition: transform 120ms cubic-bezier(.2, .9, .3, 1);
 }
-.marchio-voce i:nth-child(3) { background: #7fa8ff; } /* il blu elettrico del marchio, qualunque sia il tema */
+.marchio-voce i:nth-child(3) { background: color-mix(in oklab, var(--lectio, #7fa8ff) 45%, #fff); }
 .quinte.ferma .marchio-voce i { transform: scaleY(.55) !important; }
 .quinte.ferma .marchio-voce i:nth-child(3) { background: #9a9a9a; }
 .quinte.ferma .verbo { color: var(--inchiostro-lieve); }
@@ -981,7 +981,7 @@ a { color: var(--blu-testo); text-underline-offset: 3px; }
 .brindisi {
   position: fixed; left: 50%; bottom: 24px; z-index: 40;
   padding: 10px 18px; border-radius: 999px;
-  background: var(--inchiostro); color: var(--campo);
+  background: var(--tema, var(--inchiostro)); color: var(--su-tema, var(--campo));
   font-size: 14px; font-weight: 550;
   box-shadow: var(--ombra-alta);
   opacity: 0; transform: translate(-50%, 16px); pointer-events: none;
@@ -1080,20 +1080,6 @@ a { color: var(--blu-testo); text-underline-offset: 3px; }
 .spiegazione { padding: 12px 16px; border-radius: var(--r-piccolo); background: var(--blu-tenue); color: var(--inchiostro-tenue); }
 .spiegazione .tempo { margin-left: 4px; white-space: nowrap; }
 .quiz > .tasto.grande { justify-self: end; }
-
-.chat { display: grid; gap: 12px; margin-bottom: 18px; }
-.bolla { max-width: 80%; padding: 12px 16px; border-radius: 20px; animation: entra 520ms var(--uscita) both; }
-.bolla.studente { justify-self: end; background: var(--blu); color: #fff; border-bottom-right-radius: 6px; }
-.bolla.sbobina { justify-self: start; background: var(--campo); border: 1px solid var(--filo-scuro); border-bottom-left-radius: 6px; font-size: 15.5px; }
-.bolla.sbobina > :first-child { margin-top: 0; }
-.bolla.sbobina > :last-child { margin-bottom: 0; }
-.chiedi {
-  position: sticky; bottom: 16px;
-  display: flex; align-items: flex-end; gap: 10px; padding: 8px 8px 8px 16px;
-  border-radius: 24px; background: var(--vetro-forte); border: 1px solid var(--filo);
-  box-shadow: var(--luce-interna), var(--ombra);
-}
-.chiedi textarea { flex: 1; resize: none; border: 0; background: none; outline: none; padding: 8px 0; font: inherit; color: var(--inchiostro); }
 
 /* Registrazione */
 .registrazione { display: grid; gap: 18px; }
@@ -1198,20 +1184,20 @@ a { color: var(--blu-testo); text-underline-offset: 3px; }
   --guasto: #e5484d;
   --guasto-tenue: light-dark(rgba(229, 72, 77, 0.1), rgba(229, 72, 77, 0.18));
   /* il "blu" di prima diventa inchiostro: un solo accento (rosa) per schermata */
-  --blu: var(--inchiostro);
-  --blu-forte: var(--inchiostro);
-  --blu-testo: var(--inchiostro);
+  --blu: var(--tema-linea);
+  --blu-forte: var(--tema-linea);
+  --blu-testo: var(--tema-testo);
   --blu-tenue: light-dark(rgba(30, 30, 30, 0.07), rgba(236, 236, 236, 0.1));
   --blu-alone: light-dark(rgba(30, 30, 30, 0.18), rgba(0, 0, 0, 0.5));
   --vetro: light-dark(rgba(254, 254, 254, 0.62), rgba(27, 27, 27, 0.62));
   --vetro-forte: light-dark(rgba(254, 254, 254, 0.86), rgba(27, 27, 27, 0.86));
   --vetro-tenue: light-dark(rgba(254, 254, 254, 0.4), rgba(27, 27, 27, 0.4));
-  --filo: var(--inchiostro);
+  --filo: var(--tema-linea);
   --filo-scuro: light-dark(rgba(30, 30, 30, 0.22), rgba(236, 236, 236, 0.22));
   --luce-interna: inset 0 0 0 0 transparent;
-  --ombra-lieve: 3px 3px 0 var(--inchiostro);
-  --ombra: 6px 6px 0 var(--inchiostro);
-  --ombra-alta: 8px 8px 0 var(--inchiostro);
+  --ombra-lieve: 3px 3px 0 var(--tema-linea);
+  --ombra: 6px 6px 0 var(--tema-linea);
+  --ombra-alta: 8px 8px 0 var(--tema-linea);
   --ombra-vetro: 0 12px 32px -14px rgba(30, 30, 30, 0.35), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
   --r-grande: 0px;
   --r-medio: 0px;
@@ -1230,7 +1216,7 @@ body::before {
 }
 body::after {
   inset: auto 0 0 auto; width: 340px; height: 300px; opacity: 1;
-  background: radial-gradient(circle, var(--inchiostro) 1.4px, transparent 1.7px) 0 0 / 8px 8px;
+  background: radial-gradient(circle, var(--tema) 1.4px, transparent 1.7px) 0 0 / 8px 8px;
   -webkit-mask-image: radial-gradient(100% 100% at 100% 100%, #000 0%, rgba(0,0,0,.55) 35%, transparent 72%);
   mask-image: radial-gradient(100% 100% at 100% 100%, #000 0%, rgba(0,0,0,.55) 35%, transparent 72%);
 }
@@ -1242,7 +1228,7 @@ a { color: var(--inchiostro); text-decoration-thickness: 1px; }
 /* --- finestre retro: barra del titolo nera, bordo 1 px, ombra netta sfalsata ---- */
 .pannello, .rastrelliera, .avviso, .voci-menu {
   background: var(--finestra);
-  border: 1px solid var(--inchiostro);
+  border: 1px solid var(--tema-linea);
   border-radius: 0;
   box-shadow: var(--ombra);
   -webkit-backdrop-filter: none; backdrop-filter: none;
@@ -1252,7 +1238,7 @@ a { color: var(--inchiostro); text-decoration-thickness: 1px; }
   content: attr(data-titolo);
   position: absolute; inset: 0 0 auto 0; height: 30px;
   display: flex; align-items: center; padding: 0 12px;
-  background: var(--inchiostro); color: var(--carta);
+  background: var(--tema); color: var(--su-tema);
   font-family: var(--font-ui); font-size: 13px; font-weight: 600; letter-spacing: 0;
 }
 /* il doppio filo interno delle finestre di Lectio */
@@ -1269,7 +1255,7 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
 /* --- barra in alto: vetro sopra la carta, a tutta larghezza -------------------- */
 .testata {
   top: 0; margin: 0; width: 100%; border-radius: 0;
-  border: 0; border-bottom: 1px solid var(--inchiostro);
+  border: 0; border-bottom: 1px solid var(--tema-linea);
   background: var(--vetro);
   box-shadow: none;
   -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
@@ -1278,12 +1264,12 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
 .marchio { gap: 10px; }
 .marchio .logo { display: none; }
 .marchio span {
-  background: var(--inchiostro); color: var(--carta);
+  background: var(--tema); color: var(--su-tema);
   font-family: var(--font-ui); font-weight: 600; font-size: 13px; letter-spacing: 0.02em;
   padding: 3px 8px;
 }
 .stato-ai {
-  border-radius: 0; background: transparent; border: 1px solid var(--inchiostro);
+  border-radius: 0; background: transparent; border: 1px solid var(--tema-linea);
   font-family: var(--font-mono); font-size: 12px; color: var(--inchiostro); padding: 3px 9px;
 }
 .stato-ai .lampadina { border-radius: 0; width: 8px; height: 8px; background: var(--ok); box-shadow: none; }
@@ -1291,15 +1277,15 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
 
 /* --- pulsanti retro: rettangoli, primario inchiostro, secondario carta -------- */
 .tasto {
-  border-radius: 0; border: 1px solid var(--inchiostro);
+  border-radius: 0; border: 1px solid var(--tema-linea);
   background: var(--carta); color: var(--inchiostro);
   box-shadow: none; font-weight: 500;
   transition: transform 280ms var(--molla), background-color 200ms var(--uscita), color 200ms var(--uscita);
 }
-.tasto:hover { transform: none; box-shadow: 3px 3px 0 var(--inchiostro); }
+.tasto:hover { transform: none; box-shadow: 3px 3px 0 var(--tema-linea); }
 .tasto:active { transform: scale(0.97); box-shadow: none; }
 .tasto.grande, .tasto.grande:hover {
-  background: var(--inchiostro); color: var(--carta); border-color: var(--inchiostro);
+  background: var(--tema); color: var(--su-tema); border-color: var(--tema-linea);
   text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600;
   box-shadow: none;
 }
@@ -1307,15 +1293,15 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
 .tasto.grande .icona, .tasto.grande > svg { background: transparent !important; box-shadow: none !important; }
 .tasto.tondo { border-radius: 0; }
 .tasto.trasparente { border-color: transparent; background: transparent; }
-.tasto.trasparente:hover { border-color: var(--inchiostro); box-shadow: none; }
+.tasto.trasparente:hover { border-color: var(--tema-linea); box-shadow: none; }
 .tasto.ferma, .tasto.pericolo { color: var(--guasto); border-color: var(--guasto); background: var(--carta); }
-#btn-registra { border: 1px solid var(--inchiostro); text-transform: uppercase; font-size: 13px; letter-spacing: 0.03em; }
+#btn-registra { border: 1px solid var(--tema-linea); text-transform: uppercase; font-size: 13px; letter-spacing: 0.03em; }
 #btn-registra::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--guasto); }
 #btn-registra .icona { display: none; }
 
 /* --- elenco lezioni ----------------------------------------------------------- */
-.cerca { border-radius: 0; background: var(--carta); border: 1px solid var(--inchiostro); font-family: var(--font-mono); }
-.cerca:focus-within { box-shadow: 3px 3px 0 var(--inchiostro); border-color: var(--inchiostro); }
+.cerca { border-radius: 0; background: var(--carta); border: 1px solid var(--tema-linea); font-family: var(--font-mono); }
+.cerca:focus-within { box-shadow: 3px 3px 0 var(--tema-linea); border-color: var(--tema-linea); }
 .cerca input { height: 36px; font-family: var(--font-mono); font-size: 13px; }
 .modulo-testa h2 {
   font-family: var(--font-mono); font-weight: 400; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
@@ -1325,13 +1311,13 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
 .conta { background: transparent; border-radius: 0; padding: 0; font-size: 12px; }
 .preselezione { border-radius: 0; padding: 8px 10px; }
 .preselezione:hover { background: var(--blu-tenue); }
-.preselezione[aria-current="true"] { background: var(--inchiostro); border-color: var(--inchiostro); box-shadow: none; }
-.preselezione[aria-current="true"] .titolo, .preselezione[aria-current="true"] .sotto, .preselezione[aria-current="true"] .dati { color: var(--carta); }
+.preselezione[aria-current="true"] { background: var(--tema); border-color: var(--tema-linea); box-shadow: none; }
+.preselezione[aria-current="true"] .titolo, .preselezione[aria-current="true"] .sotto, .preselezione[aria-current="true"] .dati { color: var(--su-tema); }
 .preselezione .titolo { font-weight: 500; }
 .preselezione .sotto { font-family: var(--font-mono); font-size: 11.5px; }
 .segnale { border-radius: 0; width: 8px; height: 8px; }
 .segnale.nuova { background: var(--lectio); box-shadow: none; }
-.segnale.letta { background: var(--inchiostro); }
+.segnale.letta { background: var(--tema); }
 .segnale.attiva { background: var(--stato); border-radius: 50%; }
 .preselezione[aria-current="true"] .segnale.letta { background: var(--carta); }
 .mini-meter { border-radius: 0; background: var(--blu-tenue); }
@@ -1339,7 +1325,7 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
 
 /* --- benvenuto e vassoio -------------------------------------------------------- */
 .vassoio {
-  border-radius: 0; background: var(--carta); border: 1px solid var(--inchiostro);
+  border-radius: 0; background: var(--carta); border: 1px solid var(--tema-linea);
   box-shadow: var(--ombra);
   -webkit-backdrop-filter: none; backdrop-filter: none;
 }
@@ -1347,7 +1333,7 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
 .vassoio.sopra { background: color-mix(in oklab, var(--rosa) 22%, var(--carta)); }
 .vassoio.sopra::before { border-color: var(--lectio); }
 .vassoio .disco {
-  border-radius: 0; background: var(--inchiostro); color: var(--carta); box-shadow: none;
+  border-radius: 0; background: var(--tema); color: var(--su-tema); box-shadow: none;
 }
 .vassoio strong { font-weight: 700; }
 .vassoio span { font-family: var(--font-mono); font-size: 12px; }
@@ -1364,64 +1350,69 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
   mask-image: repeating-linear-gradient(90deg, #000 0 10px, transparent 10px 13px);
 }
 .liquido::before { content: ""; position: absolute; inset: 0; background: var(--griglia); }
-.riempimento { border-radius: 0; background: var(--inchiostro); transition: transform 900ms steps(24, end); }
-.avanzamento.attiva .riempimento { background: var(--inchiostro); }
+/* il pieno si taglia, non si stira: con scaleX anche le celle della maschera si schiacciavano in righine */
+.riempimento {
+  border-radius: 0; background: var(--tema-linea); transform: none;
+  clip-path: inset(0 calc((1 - var(--p, 0)) * 100%) 0 0);
+  transition: clip-path 900ms var(--uscita);
+}
+.avanzamento.attiva .riempimento { background: var(--tema-linea); }
 .avanzamento.guasto .riempimento { background: var(--guasto); }
-.tappa .punto { border-radius: 0; border: 1px solid var(--inchiostro); background: var(--carta); }
-.tappa.fatta .punto { background: var(--inchiostro); border-color: var(--inchiostro); }
-.tappa.fatta .punto .icona { color: var(--carta); }
+.tappa .punto { border-radius: 0; border: 1px solid var(--tema-linea); background: var(--carta); }
+.tappa.fatta .punto { background: var(--tema); border-color: var(--tema-linea); }
+.tappa.fatta .punto .icona { color: var(--su-tema); }
 .tappa.corrente { color: var(--inchiostro); font-weight: 700; }
-.tappa.corrente .punto { border-color: var(--inchiostro); box-shadow: 3px 3px 0 var(--lectio); transform: none; }
+.tappa.corrente .punto { border-color: var(--tema-linea); box-shadow: 3px 3px 0 var(--lectio); transform: none; }
 .avanzamento.attiva .tappa.corrente .punto::after { border-radius: 0; background: var(--stato); }
 .tappa { font-family: var(--font-mono); font-size: 11.5px; }
 
 /* dietro le quinte: la trascrizione in diretta come nella finestra di Lectio */
-.quinte { border-top: 1px solid var(--inchiostro); }
+.quinte { border-top: 1px solid var(--tema-linea); }
 .quinte .verbo { color: var(--inchiostro); font-weight: 700; }
 .quinte .chi, .quinte .tempo { font-family: var(--font-mono); font-size: 12px; }
 .flusso {
-  border-radius: 0; border: 1px solid var(--inchiostro); background: var(--carta); box-shadow: none;
+  border-radius: 0; border: 1px solid var(--tema-linea); background: var(--carta); box-shadow: none;
   font-family: var(--font-ui); font-size: 14.5px;
 }
 .flusso .minuto { font-family: var(--font-mono); color: var(--inchiostro-lieve); font-weight: 400; }
 .flusso .minuto::before { content: "["; } .flusso .minuto::after { content: "]"; }
 .flusso .fresca { animation-name: fresca-lectio; }
 @keyframes fresca-lectio { from { color: var(--lectio); } to { color: inherit; } }
-.flusso .cursore { width: 0.6em; border-radius: 0; background: var(--inchiostro); vertical-align: -0.12em; }
+.flusso .cursore { width: 0.6em; border-radius: 0; background: var(--tema); vertical-align: -0.12em; }
 
 /* --- vetro: download, trasporto audio, commutatore ----------------------------- */
 .scarico, .trasporto {
-  border-radius: 0; border: 1px solid var(--inchiostro);
+  border-radius: 0; border: 1px solid var(--tema-linea);
   background: var(--vetro);
   box-shadow: var(--ombra-vetro);
   -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
 }
 .scarico { top: 64px; }
 .scarico .pozzetto, .trasporto .tasto.tondo.grande {
-  border-radius: 0; background: var(--inchiostro); color: var(--carta); box-shadow: none;
+  border-radius: 0; background: var(--tema); color: var(--su-tema); box-shadow: none;
 }
 .scarico .percentuale { color: var(--inchiostro); }
 .scarico .quanto { font-family: var(--font-mono); font-size: 11.5px; }
 .trasporto { top: 70px; }
 .commutatore { border-radius: 0; border: 0; background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; gap: 8px; }
 .commutatore .cursore { display: none; }
-.commutatore button { border-radius: 0; border: 1px solid var(--inchiostro); background: var(--finestra); color: var(--inchiostro); font-size: 13px; }
+.commutatore button { border-radius: 0; border: 1px solid var(--tema-linea); background: var(--finestra); color: var(--inchiostro); font-size: 13px; }
 .commutatore button::before { content: "✣ "; }
-.commutatore button[aria-selected="true"] { background: var(--inchiostro); color: var(--carta); }
-.sintonia { accent-color: var(--inchiostro); }
+.commutatore button[aria-selected="true"] { background: var(--tema); color: var(--su-tema); }
+.sintonia { accent-color: var(--tema-linea); }
 
 /* --- moduli e avvisi -------------------------------------------------------- */
 .campo input, .campo textarea, .campo select, select, textarea {
-  border-radius: 0 !important; border: 1px solid var(--inchiostro) !important; background: var(--carta) !important; box-shadow: none !important;
+  border-radius: 0 !important; border: 1px solid var(--tema-linea) !important; background: var(--carta) !important; box-shadow: none !important;
 }
 .campo > span { font-family: var(--font-mono); font-weight: 400; text-transform: uppercase; letter-spacing: 0.04em; font-size: 11.5px; }
-.avviso { background: var(--carta); box-shadow: 3px 3px 0 var(--inchiostro); }
+.avviso { background: var(--carta); box-shadow: 3px 3px 0 var(--tema-linea); }
 .avviso > .icona { color: var(--lectio); }
 .avviso.grave { border-color: var(--guasto); box-shadow: 3px 3px 0 var(--guasto); }
 
 /* --- appunti su carta ----------------------------------------------------- */
-.foglio { border-radius: 0; border: 1px solid var(--inchiostro); box-shadow: var(--ombra); background: var(--carta); }
-.carta { border-radius: 0; border: 1px solid var(--inchiostro); box-shadow: 4px 4px 0 var(--inchiostro); }
+.foglio { border-radius: 0; border: 1px solid var(--tema-linea); box-shadow: var(--ombra); background: var(--carta); }
+.carta { border-radius: 0; border: 1px solid var(--tema-linea); box-shadow: 4px 4px 0 var(--tema-linea); }
 
 /* --- registrare: a riposo è una finestra normale; mentre registra diventa il desktop rosa a puntini -- */
 .pannello.registrazione { transition: background-color 500ms var(--uscita); }
@@ -1430,49 +1421,49 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
     radial-gradient(circle, rgba(30, 30, 30, 0.32) 1px, transparent 1.3px) 0 0 / 6px 6px,
     var(--rosa);
 }
-.pannello.registrazione.attiva::before { content: attr(data-titolo); background: #1e1e1e; color: #fefefe; }
+.pannello.registrazione.attiva::before { content: attr(data-titolo); background: var(--tema); color: var(--su-tema); }
 .pannello.registrazione.attiva > h2, .pannello.registrazione.attiva > p, .pannello.registrazione.attiva .campo > span { color: #1e1e1e; }
 /* il quadrante "Segnale": finestra di carta con il tempo in Geist Black e il misuratore a celle */
 .quadrante-reg {
-  position: relative; background: var(--carta); border: 1px solid var(--inchiostro); box-shadow: var(--ombra);
+  position: relative; background: var(--carta); border: 1px solid var(--tema-linea); box-shadow: var(--ombra);
   padding: 44px 22px 18px; display: grid; gap: 14px;
 }
 .quadrante-reg::before {
   content: "Segnale 1.1"; position: absolute; inset: 0 0 auto 0; height: 28px; display: flex; align-items: center;
-  padding: 0 12px; background: var(--inchiostro); color: var(--carta); font-size: 12.5px; font-weight: 600;
+  padding: 0 12px; background: var(--tema); color: var(--su-tema); font-size: 12.5px; font-weight: 600;
 }
 .registrazione.attiva .quadrante-reg::before { content: "Segnale 1.1 · ● REC"; }
 .tempo-reg {
   font-family: var(--font-ui) !important; font-weight: 900; letter-spacing: -0.05em; line-height: 0.9;
   font-size: clamp(56px, 9vw, 110px); color: var(--inchiostro) !important; font-variant-numeric: tabular-nums;
 }
-.vu-barre i { border-radius: 0 !important; background: var(--inchiostro) !important; }
-.registrazione.attiva .vu-barre i { background: var(--inchiostro) !important; }
+.vu-barre i { border-radius: 0 !important; background: var(--tema) !important; }
+.registrazione.attiva .vu-barre i { background: var(--tema) !important; }
 /* comandi in vetro sopra il rosa: inchiostro per avviare, rosso per fermare */
 .registrazione .azioni-form .tasto {
   background: rgba(254, 254, 254, 0.7); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3);
   text-transform: uppercase; letter-spacing: 0.03em; min-height: 40px;
 }
-.registrazione .azioni-form .tasto.grande.registra { background: var(--inchiostro); color: var(--carta); }
+.registrazione .azioni-form .tasto.grande.registra { background: var(--tema); color: var(--su-tema); }
 .registrazione .azioni-form .tasto.grande:not(.registra) { background: rgba(254, 254, 254, 0.78); color: var(--guasto); border-color: var(--guasto); }
 
 /* gli appunti seguono Lectio: inchiostro, il rosa solo per ciò che conta all'esame */
-.appunti, .foglio { --accento: var(--inchiostro); --accento-forte: var(--inchiostro); --accento-tenue: var(--blu-tenue); }
+.appunti, .foglio { --accento: var(--tema-testo); --accento-forte: var(--tema-testo); --accento-tenue: var(--blu-tenue); }
 .foglio {
   --sfondo: var(--carta); --superficie: var(--carta); --superficie-2: var(--finestra);
-  --testo: var(--inchiostro); --testo-tenue: var(--inchiostro-tenue); --bordo: var(--inchiostro);
-  --su-accento: var(--carta);
-  --definizione: var(--inchiostro); --definizione-sfondo: var(--carta);
-  --teorema: var(--inchiostro); --teorema-sfondo: var(--finestra);
+  --testo: var(--inchiostro); --testo-tenue: var(--inchiostro-tenue); --bordo: var(--tema-linea);
+  --su-accento: var(--su-tema);
+  --definizione: var(--tema-linea); --definizione-sfondo: var(--carta);
+  --teorema: var(--tema-linea); --teorema-sfondo: var(--finestra);
   --integrazione: var(--lectio); --integrazione-sfondo: color-mix(in oklab, var(--lectio) 12%, var(--carta));
-  --sintesi: var(--inchiostro); --sintesi-sfondo: var(--finestra);
+  --sintesi: var(--tema-linea); --sintesi-sfondo: var(--finestra);
   --font-ui: "Geist", system-ui, sans-serif;
 }
 .foglio *, .legende li, .foglio .tempo { border-radius: 0 !important; }
 .foglio h1, .foglio h2, .foglio h3 { color: var(--inchiostro); letter-spacing: -0.03em; }
 .foglio h2 { font-weight: 900; }
-.foglio .tempo { font-family: var(--font-mono); background: transparent; border: 1px solid var(--inchiostro); font-size: 0.5em; padding: 2px 8px; }
-.legende li { border: 1px solid var(--inchiostro); background: var(--carta); font-family: var(--font-mono); font-size: 12px; }
+.foglio .tempo { font-family: var(--font-mono); background: transparent; border: 1px solid var(--tema-linea); font-size: 0.5em; padding: 2px 8px; }
+.legende li { border: 1px solid var(--tema-linea); background: var(--carta); font-family: var(--font-mono); font-size: 12px; }
 .legende .icona { color: var(--inchiostro); }
 
 /* --- un solo linguaggio: tutto ad angoli vivi (come Lectio). Restano tondi solo i punti REC e "in corso". --- */
@@ -1483,35 +1474,35 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
 .scelte { padding: 0; gap: 6px; background: transparent; border: 0; }
 .scelta span {
   padding: 5px 11px; font-size: 13px; font-weight: 500; color: var(--inchiostro);
-  background: var(--finestra); border: 1px solid var(--inchiostro);
+  background: var(--finestra); border: 1px solid var(--tema-linea);
   transition: background-color 200ms var(--uscita), color 200ms var(--uscita), box-shadow 280ms var(--molla);
 }
 .scelta span::before { content: "✣ "; opacity: 0.7; }
-.scelta:hover span { box-shadow: 2px 2px 0 var(--inchiostro); }
-.scelta input:checked + span { background: var(--inchiostro); color: var(--carta); box-shadow: 2px 2px 0 var(--lectio); }
+.scelta:hover span { box-shadow: 2px 2px 0 var(--tema-linea); }
+.scelta input:checked + span { background: var(--tema); color: var(--su-tema); box-shadow: 2px 2px 0 var(--lectio); }
 .scelta input:focus-visible + span { outline: 2px solid var(--lectio); outline-offset: 2px; }
 
 /* interruttori: RetroToggle, un quadratino che scorre in una cella */
-.interruttore { background: var(--carta); border: 1px solid var(--inchiostro); }
-.interruttore:hover { background: var(--carta); box-shadow: 3px 3px 0 var(--inchiostro); }
-.levetta { width: 42px; height: 22px; background: var(--finestra); border: 1px solid var(--inchiostro); box-shadow: none; }
-.levetta::after { top: 2px; left: 2px; width: 16px; height: 16px; background: var(--inchiostro); box-shadow: none; transition: transform 300ms var(--molla); }
+.interruttore { background: var(--carta); border: 1px solid var(--tema-linea); }
+.interruttore:hover { background: var(--carta); box-shadow: 3px 3px 0 var(--tema-linea); }
+.levetta { width: 42px; height: 22px; background: var(--finestra); border: 1px solid var(--tema-linea); box-shadow: none; }
+.levetta::after { top: 2px; left: 2px; width: 16px; height: 16px; background: var(--tema-linea); box-shadow: none; transition: transform 300ms var(--molla); }
 .interruttore input:checked ~ .levetta { background: var(--lectio); }
-.interruttore input:checked ~ .levetta::after { transform: translateX(20px); background: var(--carta); outline: 1px solid var(--inchiostro); }
+.interruttore input:checked ~ .levetta::after { transform: translateX(20px); background: var(--carta); outline: 1px solid var(--tema-linea); }
 .interruttore input:focus-visible ~ .levetta { outline: 2px solid var(--lectio); }
 
 /* distintivi: Chip in negativo */
-.distintivo { background: var(--carta); color: var(--inchiostro); border: 1px solid var(--inchiostro); font-family: var(--font-mono); font-weight: 400; padding: 1px 6px; }
-.distintivo.pieno { background: var(--inchiostro); color: var(--carta); }
+.distintivo { background: var(--carta); color: var(--inchiostro); border: 1px solid var(--tema-linea); font-family: var(--font-mono); font-weight: 400; padding: 1px 6px; }
+.distintivo.pieno { background: var(--tema); color: var(--su-tema); }
 
 /* schede modello e sezioni delle impostazioni: un titolo solo (la barra della finestra) */
 .pannello.imp > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.scheda-modello, .modelli label { background: var(--carta); border: 1px solid var(--inchiostro); }
+.scheda-modello, .modelli label { background: var(--carta); border: 1px solid var(--tema-linea); }
 
 /* cursore della dimensione del testo: binario a celle e cursore quadrato */
 input[type="range"] { -webkit-appearance: none; appearance: none; height: 14px; background: transparent; }
-input[type="range"]::-webkit-slider-runnable-track { height: 6px; background: var(--finestra); border: 1px solid var(--inchiostro); }
-input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 18px; margin-top: -7px; background: var(--inchiostro); border: 1px solid var(--carta); outline: 1px solid var(--inchiostro); cursor: pointer; }
+input[type="range"]::-webkit-slider-runnable-track { height: 6px; background: var(--finestra); border: 1px solid var(--tema-linea); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 18px; margin-top: -7px; background: var(--tema); border: 1px solid var(--carta); outline: 1px solid var(--tema-linea); cursor: pointer; }
 
 /* temi colore: ogni campione è una finestrella con barra del titolo, il suo accento e il rosa della registrazione */
 .temi-colore { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
@@ -1519,14 +1510,14 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14p
 .tema-colore input { position: absolute; opacity: 0; pointer-events: none; }
 .tema-colore .anteprima {
   display: grid; grid-template-rows: 7px 1fr; width: 52px; height: 40px;
-  background: var(--r); border: 1px solid var(--inchiostro); box-shadow: 3px 3px 0 var(--inchiostro);
+  background: var(--r); border: 1px solid var(--tema-linea); box-shadow: 3px 3px 0 var(--tema-linea);
   transition: transform 280ms var(--molla), box-shadow 280ms var(--molla);
 }
-.tema-colore .anteprima i { background: var(--inchiostro); }
+.tema-colore .anteprima i { background: color-mix(in oklab, var(--c) 72%, #000); background: oklch(from var(--c) min(l, 0.5) c h); }
 .tema-colore .anteprima b { margin: 7px 8px; background: radial-gradient(circle, rgba(30,30,30,.35) 1px, transparent 1.3px) 0 0 / 4px 4px; border-left: 10px solid var(--c); }
 .tema-colore .nome { font-family: var(--font-mono); font-size: 11px; color: var(--inchiostro-tenue); }
-.tema-colore:hover .anteprima { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--inchiostro); }
-.tema-colore:has(input:checked) .anteprima { box-shadow: 3px 3px 0 var(--c), 0 0 0 2px var(--inchiostro); }
+.tema-colore:hover .anteprima { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--tema-linea); }
+.tema-colore:has(input:checked) .anteprima { box-shadow: 3px 3px 0 var(--c), 0 0 0 2px var(--tema-linea); }
 .tema-colore:has(input:checked) .nome { color: var(--inchiostro); text-decoration: underline; text-decoration-color: var(--c); text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .tema-colore:has(input:focus-visible) .anteprima { outline: 2px solid var(--c); outline-offset: 4px; }
 .tema-colore.menta { --c: #09aea1; --r: #8fdcd1; }
@@ -1535,11 +1526,37 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14p
 .tema-colore.limone { --c: #8a7d00; --r: #efe27a; }
 .tema-colore.seppia { --c: #b5452b; --r: #e9b39f; }
 .tema-colore.personalizzato { --r: color-mix(in oklab, var(--c) 55%, white); }
-.pozzetto-colore { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--inchiostro); background: var(--carta); padding: 4px 10px 4px 4px; cursor: pointer; }
-.pozzetto-colore input { -webkit-appearance: none; appearance: none; width: 30px; height: 24px; border: 1px solid var(--inchiostro); padding: 0; background: none; cursor: pointer; }
+.pozzetto-colore { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--tema-linea); background: var(--carta); padding: 4px 10px 4px 4px; cursor: pointer; }
+.pozzetto-colore input { -webkit-appearance: none; appearance: none; width: 30px; height: 24px; border: 1px solid var(--tema-linea); padding: 0; background: none; cursor: pointer; }
 .pozzetto-colore input::-webkit-color-swatch-wrapper { padding: 0; }
 .pozzetto-colore input::-webkit-color-swatch { border: 0; }
 .codice-colore { font-size: 12.5px; }
+
+/* --- il tema colora tutto ciò che prima era nero (15/10/2026) ------------------
+   --tema: l'accento portato abbastanza scuro da reggere testo bianco (≥ 4,5:1) in ogni tema,
+   anche con «Tuo colore» chiaro: barre del titolo, tasti pieni, righe scelte, marchio.
+   --tema-linea: bordi e ombre nette; al buio si schiarisce per restare visibile.
+   --tema-testo: l'accento come testo leggibile sulla carta. Lo sfondo resta bianco; le finestre
+   e la griglia prendono una velatura dell'accento al posto del grigio. */
+:root, :root[data-accento] {
+  --tema: color-mix(in oklab, var(--lectio) 72%, #000);
+  --tema-linea: light-dark(var(--tema), color-mix(in oklab, var(--lectio) 70%, #fff));
+  --tema-testo: var(--tema-linea);
+  --su-tema: #fff;
+  --filo-scuro: color-mix(in oklab, var(--tema-linea) 26%, transparent);
+  --blu-tenue: color-mix(in oklab, var(--lectio) 12%, transparent);
+}
+/* Seppia ha già la sua carta color pergamena: le sue finestre restano sue */
+:root, :root[data-accento]:not([data-accento="seppia"]) {
+  --finestra: light-dark(color-mix(in oklab, var(--lectio) 9%, #fbfbfb), color-mix(in oklab, var(--lectio) 14%, #202020));
+  --griglia: light-dark(color-mix(in oklab, var(--lectio) 38%, #d4d4d4), color-mix(in oklab, var(--lectio) 35%, #3a3a3a));
+}
+@supports (color: oklch(from light-dark(red, red) l c h)) {
+  :root, :root[data-accento] {
+    --tema: oklch(from var(--lectio) min(l, 0.5) c h);
+    --tema-linea: light-dark(var(--tema), oklch(from var(--lectio) max(l, 0.74) c h));
+  }
+}
 
 /* i temi applicati a tutta l'app */
 :root[data-accento="menta"] { --lectio: #09aea1; --rosa: light-dark(#8fdcd1, #2f7d74); }
@@ -1561,29 +1578,164 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14p
 :root[data-vetro="no"] .registrazione .azioni-form .tasto, :root[data-vetro="no"] .pannello.registrazione .tasto {
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: var(--carta) !important;
 }
-:root[data-vetro="no"] .registrazione .azioni-form .tasto.grande.registra { background: var(--inchiostro) !important; }
+:root[data-vetro="no"] .registrazione .azioni-form .tasto.grande.registra { background: var(--tema) !important; }
 
 /* il foglio degli appunti è una finestra di Lectio come le altre: barra del titolo con il nome della scheda */
 .foglio[data-titolo] { position: relative; padding-top: max(58px, 3.6em); }
 .foglio[data-titolo]::before {
   content: attr(data-titolo); position: absolute; inset: 0 0 auto 0; height: 30px;
   display: flex; align-items: center; padding: 0 12px;
-  background: var(--inchiostro); color: var(--carta); font-family: var(--font-ui); font-size: 13px; font-weight: 600;
+  background: var(--tema); color: var(--su-tema); font-family: var(--font-ui); font-size: 13px; font-weight: 600;
 }
 /* scheda scelta = ChoiceChip scelto (stessa ombra d'accento) */
 .commutatore button[aria-selected="true"] { box-shadow: 2px 2px 0 var(--lectio); }
-.commutatore button:hover:not([aria-selected="true"]) { box-shadow: 2px 2px 0 var(--inchiostro); }
+.commutatore button:hover:not([aria-selected="true"]) { box-shadow: 2px 2px 0 var(--tema-linea); }
 /* barra dell'audio: binario a celle e cursore quadrato, come la dimensione del testo */
 .sintonia::-webkit-slider-runnable-track {
-  height: 8px; border: 1px solid var(--inchiostro);
-  background: linear-gradient(90deg, var(--inchiostro) var(--pos), var(--finestra) var(--pos));
+  height: 8px; border: 1px solid var(--tema-linea);
+  background: linear-gradient(90deg, var(--tema-linea) var(--pos), var(--finestra) var(--pos));
 }
 .sintonia::-webkit-slider-thumb {
   width: 12px; height: 20px; margin-top: -7px; background: var(--lectio);
-  border: 1px solid var(--inchiostro); box-shadow: 2px 2px 0 var(--inchiostro);
+  border: 1px solid var(--tema-linea); box-shadow: 2px 2px 0 var(--tema-linea);
 }
 .sintonia:active::-webkit-slider-thumb { transform: none; box-shadow: none; }
 /* le mappe e gli schemi (SVG) seguono gli angoli vivi; i cursori dei range non li tocca il reset globale */
 .foglio svg rect { rx: 0 !important; ry: 0 !important; }
 .sintonia::-webkit-slider-thumb, input[type="range"]::-webkit-slider-thumb { border-radius: 0 !important; }
 .sintonia::-moz-range-thumb, input[type="range"]::-moz-range-thumb { border-radius: 0 !important; }
+
+/* --- Chiedi: una conversazione come in un terminale (Claude Code) dentro una finestra di Lectio ---- */
+/* la bobina che pensa: il marchio su bianco, solo le cinque linee audio che ondeggiano
+   (colori fissi come il marchio: resta una piastrella bianca anche col tema scuro) */
+.bobina-pensa {
+  flex: none; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; gap: 2.5px;
+  background: #fff;
+}
+.bobina-pensa i {
+  width: 2.5px; height: 18px; background: var(--tema); transform: scaleY(.3);
+  animation: bobina-pensa 1.15s cubic-bezier(.45, 0, .25, 1) infinite;
+}
+.bobina-pensa i:nth-child(1) { height: 8px; animation-delay: -1.15s; }
+.bobina-pensa i:nth-child(2) { height: 13px; animation-delay: -.98s; }
+.bobina-pensa i:nth-child(3) { background: var(--tema); background: oklch(from var(--lectio) min(l, 0.62) c h); animation-delay: -.81s; }
+.bobina-pensa i:nth-child(4) { height: 12px; animation-delay: -.64s; }
+.bobina-pensa i:nth-child(5) { height: 7px; animation-delay: -.47s; }
+.bobina-pensa.ferma i { animation: none; transform: none; }
+@keyframes bobina-pensa { 0%, 100% { transform: scaleY(.3); } 45% { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .bobina-pensa i { animation: none; transform: none; } }
+
+.attesa .secondi { font-size: 12px; color: var(--inchiostro-lieve); }
+
+/* una colonna fissa a sinistra (">" o il marchio), il testo tutto allineato sulla seconda */
+.chat { --gronda: 26px; display: grid; gap: 22px; margin-bottom: 22px; }
+.riga-chat, .chat > .attesa {
+  display: grid; grid-template-columns: var(--gronda) minmax(0, 1fr); column-gap: 14px; align-items: start;
+  animation: entra 420ms var(--uscita) both;
+}
+.chat > .attesa { grid-template-columns: var(--gronda) auto auto; justify-content: start; align-items: center; padding: 0; }
+.prompt { font-family: var(--font-mono); font-size: 16px; line-height: 1.6; color: var(--inchiostro-lieve); text-align: center; }
+.riga-chat.studente { padding: 10px 14px 10px 0; background: var(--finestra); }
+.riga-chat.studente p { margin: 0; font-size: 15.5px; line-height: 1.6; color: var(--inchiostro); }
+.riga-chat.studente .prompt { padding-left: 0; }
+.riga-chat.sbobina .bobina-pensa { margin-top: 1px; }
+.risposta { font-size: 15.5px; line-height: 1.65; max-width: 72ch; }
+.risposta > :first-child { margin-top: 0; }
+.risposta > :last-child { margin-bottom: 0; }
+
+/* il campo della domanda: una riga sola con ">" davanti, come un prompt; cresce mentre scrivi */
+.chiedi {
+  position: sticky; bottom: 16px;
+  display: grid; grid-template-columns: var(--gronda, 26px) minmax(0, 1fr) 36px; column-gap: 14px; align-items: center;
+  padding: 8px 8px 8px 0; background: var(--carta); border: 1px solid var(--tema-linea);
+  transition: box-shadow 180ms var(--uscita);
+}
+.foglio .chiedi { --gronda: 26px; }
+.chiedi:focus-within { box-shadow: 3px 3px 0 var(--lectio); }
+.chiedi .prompt { color: var(--inchiostro); }
+.chiedi textarea {
+  border: 0 !important; background: none !important; outline: none; resize: none; padding: 6px 0;
+  max-height: 180px; font: inherit; font-size: 15.5px; line-height: 1.5; color: var(--inchiostro);
+}
+.chiedi textarea::placeholder { color: var(--inchiostro-lieve); }
+.chiedi .invia {
+  width: 36px; height: 36px; display: grid; place-items: center; cursor: pointer;
+  border: 0; background: var(--tema); color: var(--su-tema);
+  transition: background 160ms var(--uscita);
+}
+.chiedi .invia .icona { width: 18px; height: 18px; }
+.chiedi .invia:hover { box-shadow: 2px 2px 0 var(--lectio); }
+.chiedi .invia:disabled { background: var(--inchiostro-lieve); cursor: progress; }
+
+.piede-chat {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
+  margin-top: 10px; padding-left: 40px; font-family: var(--font-mono); font-size: 12px; color: var(--inchiostro-lieve);
+}
+.piede-chat .tasti { margin-left: auto; }
+.piede-chat kbd { font: inherit; color: var(--inchiostro-tenue); }
+.filtro-corso { display: inline-flex; align-items: center; gap: 8px; }
+.filtro-corso select {
+  font-family: var(--font-mono); font-size: 12px; color: var(--inchiostro); padding: 3px 8px; cursor: pointer;
+}
+
+.testa-studio .nuova-chat { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; }
+.testa-studio .nuova-chat .icona { width: 16px; height: 16px; }
+
+.foglio.conversazione { min-height: 52vh; display: flex; flex-direction: column; }
+.foglio.conversazione .chat { flex: 1; align-content: start; }
+
+/* le domande di partenza: righe tutte uguali, testo a sinistra e freccia a destra */
+.spunti-chat > p { margin: 0 0 10px; color: var(--inchiostro-tenue); }
+.spunti-chat ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--filo-scuro); }
+.spunti-chat li { border-bottom: 1px solid var(--filo-scuro); }
+.spunto {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px 4px 14px 0; cursor: pointer; text-align: left; border: 0; background: none;
+  font: inherit; font-size: 15.5px; color: var(--inchiostro);
+  transition: background 160ms var(--uscita), padding 220ms var(--uscita);
+}
+.spunto .icona { width: 18px; height: 18px; flex: none; color: var(--inchiostro-lieve); transition: transform 220ms var(--uscita); }
+.spunto:hover { background: var(--finestra); padding-left: 10px; }
+.spunto:hover .icona { transform: translateX(3px); color: var(--inchiostro); }
+
+.fonti {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 14px;
+  font-size: 12.5px; color: var(--inchiostro-tenue);
+}
+.fonte {
+  padding: 3px 9px; cursor: pointer; font: inherit; font-weight: 550; color: var(--inchiostro);
+  border: 1px solid var(--tema-linea); background: var(--carta);
+  transition: box-shadow 160ms var(--uscita);
+}
+.fonte small { margin-left: 6px; font-weight: 400; color: var(--inchiostro-lieve); }
+.fonte:hover { box-shadow: 2px 2px 0 var(--lectio); }
+
+/* --- sezione nerd: i numeri del modello, solo se accesa nelle impostazioni --------- */
+.tasto-nerd {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 4px 10px; cursor: pointer;
+  font-family: var(--font-mono); font-size: 12px; color: var(--tema-testo);
+  background: var(--carta); border: 1px solid var(--tema-linea);
+  transition: box-shadow 160ms var(--uscita), background 160ms var(--uscita);
+}
+.tasto-nerd .icona { width: 15px; height: 15px; }
+.tasto-nerd:hover { box-shadow: 2px 2px 0 var(--tema-linea); }
+.tasto-nerd[aria-expanded="true"] { background: var(--tema); color: var(--su-tema); border-color: var(--tema); }
+/* auto-fit e fili sulle celle: con pochi numeri (Whisper) non restano caselle vuote colorate */
+.nerd {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin: 10px 0 0;
+  border-top: 1px solid var(--filo-scuro); border-left: 1px solid var(--filo-scuro);
+}
+.nerd > div { background: var(--carta); padding: 8px 10px; min-width: 0; border-right: 1px solid var(--filo-scuro); border-bottom: 1px solid var(--filo-scuro); }
+.tasto-nerd[aria-expanded="true"] + .nerd { animation: compare 260ms var(--uscita) both; }
+@keyframes compare { from { opacity: 0; transform: translateY(4px); } }
+.nerd dt { font-family: var(--font-mono); font-size: 11px; letter-spacing: .03em; text-transform: uppercase; color: var(--inchiostro-lieve); }
+.nerd dd { margin: 3px 0 0; font-family: var(--font-mono); font-size: 14px; color: var(--inchiostro); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.nerd dd small { font-size: 11px; color: var(--inchiostro-lieve); }
+.nerd-riga {
+  display: flex; flex-wrap: wrap; gap: 4px 16px; margin: -12px 0 0 calc(var(--gronda, 26px) + 14px);
+  font-size: 12px; color: var(--inchiostro-lieve);
+}
+.nerd-riga b { font-weight: 400; color: var(--tema-testo); }
+.azioni-quinte { margin-top: 10px; }
+.azioni-quinte .tasto-nerd { margin-top: 0; }
+.nerd-quinte .nerd { margin: 10px 0 0; }

@@ -52,6 +52,8 @@ def test_richiesta_testo():
 
     assert testo == "# Appunti"
     assert uso == Utilizzo(input=1200, output=345, cache_lettura=800, cache_scrittura=0)
+    from sbobina.llm import DIRETTA
+    assert DIRETTA["nerd"].get("motore") != "Claude API"  # Claude non tocca la vista in diretta dei lavori locali
     corpo = json.loads(richieste[0].content)
     assert corpo["model"] == "claude-opus-5-5"
     assert corpo["stream"] is True
@@ -183,7 +185,8 @@ def test_llama_cpp_legge_lo_stream_di_llama_server(monkeypatch):
 
     pezzi = [{"choices": [{"delta": {"content": t}, "finish_reason": None}]} for t in ('{"titolo": ', '"Rolle"}')]
     pezzi += [{"choices": [{"delta": {}, "finish_reason": "stop"}]},
-              {"choices": [], "usage": {"prompt_tokens": 12, "completion_tokens": 5}}]
+              {"choices": [], "usage": {"prompt_tokens": 12, "completion_tokens": 5},
+               "timings": {"prompt_n": 12, "prompt_per_second": 240.0, "predicted_n": 5, "predicted_per_second": 31.25}}]
     ricevuto = {}
 
     class Finto(BaseHTTPRequestHandler):
@@ -210,4 +213,7 @@ def test_llama_cpp_legge_lo_stream_di_llama_server(monkeypatch):
     finally:
         server.shutdown()
     assert dati == {"titolo": "Rolle"} and uso.input == 12 and uso.output == 5
+    numeri = llm.DIRETTA["nerd"]  # la sezione nerd vede i numeri veri di llama-server
+    assert numeri["motore"] == "llama.cpp" and numeri["token_al_secondo"] == 31.2 and numeri["prompt_tps"] == 240.0
+    assert numeri["fine"] == "stop" and "primo_token_s" in numeri and numeri["durata_s"] >= 0
     assert ricevuto["messages"][0] == {"role": "system", "content": "Sei un tutor."} and ricevuto["stream"] is True
