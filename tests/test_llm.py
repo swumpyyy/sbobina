@@ -53,7 +53,7 @@ def test_richiesta_testo():
     assert testo == "# Appunti"
     assert uso == Utilizzo(input=1200, output=345, cache_lettura=800, cache_scrittura=0)
     from sbobina.llm import DIRETTA
-    assert DIRETTA["nerd"]["motore"] == "Claude API" and DIRETTA["nerd"]["token_generati"] == 345
+    assert DIRETTA["nerd"].get("motore") != "Claude API"  # Claude non tocca la vista in diretta dei lavori locali
     corpo = json.loads(richieste[0].content)
     assert corpo["model"] == "claude-opus-5-5"
     assert corpo["stream"] is True

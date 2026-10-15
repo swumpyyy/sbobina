@@ -1184,8 +1184,8 @@ a { color: var(--blu-testo); text-underline-offset: 3px; }
   --guasto: #e5484d;
   --guasto-tenue: light-dark(rgba(229, 72, 77, 0.1), rgba(229, 72, 77, 0.18));
   /* il "blu" di prima diventa inchiostro: un solo accento (rosa) per schermata */
-  --blu: var(--tema);
-  --blu-forte: var(--tema);
+  --blu: var(--tema-linea);
+  --blu-forte: var(--tema-linea);
   --blu-testo: var(--tema-testo);
   --blu-tenue: light-dark(rgba(30, 30, 30, 0.07), rgba(236, 236, 236, 0.1));
   --blu-alone: light-dark(rgba(30, 30, 30, 0.18), rgba(0, 0, 0, 0.5));
@@ -1352,11 +1352,11 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
 .liquido::before { content: ""; position: absolute; inset: 0; background: var(--griglia); }
 /* il pieno si taglia, non si stira: con scaleX anche le celle della maschera si schiacciavano in righine */
 .riempimento {
-  border-radius: 0; background: var(--tema); transform: none;
+  border-radius: 0; background: var(--tema-linea); transform: none;
   clip-path: inset(0 calc((1 - var(--p, 0)) * 100%) 0 0);
   transition: clip-path 900ms var(--uscita);
 }
-.avanzamento.attiva .riempimento { background: var(--tema); }
+.avanzamento.attiva .riempimento { background: var(--tema-linea); }
 .avanzamento.guasto .riempimento { background: var(--guasto); }
 .tappa .punto { border-radius: 0; border: 1px solid var(--tema-linea); background: var(--carta); }
 .tappa.fatta .punto { background: var(--tema); border-color: var(--tema-linea); }
@@ -1486,7 +1486,7 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
 .interruttore { background: var(--carta); border: 1px solid var(--tema-linea); }
 .interruttore:hover { background: var(--carta); box-shadow: 3px 3px 0 var(--tema-linea); }
 .levetta { width: 42px; height: 22px; background: var(--finestra); border: 1px solid var(--tema-linea); box-shadow: none; }
-.levetta::after { top: 2px; left: 2px; width: 16px; height: 16px; background: var(--tema); box-shadow: none; transition: transform 300ms var(--molla); }
+.levetta::after { top: 2px; left: 2px; width: 16px; height: 16px; background: var(--tema-linea); box-shadow: none; transition: transform 300ms var(--molla); }
 .interruttore input:checked ~ .levetta { background: var(--lectio); }
 .interruttore input:checked ~ .levetta::after { transform: translateX(20px); background: var(--carta); outline: 1px solid var(--tema-linea); }
 .interruttore input:focus-visible ~ .levetta { outline: 2px solid var(--lectio); }
@@ -1551,7 +1551,7 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14p
   --finestra: light-dark(color-mix(in oklab, var(--lectio) 9%, #fbfbfb), color-mix(in oklab, var(--lectio) 14%, #202020));
   --griglia: light-dark(color-mix(in oklab, var(--lectio) 38%, #d4d4d4), color-mix(in oklab, var(--lectio) 35%, #3a3a3a));
 }
-@supports (color: oklch(from red l c h)) {
+@supports (color: oklch(from light-dark(red, red) l c h)) {
   :root, :root[data-accento] {
     --tema: oklch(from var(--lectio) min(l, 0.5) c h);
     --tema-linea: light-dark(var(--tema), oklch(from var(--lectio) max(l, 0.74) c h));
@@ -1593,7 +1593,7 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14p
 /* barra dell'audio: binario a celle e cursore quadrato, come la dimensione del testo */
 .sintonia::-webkit-slider-runnable-track {
   height: 8px; border: 1px solid var(--tema-linea);
-  background: linear-gradient(90deg, var(--tema) var(--pos), var(--finestra) var(--pos));
+  background: linear-gradient(90deg, var(--tema-linea) var(--pos), var(--finestra) var(--pos));
 }
 .sintonia::-webkit-slider-thumb {
   width: 12px; height: 20px; margin-top: -7px; background: var(--lectio);
@@ -1618,7 +1618,7 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14p
 }
 .bobina-pensa i:nth-child(1) { height: 8px; animation-delay: -1.15s; }
 .bobina-pensa i:nth-child(2) { height: 13px; animation-delay: -.98s; }
-.bobina-pensa i:nth-child(3) { background: var(--lectio); animation-delay: -.81s; }
+.bobina-pensa i:nth-child(3) { background: var(--tema); background: oklch(from var(--lectio) min(l, 0.62) c h); animation-delay: -.81s; }
 .bobina-pensa i:nth-child(4) { height: 12px; animation-delay: -.64s; }
 .bobina-pensa i:nth-child(5) { height: 7px; animation-delay: -.47s; }
 .bobina-pensa.ferma i { animation: none; transform: none; }
@@ -1664,7 +1664,7 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14p
   transition: background 160ms var(--uscita);
 }
 .chiedi .invia .icona { width: 18px; height: 18px; }
-.chiedi .invia:hover { background: var(--lectio); }
+.chiedi .invia:hover { box-shadow: 2px 2px 0 var(--lectio); }
 .chiedi .invia:disabled { background: var(--inchiostro-lieve); cursor: progress; }
 
 .piede-chat {

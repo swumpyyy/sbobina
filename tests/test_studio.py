@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from sbobina import studio
 from sbobina.archivio import Lezione
+from sbobina.llm import Utilizzo
 from sbobina.registrazione import Registratore
 from sbobina.server import crea_app, stime
 
@@ -32,7 +33,7 @@ class LLMStudio:
 
     def testo(self, *, system, contenuto, sforzo, max_tokens=0):
         self.contenuti.append(contenuto)
-        return "Ne parla al minuto [00:24].", None
+        return "Ne parla al minuto [00:24].", Utilizzo()
 
 
 @pytest.fixture
@@ -78,6 +79,8 @@ def test_chiedi_a_tutte_le_lezioni(archivio, lezione, audio_prova):
     assert {f["titolo"] for f in storia[-1]["fonti"]} == {"Associazioni", "Derivate"}
     assert len(storia) == 4 and (archivio.radice / "chat.json").is_file()
     assert storia[-1]["nerd"]["lezioni_lette"] == 2 and storia[-1]["nerd"]["caratteri_letti"] > 0
+    # numeri vecchi in diretta (di un altro lavoro) non finiscono nella risposta: restano i token di questa
+    assert storia[-1]["nerd"]["token_prompt"] == 0 and "motore" not in storia[-1]["nerd"]
     assert studio.chiedi_tutte(archivio, llm, "Riassumi tutto", corso="Matematica")[-1]["fonti"][0]["titolo"] == "Derivate"
     with pytest.raises(ValueError):
         studio.chiedi_tutte(archivio, llm, "Ciao", corso="Storia")

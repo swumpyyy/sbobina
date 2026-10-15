@@ -1533,6 +1533,7 @@
     campo.addEventListener("input", adatta);
     async function invia(domanda) {
       if (!domanda || tasto.disabled) return;
+      const daCampo = domanda === campo.value.trim(); // una domanda di partenza non cancella quello che stavi scrivendo
       errore.hidden = true;
       tasto.disabled = true;
       storia = [...storia, { ruolo: "studente", testo: domanda }];
@@ -1540,14 +1541,12 @@
       const inAttesa = attesa(testoAttesa);
       elenco.append(inAttesa);
       if (nerdAttivo()) seguiNumeri(inAttesa);
-      campo.value = "";
-      adatta();
+      if (daCampo) { campo.value = ""; adatta(); }
       try {
         storia = await chiedi(domanda);
       } catch (err) {
         storia = storia.slice(0, -1);
-        campo.value = domanda;
-        adatta();
+        if (daCampo) { campo.value = domanda; adatta(); }
         errore.textContent = err.message;
         errore.hidden = false;
       }
@@ -1559,6 +1558,7 @@
     campo.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
     form.addEventListener("submit", (e) => { e.preventDefault(); invia(campo.value.trim()); });
     const nuova = h("button", { class: "collegamento nuova-chat", type: "button", onclick: async () => {
+      if (tasto.disabled) return; // la risposta in arrivo riscriverebbe la conversazione appena cancellata
       await cancella();
       storia = [];
       disegna();

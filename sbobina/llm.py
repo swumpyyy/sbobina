@@ -127,7 +127,6 @@ class Claude:
             "thinking": {"type": "adaptive"},
             "output_config": output_config,
         }
-        inizia_diretta(motore="Claude API", modello=self.modello, max_token=max_tokens)
         tentativi = 3
         for tentativo in range(1, tentativi + 1):
             try:
@@ -181,8 +180,6 @@ class Claude:
             cache_lettura=getattr(u, "cache_read_input_tokens", None) or 0,
             cache_scrittura=getattr(u, "cache_creation_input_tokens", None) or 0,
         )
-        nerd(token_prompt=utilizzo.input, token_generati=utilizzo.output, cache_letti=utilizzo.cache_lettura,
-             fine=messaggio.stop_reason)
         return testo, utilizzo
 
 
@@ -631,7 +628,8 @@ class LlamaCpp:
         system, utente = _solo_testo(system, contenuto, schema)
         try:
             assicura_gguf(self.modello)
-            indirizzo = _avvia_llama(file_gguf(self.modello), self.contesto)
+            gguf = file_gguf(self.modello)
+            indirizzo = _avvia_llama(gguf, self.contesto)
         except (Fermata, ErroreClaude):
             raise
         except Exception as e:  # noqa: BLE001 - rete, disco o scheda video: il messaggio deve arrivare allo studente
@@ -645,7 +643,7 @@ class LlamaCpp:
         }
         parti: list[str] = []
         fine, uso = None, Utilizzo()
-        inizia_diretta(motore="llama.cpp", modello=self.modello, contesto=self.contesto,
+        inizia_diretta(motore="llama.cpp", modello=gguf.name, contesto=self.contesto,
                        temperatura=corpo["temperature"], max_token=max_tokens, json=schema is not None)
         primo = 0.0
         with httpx2.stream("POST", indirizzo + "/v1/chat/completions", json=corpo, timeout=httpx2.Timeout(30, read=None)) as r:
@@ -664,8 +662,8 @@ class LlamaCpp:
                 if u := pezzo.get("usage"):
                     uso = Utilizzo(input=u.get("prompt_tokens", 0), output=u.get("completion_tokens", 0))
                 if t := pezzo.get("timings"):  # llama-server: i numeri veri, nell'ultimo pezzo
-                    nerd(token_prompt=t.get("prompt_n"), prompt_tps=round(t.get("prompt_per_second", 0), 1),
-                         token_generati=t.get("predicted_n"), token_al_secondo=round(t.get("predicted_per_second", 0), 1))
+                    nerd(token_prompt=t.get("prompt_n"), prompt_tps=round(t.get("prompt_per_second") or 0, 1),
+                         token_generati=t.get("predicted_n"), token_al_secondo=round(t.get("predicted_per_second") or 0, 1))
                 for scelta in pezzo.get("choices") or []:
                     testo = (scelta.get("delta") or {}).get("content") or ""
                     parti.append(testo)
