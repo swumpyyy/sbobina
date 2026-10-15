@@ -50,7 +50,7 @@
     ferma: '<rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/>',
     carica: '<path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9"/><path d="M4.5 14.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/>',
     puntini: '<circle cx="5.5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="18.5" cy="12" r="1.3" fill="currentColor"/>',
-    bolla: '<path d="M4.5 5h15v10.5h-8.5L6.5 19.5v-4h-2z"/><path d="M8.5 9.5h7M8.5 12.5h4.5"/>',
+    su: '<path d="M12 19V5M6 11l6-6 6 6"/>',
     cuffie: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6.5" rx="2"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="2"/>',
   };
 
@@ -1291,8 +1291,8 @@
   }
 
   /** Mentre l'AI pensa: il marchio su bianco, solo le cinque linee audio che ondeggiano. */
-  function bobinaPensa() {
-    return h("span", { class: "bobina-pensa", "aria-hidden": "true" }, h("i"), h("i"), h("i"), h("i"), h("i"));
+  function bobinaPensa(ferma = false) {
+    return h("span", { class: ferma ? "bobina-pensa ferma" : "bobina-pensa", "aria-hidden": "true" }, h("i"), h("i"), h("i"), h("i"), h("i"));
   }
 
   async function mostraRipasso(foglio, d) {
@@ -1449,25 +1449,28 @@
   }
 
   /** Una conversazione con l'AI: bolle, attesa con la bobina, campo in basso. */
-  function conversazione(foglio, { titolo, storia, vuoto, testoAttesa, chiedi, cancella, onTempo = null, testa = null }) {
+  /** Una conversazione con l'AI, come in un terminale: la domanda dopo ">", la risposta accanto al marchio. */
+  function conversazione(foglio, { titolo, storia, vuoto, testoAttesa, chiedi, cancella, onTempo = null, piede = null }) {
     const elenco = h("div", { class: "chat", "aria-live": "polite" });
     const disegna = () => {
       elenco.replaceChildren(...(storia.length ? storia.map((m) => {
-        const bolla = h("div", { class: `bolla ${m.ruolo}` });
-        if (m.ruolo !== "sbobina") { bolla.textContent = m.testo; return bolla; }
+        if (m.ruolo !== "sbobina") return h("div", { class: "riga-chat studente" }, h("span", { class: "prompt", "aria-hidden": "true" }, ">"), h("p", {}, m.testo));
         // "[05:40, 06:18]" → due tempi
         const testo = m.testo.replace(/\[(\d{1,2}:\d{2}(?:,\s*\d{1,2}:\d{2})+)\]/g, (_, t) => t.split(/,\s*/).map((x) => `[${x}]`).join(" "));
-        window.Sbobina.render(bolla, testo, { onTempo }); // riempie la bolla subito; gli schemi arrivano dopo, al loro posto
+        const corpo = h("div", { class: "risposta" });
+        window.Sbobina.render(corpo, testo, { onTempo }); // riempie subito; gli schemi arrivano dopo, al loro posto
         const fonti = (m.fonti || []).filter((f) => stato.lezioni.some((x) => x.id === f.id));
-        if (fonti.length) bolla.append(h("div", { class: "fonti" }, h("span", {}, "Dagli appunti di"),
-          ...fonti.map((f) => h("button", { class: "fonte", type: "button", title: f.corso, onclick: () => apriLezione(f.id) }, f.titolo))));
-        return bolla;
+        if (fonti.length) corpo.append(h("div", { class: "fonti" }, h("span", {}, "Dagli appunti di"),
+          ...fonti.map((f) => h("button", { class: "fonte", type: "button", onclick: () => apriLezione(f.id) }, f.titolo, h("small", {}, f.corso)))));
+        return h("div", { class: "riga-chat sbobina" }, bobinaPensa(true), corpo);
       }) : vuoto(invia)));
     };
-    const campo = h("textarea", { rows: "2", maxlength: "1000", placeholder: "Scrivi la tua domanda…", "aria-label": "Domanda" });
-    const tasto = h("button", { class: "tasto grande", type: "submit" }, icona("freccia"), "Chiedi");
+    const campo = h("textarea", { rows: "1", maxlength: "1000", placeholder: "Scrivi la tua domanda…", "aria-label": "Domanda" });
+    const tasto = h("button", { class: "invia", type: "submit", "aria-label": "Chiedi", title: "Chiedi (Invio)" }, icona("su"));
     const errore = h("p", { class: "errore-modulo", role: "alert", hidden: true });
-    const form = h("form", { class: "chiedi" }, campo, tasto);
+    const form = h("form", { class: "chiedi" }, h("span", { class: "prompt", "aria-hidden": "true" }, ">"), campo, tasto);
+    const adatta = () => { campo.style.height = "auto"; campo.style.height = `${campo.scrollHeight}px`; };
+    campo.addEventListener("input", adatta);
     async function invia(domanda) {
       if (!domanda || tasto.disabled) return;
       errore.hidden = true;
@@ -1476,11 +1479,13 @@
       disegna();
       elenco.append(attesa(testoAttesa));
       campo.value = "";
+      adatta();
       try {
         storia = await chiedi(domanda);
       } catch (err) {
         storia = storia.slice(0, -1);
         campo.value = domanda;
+        adatta();
         errore.textContent = err.message;
         errore.hidden = false;
       }
@@ -1491,13 +1496,14 @@
     disegna();
     campo.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
     form.addEventListener("submit", (e) => { e.preventDefault(); invia(campo.value.trim()); });
-    const nuova = h("button", { class: "tasto trasparente", type: "button", onclick: async () => {
+    const nuova = h("button", { class: "collegamento nuova-chat", type: "button", onclick: async () => {
       await cancella();
       storia = [];
       disegna();
       campo.focus();
     } }, icona("cestino"), "Nuova conversazione");
-    foglio.append(h("div", { class: "testa-studio" }, h("h3", {}, titolo), nuova), testa, elenco, errore, form);
+    foglio.append(h("div", { class: "testa-studio" }, h("h3", {}, titolo), nuova), elenco, errore, form,
+      h("div", { class: "piede-chat" }, piede, h("span", { class: "tasti" }, h("kbd", {}, "↵"), " invia · ", h("kbd", {}, "⇧↵"), " a capo")));
     return campo;
   }
 
@@ -1519,16 +1525,17 @@
       foglio.append(h("p", { class: "segnaposto" }, "Quando una lezione è pronta potrai farle domande qui."));
       return;
     }
-    const filtro = corsi.length > 1 ? h("div", { class: "filtro-corso" }, h("span", { class: "dati" }, "Cerca in"),
-      scelte("corso-chiedi", [["", "Tutti i corsi"], ...corsi.map((c) => [c, c])], corso, (c) => { corso = stato.corsoChiedi = c; })) : null;
+    const scegli = h("select", { "aria-label": "Cerca nel corso", onchange: (e) => { corso = stato.corsoChiedi = e.target.value; } },
+      ...[["", "tutti i corsi"], ...corsi.map((c) => [c, c])].map(([v, t]) => h("option", { value: v, selected: v === corso }, t)));
+    const filtro = corsi.length > 1 ? h("label", { class: "filtro-corso" }, "in", scegli) : null;
     const campo = conversazione(foglio, {
       titolo: "La tua conversazione",
       storia,
-      testa: filtro,
+      piede: filtro,
       vuoto: (invia) => [h("div", { class: "spunti-chat" },
-        h("p", { class: "segnaposto" }, "Da dove parti? Tocca una domanda o scrivine una tua."),
-        ...["Quali argomenti ha detto che chiederà all'esame?", "Riassumimi i concetti chiave, lezione per lezione", "Quali definizioni devo sapere a memoria?"]
-          .map((q) => h("button", { class: "spunto", type: "button", onclick: () => invia(q) }, icona("bolla"), q)))],
+        h("p", {}, "Da dove parti? Tocca una domanda o scrivine una tua."),
+        h("ul", {}, ...["Quali argomenti ha detto che chiederà all'esame?", "Riassumimi i concetti chiave, lezione per lezione", "Quali definizioni devo sapere a memoria?"]
+          .map((q) => h("li", {}, h("button", { class: "spunto", type: "button", onclick: () => invia(q) }, h("span", {}, q), icona("freccia"))))))],
       testoAttesa: "Sfoglio i tuoi appunti…",
       chiedi: (domanda) => api("/api/chiedi", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ domanda, corso }) }),
       cancella: () => api("/api/chat", { method: "DELETE" }),
