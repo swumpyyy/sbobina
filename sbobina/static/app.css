@@ -1295,7 +1295,11 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
 .tasto.trasparente { border-color: transparent; background: transparent; }
 .tasto.trasparente:hover { border-color: var(--tema-linea); box-shadow: none; }
 .tasto.ferma, .tasto.pericolo { color: var(--guasto); border-color: var(--guasto); background: var(--carta); }
-#btn-registra { border: 1px solid var(--tema-linea); text-transform: uppercase; font-size: 13px; letter-spacing: 0.03em; }
+#btn-registra { text-transform: uppercase; font-size: 13px; letter-spacing: 0.03em; }
+/* I quattro tasti della testata hanno la stessa misura (più stretti, si accorciano tutti insieme). */
+.testata .tasto { box-sizing: border-box; width: 200px; height: 44px; min-height: 44px; padding: 0 12px; white-space: nowrap; flex-shrink: 0; }
+@media (max-width: 1339px) { .testata .tasto { width: 120px; } #btn-nuova .etichetta-lunga { display: none; } }
+@media (max-width: 1009px) { .testata .tasto { width: 56px; padding: 0; } .testata .tasto .etichetta-lunga, #btn-nuova > span { display: none; } }
 #btn-registra::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--guasto); }
 #btn-registra .icona { display: none; }
 
