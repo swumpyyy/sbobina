@@ -11,7 +11,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from sbobina.archivio import Archivio, Lezione, leggi_json, scrivi_json, slug
-from sbobina.llm import ModelloLinguistico
+from sbobina.llm import DIRETTA, ModelloLinguistico
 
 # Una sola generazione interattiva alla volta: con un modello locale due insieme esauriscono la memoria.
 OCCUPATO = threading.Lock()
@@ -192,7 +192,7 @@ def chiedi(archivio: Archivio, lezione: Lezione, llm: ModelloLinguistico, domand
         contenuto=[{"type": "text", "text": _testo(archivio, lezione, trascrizione=True)}, {"type": "text", "text": istruzioni}],
         sforzo="medium", max_tokens=4000,
     )
-    storia += [{"ruolo": "studente", "testo": domanda}, {"ruolo": "sbobina", "testo": risposta.strip()}]
+    storia += [{"ruolo": "studente", "testo": domanda}, {"ruolo": "sbobina", "testo": risposta.strip(), "nerd": dict(DIRETTA["nerd"])}]
     scrivi_json(file, storia)
     return storia
 
@@ -246,7 +246,8 @@ def chiedi_tutte(archivio: Archivio, llm: ModelloLinguistico, domanda: str, cors
         sforzo="medium", max_tokens=4000,
     )
     storia += [{"ruolo": "studente", "testo": domanda, "corso": corso},
-               {"ruolo": "sbobina", "testo": risposta.strip(), "fonti": fonti}]
+               {"ruolo": "sbobina", "testo": risposta.strip(), "fonti": fonti,
+                "nerd": {**DIRETTA["nerd"], "lezioni_lette": len(fonti), "caratteri_letti": sum(map(len, blocchi))}}]
     scrivi_json(file, storia)
     return storia
 

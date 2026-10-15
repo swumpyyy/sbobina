@@ -59,7 +59,7 @@ def test_quiz_carte_e_domande(archivio, lezione):
     mazzo = studio.genera_carte(archivio, lezione, llm)
     assert [c["fronte"] for c in mazzo["carte"]] == ["Art. 18"]
     storia = studio.chiedi(archivio, lezione, llm, "Dove parla dell'art. 18?")
-    assert storia[-1] == {"ruolo": "sbobina", "testo": "Ne parla al minuto [00:24]."}
+    assert storia[-1]["testo"] == "Ne parla al minuto [00:24]." and "nerd" in storia[-1]
     assert "<trascrizione>" in llm.contenuti[-1][0]["text"]  # la domanda vede la trascrizione con i tempi
     anki = studio.esporta_anki(archivio, lezione)
     assert "#deck:Sbobina::Diritto pubblico" in anki and "Art. 18\tLibertà di associazione\tdiritto-pubblico" in anki
@@ -77,6 +77,7 @@ def test_chiedi_a_tutte_le_lezioni(archivio, lezione, audio_prova):
     storia = studio.chiedi_tutte(archivio, llm, "Riassumi tutto")  # nessuna parola trovata: tutte le lezioni
     assert {f["titolo"] for f in storia[-1]["fonti"]} == {"Associazioni", "Derivate"}
     assert len(storia) == 4 and (archivio.radice / "chat.json").is_file()
+    assert storia[-1]["nerd"]["lezioni_lette"] == 2 and storia[-1]["nerd"]["caratteri_letti"] > 0
     assert studio.chiedi_tutte(archivio, llm, "Riassumi tutto", corso="Matematica")[-1]["fonti"][0]["titolo"] == "Derivate"
     with pytest.raises(ValueError):
         studio.chiedi_tutte(archivio, llm, "Ciao", corso="Storia")

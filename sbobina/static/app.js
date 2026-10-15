@@ -50,6 +50,7 @@
     ferma: '<rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/>',
     carica: '<path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9"/><path d="M4.5 14.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/>',
     puntini: '<circle cx="5.5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="18.5" cy="12" r="1.3" fill="currentColor"/>',
+    grafico: '<path d="M4 20h16"/><path d="M7.5 16v-4M12 16V6M16.5 16V9.5"/>',
     su: '<path d="M12 19V5M6 11l6-6 6 6"/>',
     cuffie: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6.5" rx="2"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="2"/>',
   };
@@ -525,9 +526,16 @@
     const flusso = h("div", { class: "flusso", role: "log", "aria-live": "off", tabindex: "0", "aria-label": "Testo in diretta" },
       h("p", { class: "attesa" }, "Tra poco qui compaiono le parole, man mano che l'AI le scrive."));
     const marchio = marchioVoce();
+    const numeri = h("div", { class: "nerd-quinte", hidden: true });
+    let ultimiNumeri = {};
     const sezione = h("details", { class: "quinte", open: localStorage.getItem("sbobina-quinte") !== "chiuse" },
       h("summary", {}, marchio, h("span", { class: "riga-verbo" }, verbo, tempo), chi,
         h("span", { class: "apri" }, icona("freccia"))),
+      nerdAttivo() ? h("div", { class: "azioni-quinte" }, tastoNerd((si) => {
+        numeri.hidden = !si;
+        numeri.replaceChildren(numeriNerd(ultimiNumeri));
+      })) : null,
+      numeri,
       flusso);
     sezione.addEventListener("toggle", () => localStorage.setItem("sbobina-quinte", sezione.open ? "aperte" : "chiuse"));
 
@@ -561,6 +569,8 @@
         try {
           const d = await api("/api/diretta");
           if (!stato.diretta || stato.diretta.turno !== d.turno) stato.diretta = { turno: d.turno, inizio: Date.now() };
+          ultimiNumeri = d.nerd || {};
+          if (!numeri.hidden) numeri.replaceChildren(numeriNerd(ultimiNumeri));
           if (d.testo !== ultimoTesto) {
             const nuovi = d.testo.startsWith(ultimoTesto) ? d.testo.length - ultimoTesto.length : 0;
             marchio.parla(nuovi);
@@ -1290,6 +1300,48 @@
     return el;
   }
 
+  // --- sezione nerd: i numeri del modello -------------------------------------
+
+  const nerdAttivo = () => !!imp().nerd;
+  const NUMERI_NERD = [
+    ["motore", "Motore"], ["modello", "Modello"], ["token_prompt", "Token letti"], ["prompt_tps", "Lettura", "tok/s"],
+    ["primo_token_s", "Primo token", "s"], ["token_generati", "Token scritti"], ["token_al_secondo", "Scrittura", "tok/s"],
+    ["memoria_gb", "Memoria al picco", "GB"], ["durata_s", "Durata", "s"], ["contesto", "Contesto", "tok"],
+    ["max_token", "Limite risposta", "tok"], ["temperatura", "Temperatura"], ["json", "Formato"],
+    ["lezioni_lette", "Lezioni lette"], ["caratteri_letti", "Caratteri letti"], ["cache_letti", "Token dalla cache"], ["fine", "Fine"],
+  ];
+  const FINI = { stop: "naturale", end_turn: "naturale", length: "troncata", max_tokens: "troncata" };
+
+  function valoreNerd(chiave, v) {
+    if (chiave === "modello") return String(v).replace(/^mlx-community\//, "");
+    if (chiave === "json") return v ? "JSON" : "testo";
+    if (chiave === "fine") return FINI[v] || String(v);
+    return typeof v === "number" ? v.toLocaleString("it-IT", { maximumFractionDigits: 2 }) : String(v);
+  }
+
+  /** I numeri di una richiesta all'AI: tutti in una griglia, o i principali in una riga sola mentre lavora. */
+  function numeriNerd(n, { riga = false } = {}) {
+    const voci = NUMERI_NERD.filter(([k]) => n && n[k] !== undefined && n[k] !== null && n[k] !== "");
+    if (riga) {
+      const brevi = ["token_prompt", "primo_token_s", "token_generati", "token_al_secondo", "memoria_gb"];
+      return h("p", { class: "nerd-riga dati" }, ...voci.filter(([k]) => brevi.includes(k))
+        .map(([k, nome, unita]) => h("span", {}, h("b", {}, valoreNerd(k, n[k])), ` ${unita || ""} ${nome.toLowerCase()}`)));
+    }
+    return h("dl", { class: "nerd" }, ...voci.map(([k, nome, unita]) =>
+      h("div", {}, h("dt", {}, nome), h("dd", {}, valoreNerd(k, n[k]), unita ? h("small", {}, ` ${unita}`) : null))));
+  }
+
+  /** Il tasto che apre e chiude i numeri: esiste solo con la sezione nerd accesa. */
+  function tastoNerd(apri) {
+    const tasto = h("button", { class: "tasto-nerd", type: "button", "aria-expanded": "false" }, icona("grafico"), "Statistiche");
+    tasto.addEventListener("click", () => {
+      const aperto = tasto.getAttribute("aria-expanded") === "true";
+      tasto.setAttribute("aria-expanded", String(!aperto));
+      apri(!aperto);
+    });
+    return tasto;
+  }
+
   /** Mentre l'AI pensa: il marchio su bianco, solo le cinque linee audio che ondeggiano. */
   function bobinaPensa(ferma = false) {
     return h("span", { class: ferma ? "bobina-pensa ferma" : "bobina-pensa", "aria-hidden": "true" }, h("i"), h("i"), h("i"), h("i"), h("i"));
@@ -1462,6 +1514,11 @@
         const fonti = (m.fonti || []).filter((f) => stato.lezioni.some((x) => x.id === f.id));
         if (fonti.length) corpo.append(h("div", { class: "fonti" }, h("span", {}, "Dagli appunti di"),
           ...fonti.map((f) => h("button", { class: "fonte", type: "button", onclick: () => apriLezione(f.id) }, f.titolo, h("small", {}, f.corso)))));
+        if (nerdAttivo() && m.nerd && Object.keys(m.nerd).length > 1) {
+          const griglia = numeriNerd(m.nerd);
+          griglia.hidden = true;
+          corpo.append(tastoNerd((si) => { griglia.hidden = !si; }), griglia);
+        }
         return h("div", { class: "riga-chat sbobina" }, bobinaPensa(true), corpo);
       }) : vuoto(invia)));
     };
@@ -1477,7 +1534,9 @@
       tasto.disabled = true;
       storia = [...storia, { ruolo: "studente", testo: domanda }];
       disegna();
-      elenco.append(attesa(testoAttesa));
+      const inAttesa = attesa(testoAttesa);
+      elenco.append(inAttesa);
+      if (nerdAttivo()) seguiNumeri(inAttesa);
       campo.value = "";
       adatta();
       try {
@@ -1505,6 +1564,23 @@
     foglio.append(h("div", { class: "testa-studio" }, h("h3", {}, titolo), nuova), elenco, errore, form,
       h("div", { class: "piede-chat" }, piede, h("span", { class: "tasti" }, h("kbd", {}, "↵"), " invia · ", h("kbd", {}, "⇧↵"), " a capo")));
     return campo;
+  }
+
+  /** Sezione nerd: sotto l'attesa, i numeri del modello mentre legge e scrive. */
+  function seguiNumeri(contenitore) {
+    const posto = h("div", { class: "nerd-diretta" });
+    contenitore.after(posto);
+    const avvio = Date.now() - 1000; // server e pagina girano sullo stesso computer: stesso orologio
+    const giro = async () => {
+      if (!contenitore.isConnected) { posto.remove(); return; }
+      try {
+        const d = await api("/api/diretta");
+        // solo i numeri della nostra richiesta, non quelli rimasti dalla precedente
+        if (d.nerd && d.nerd.inizio * 1000 >= avvio) posto.replaceChildren(numeriNerd(d.nerd, { riga: true }));
+      } catch (e) { /* server occupato: si riprova */ }
+      setTimeout(giro, 600);
+    };
+    giro();
   }
 
   /** Chiedi alle tue lezioni: l'AI risponde con gli appunti di tutte le lezioni pronte, o di un corso. */
@@ -1917,8 +1993,26 @@
       return h("label", { class: "campo" }, h("span", {}, etichetta), input);
     };
 
+    let svelata = !!i.nerd;
+    try { svelata = svelata || localStorage.getItem("sbobina-nerd") === "svelata"; } catch (e) { /* niente */ }
+    const sezioneNerd = sezione("imp-nerd", "Sezione nerd", "Per chi vuole vedere i numeri del modello.",
+      h("div", { class: "griglia-interruttori" },
+        interruttore("Sezione nerd", i.nerd, (v) => cambia({ nerd: v }),
+          "Compare il tasto Statistiche: token letti e scritti, velocità, memoria e durata, sotto ogni risposta e mentre elabora una lezione.")));
+    sezioneNerd.hidden = !svelata;
+    let clic = 0;
+    const titolo = h("h1", { onclick: () => {
+      if (!sezioneNerd.hidden) return;
+      clic += 1;
+      if (clic < 5) { if (clic >= 2) salvato(`Ancora ${5 - clic} clic…`); return; }
+      sezioneNerd.hidden = false;
+      try { localStorage.setItem("sbobina-nerd", "svelata"); } catch (e) { /* niente */ }
+      salvato("Sezione nerd sbloccata");
+      sezioneNerd.scrollIntoView({ behavior: "smooth", block: "center" });
+    } }, "Impostazioni");
+
     riempiPiastra([
-      h("header", { class: "intestazione" }, h("h1", {}, "Impostazioni"),
+      h("header", { class: "intestazione" }, titolo,
         h("p", { class: "sottotitolo" }, "Ogni modifica si salva subito e vale dalla prossima lezione.")),
       sezione("imp-appunti", "Appunti", "Come vuoi che siano scritti.",
         riga("Lunghezza", null, scelte("lunghezza", [["essenziale", "Essenziale"], ["normale", "Normale"], ["dettagliata", "Dettagliata"]],
@@ -1965,6 +2059,7 @@
           h("code", {}, sistema.cartella_dati),
           h("button", { class: "tasto", type: "button", onclick: () => api("/api/cartella-dati", { method: "POST" }) },
             icona("graffetta"), MAC ? "Mostra nel Finder" : "Apri in Esplora file"))),
+      sezioneNerd,
     ]);
   }
 

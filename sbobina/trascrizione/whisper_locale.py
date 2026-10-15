@@ -94,7 +94,7 @@ class MotoreWhisper:
 
         ferma_llama()  # 8 GB di VRAM non bastano per Whisper e il modello degli appunti insieme
         modello = self._carica(dispositivo)
-        inizia_diretta()
+        inizia_diretta(motore=f"faster-whisper ({dispositivo})", modello=self.modello)
         segmenti, info = modello.transcribe(
             campioni_16k(audio),
             language=lingua,
@@ -162,7 +162,7 @@ class MotoreWhisper:
                     PREPARAZIONE["attiva"] = False
             percorso = modello_pronto(self.modello)
 
-        inizia_diretta()
+        inizia_diretta(motore="mlx-whisper", modello=self.modello)
         originale = modulo.tqdm
         modulo.tqdm = type("tqdm", (), {"tqdm": _Barra})
         # Con verbose=True mlx-whisper stampa ogni frase riconosciuta: la mandiamo alla vista in diretta.

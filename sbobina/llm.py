@@ -127,6 +127,7 @@ class Claude:
             "thinking": {"type": "adaptive"},
             "output_config": output_config,
         }
+        inizia_diretta(motore="Claude API", modello=self.modello, max_token=max_tokens)
         tentativi = 3
         for tentativo in range(1, tentativi + 1):
             try:
@@ -180,6 +181,8 @@ class Claude:
             cache_lettura=getattr(u, "cache_read_input_tokens", None) or 0,
             cache_scrittura=getattr(u, "cache_creation_input_tokens", None) or 0,
         )
+        nerd(token_prompt=utilizzo.input, token_generati=utilizzo.output, cache_letti=utilizzo.cache_lettura,
+             fine=messaggio.stop_reason)
         return testo, utilizzo
 
 
@@ -197,11 +200,17 @@ PREPARAZIONE: dict[str, Any] = {
 
 # Cosa sta facendo l'AI in questo momento, letto da /api/diretta: le ultime parole riconosciute o scritte.
 # "turno" cresce a ogni nuova richiesta, così la pagina sa quando ripulire.
-DIRETTA: dict[str, Any] = {"turno": 0, "testo": ""}
+# "nerd": i numeri del modello (token, velocità, memoria) per la sezione nerd delle impostazioni.
+DIRETTA: dict[str, Any] = {"turno": 0, "testo": "", "nerd": {}}
 
 
-def inizia_diretta() -> None:
-    DIRETTA.update(turno=DIRETTA["turno"] + 1, testo="")
+def inizia_diretta(**nerd: Any) -> None:
+    DIRETTA.update(turno=DIRETTA["turno"] + 1, testo="", nerd={"inizio": time.time(), **nerd})
+
+
+def nerd(**dati: Any) -> None:
+    """Aggiorna i numeri della richiesta in corso; alla fine aggiunge la durata totale."""
+    DIRETTA["nerd"] = {**DIRETTA["nerd"], **dati, "durata_s": round(time.time() - DIRETTA["nerd"].get("inizio", time.time()), 2)}
 
 
 def in_diretta(pezzo: str) -> None:
@@ -455,7 +464,8 @@ class MLX:
             temperatura = 0.0 if schema is not None else self.temperatura
         parti: list[str] = []
         ultima = None
-        inizia_diretta()
+        inizia_diretta(motore="MLX", modello=self.modello, contesto=self.contesto, temperatura=temperatura,
+                       max_token=max_tokens, json=schema is not None, token_prompt=lunghezza)
         for i, risposta in enumerate(stream_generate(
             modello, tokenizer, prompt, max_tokens=max_tokens, sampler=make_sampler(temp=temperatura),
             logits_processors=None if schema is not None else make_logits_processors(repetition_penalty=1.05, repetition_context_size=256),
@@ -465,6 +475,11 @@ class MLX:
             parti.append(risposta.text)
             in_diretta(risposta.text)
             ultima = risposta
+            if i == 0:
+                nerd(primo_token_s=round(time.time() - DIRETTA["nerd"]["inizio"], 2), prompt_tps=round(risposta.prompt_tps, 1))
+            elif i % 8 == 0:
+                nerd(token_generati=risposta.generation_tokens, token_al_secondo=round(risposta.generation_tps, 1),
+                     memoria_gb=round(risposta.peak_memory, 2))
             if i % 64 == 63 and in_loop("".join(parti[-400:])):
                 raise ErroreRipetizione("Il modello integrato si è bloccato ripetendo la stessa frase.")
         if ultima is not None and ultima.finish_reason == "length":
@@ -473,6 +488,8 @@ class MLX:
         if not testo:
             raise ErroreClaude("Il modello integrato ha restituito una risposta vuota.")
         uso = Utilizzo(input=getattr(ultima, "prompt_tokens", 0) or 0, output=getattr(ultima, "generation_tokens", 0) or 0)
+        nerd(token_prompt=uso.input, token_generati=uso.output, token_al_secondo=round(ultima.generation_tps, 1),
+             memoria_gb=round(ultima.peak_memory, 2), fine=ultima.finish_reason)
         return testo, uso
 
 
@@ -628,7 +645,9 @@ class LlamaCpp:
         }
         parti: list[str] = []
         fine, uso = None, Utilizzo()
-        inizia_diretta()
+        inizia_diretta(motore="llama.cpp", modello=self.modello, contesto=self.contesto,
+                       temperatura=corpo["temperature"], max_token=max_tokens, json=schema is not None)
+        primo = 0.0
         with httpx2.stream("POST", indirizzo + "/v1/chat/completions", json=corpo, timeout=httpx2.Timeout(30, read=None)) as r:
             if r.status_code != 200:
                 dettaglio = r.read().decode(errors="replace")
@@ -644,13 +663,22 @@ class LlamaCpp:
                 pezzo = json.loads(riga[6:])
                 if u := pezzo.get("usage"):
                     uso = Utilizzo(input=u.get("prompt_tokens", 0), output=u.get("completion_tokens", 0))
+                if t := pezzo.get("timings"):  # llama-server: i numeri veri, nell'ultimo pezzo
+                    nerd(token_prompt=t.get("prompt_n"), prompt_tps=round(t.get("prompt_per_second", 0), 1),
+                         token_generati=t.get("predicted_n"), token_al_secondo=round(t.get("predicted_per_second", 0), 1))
                 for scelta in pezzo.get("choices") or []:
                     testo = (scelta.get("delta") or {}).get("content") or ""
                     parti.append(testo)
                     in_diretta(testo)
                     fine = scelta.get("finish_reason") or fine
+                    if testo and not primo:
+                        primo = time.time()
+                        nerd(primo_token_s=round(primo - DIRETTA["nerd"]["inizio"], 2))
+                    elif testo and len(parti) % 8 == 0:  # stima mentre scrive: un pezzo ≈ un token
+                        nerd(token_generati=len(parti), token_al_secondo=round(len(parti) / max(time.time() - primo, 0.01), 1))
                 if i % 64 == 63 and in_loop("".join(parti[-400:])):
                     raise ErroreRipetizione("Il modello integrato si è bloccato ripetendo la stessa frase.")
+        nerd(fine=fine)
         if fine == "length":
             raise ErroreClaude("La risposta del modello integrato è stata troncata (limite di lunghezza raggiunto).")
         testo = "".join(parti).strip()
