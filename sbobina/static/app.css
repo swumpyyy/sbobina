@@ -1350,7 +1350,12 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
   mask-image: repeating-linear-gradient(90deg, #000 0 10px, transparent 10px 13px);
 }
 .liquido::before { content: ""; position: absolute; inset: 0; background: var(--griglia); }
-.riempimento { border-radius: 0; background: var(--tema); transition: transform 900ms steps(24, end); }
+/* il pieno si taglia, non si stira: con scaleX anche le celle della maschera si schiacciavano in righine */
+.riempimento {
+  border-radius: 0; background: var(--tema); transform: none;
+  clip-path: inset(0 calc((1 - var(--p, 0)) * 100%) 0 0);
+  transition: clip-path 900ms var(--uscita);
+}
 .avanzamento.attiva .riempimento { background: var(--tema); }
 .avanzamento.guasto .riempimento { background: var(--guasto); }
 .tappa .punto { border-radius: 0; border: 1px solid var(--tema-linea); background: var(--carta); }
@@ -1715,11 +1720,14 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14p
 .tasto-nerd .icona { width: 15px; height: 15px; }
 .tasto-nerd:hover { box-shadow: 2px 2px 0 var(--tema-linea); }
 .tasto-nerd[aria-expanded="true"] { background: var(--tema); color: var(--su-tema); border-color: var(--tema); }
+/* auto-fit e fili sulle celle: con pochi numeri (Whisper) non restano caselle vuote colorate */
 .nerd {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1px; margin: 10px 0 0;
-  background: var(--filo-scuro); border: 1px solid var(--filo-scuro); animation: entra 320ms var(--uscita) both;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin: 10px 0 0;
+  border-top: 1px solid var(--filo-scuro); border-left: 1px solid var(--filo-scuro);
 }
-.nerd > div { background: var(--carta); padding: 8px 10px; min-width: 0; }
+.nerd > div { background: var(--carta); padding: 8px 10px; min-width: 0; border-right: 1px solid var(--filo-scuro); border-bottom: 1px solid var(--filo-scuro); }
+.tasto-nerd[aria-expanded="true"] + .nerd { animation: compare 260ms var(--uscita) both; }
+@keyframes compare { from { opacity: 0; transform: translateY(4px); } }
 .nerd dt { font-family: var(--font-mono); font-size: 11px; letter-spacing: .03em; text-transform: uppercase; color: var(--inchiostro-lieve); }
 .nerd dd { margin: 3px 0 0; font-family: var(--font-mono); font-size: 14px; color: var(--inchiostro); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .nerd dd small { font-size: 11px; color: var(--inchiostro-lieve); }

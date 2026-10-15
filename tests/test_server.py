@@ -194,3 +194,16 @@ def test_corsi_con_lo_stesso_slug_restano_separati(client):
 def test_un_corso_rovinato_non_blocca_lo_stato(client, config):
     (config.cartella_dati / "corsi" / "rotto.json").write_text("{", encoding="utf-8")
     assert client.get("/api/stato").status_code == 200
+
+
+def test_versione_una_sola_in_tutto_il_progetto():
+    """pyproject, il pacchetto e l'etichetta in alto a sinistra dell'app dicono la stessa versione."""
+    import tomllib
+    from pathlib import Path
+
+    import sbobina
+
+    radice = Path(__file__).resolve().parents[1]
+    assert tomllib.loads((radice / "pyproject.toml").read_text())["project"]["version"] == sbobina.__version__
+    breve = ".".join(sbobina.__version__.split(".")[:2])
+    assert f"SBOBINA.OS {breve}<" in (radice / "sbobina/static/index.html").read_text()

@@ -569,8 +569,10 @@
         try {
           const d = await api("/api/diretta");
           if (!stato.diretta || stato.diretta.turno !== d.turno) stato.diretta = { turno: d.turno, inizio: Date.now() };
+          // si ridisegna solo se un numero cambia: ridisegnare a ogni giro faceva ripartire l'animazione (sfocata)
+          const cambiati = JSON.stringify(d.nerd || {}) !== JSON.stringify(ultimiNumeri);
           ultimiNumeri = d.nerd || {};
-          if (!numeri.hidden) numeri.replaceChildren(numeriNerd(ultimiNumeri));
+          if (cambiati && !numeri.hidden) numeri.replaceChildren(numeriNerd(ultimiNumeri));
           if (d.testo !== ultimoTesto) {
             const nuovi = d.testo.startsWith(ultimoTesto) ? d.testo.length - ultimoTesto.length : 0;
             marchio.parla(nuovi);
@@ -1308,6 +1310,7 @@
     ["primo_token_s", "Primo token", "s"], ["token_generati", "Token scritti"], ["token_al_secondo", "Scrittura", "tok/s"],
     ["memoria_gb", "Memoria al picco", "GB"], ["durata_s", "Durata", "s"], ["contesto", "Contesto", "tok"],
     ["max_token", "Limite risposta", "tok"], ["temperatura", "Temperatura"], ["json", "Formato"],
+    ["audio_ascoltato_s", "Audio ascoltato", "s"], ["audio_totale_s", "Audio totale", "s"], ["velocita_x", "Velocità", "× tempo reale"],
     ["lezioni_lette", "Lezioni lette"], ["caratteri_letti", "Caratteri letti"], ["cache_letti", "Token dalla cache"], ["fine", "Fine"],
   ];
   const FINI = { stop: "naturale", end_turn: "naturale", length: "troncata", max_tokens: "troncata" };
@@ -1323,7 +1326,7 @@
   function numeriNerd(n, { riga = false } = {}) {
     const voci = NUMERI_NERD.filter(([k]) => n && n[k] !== undefined && n[k] !== null && n[k] !== "");
     if (riga) {
-      const brevi = ["token_prompt", "primo_token_s", "token_generati", "token_al_secondo", "memoria_gb"];
+      const brevi = ["token_prompt", "primo_token_s", "token_generati", "token_al_secondo", "memoria_gb", "audio_ascoltato_s", "velocita_x"];
       return h("p", { class: "nerd-riga dati" }, ...voci.filter(([k]) => brevi.includes(k))
         .map(([k, nome, unita]) => h("span", {}, h("b", {}, valoreNerd(k, n[k])), ` ${unita || ""} ${nome.toLowerCase()}`)));
     }

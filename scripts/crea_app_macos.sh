@@ -6,6 +6,7 @@ set -euo pipefail
 
 PROGETTO="${0:A:h:h}"
 DMG=0; [[ "${1:-}" == "--dmg" ]] && DMG=1
+VERSIONE="$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$PROGETTO/sbobina/__init__.py")"  # una sola fonte: sbobina/__init__.py
 APP="$HOME/Applications/Sbobina.app"; (( DMG )) && APP="$PROGETTO/dist/Sbobina.app"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 LAVORO="$(mktemp -d)"
@@ -46,8 +47,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleName</key><string>Sbobina</string>
   <key>CFBundleDisplayName</key><string>Sbobina</string>
   <key>CFBundleIdentifier</key><string>it.sbobina.app</string>
-  <key>CFBundleVersion</key><string>0.1.0</string>
-  <key>CFBundleShortVersionString</key><string>0.1.0</string>
+  <key>CFBundleVersion</key><string>$VERSIONE</string>
+  <key>CFBundleShortVersionString</key><string>$VERSIONE</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleExecutable</key><string>Sbobina</string>
   <key>CFBundleIconFile</key><string>Sbobina</string>
