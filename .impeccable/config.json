@@ -53,6 +53,24 @@
         ],
         "createdAt": "2026-10-17T12:07:44.933Z",
         "reason": "Claude: widget links the app's app.css, whose retro hard offset shadows (no blur) are the project's documented style, not a glow"
+      },
+      {
+        "rule": "pulsing-dot",
+        "value": "*",
+        "files": [
+          "sbobina/static/widget.html"
+        ],
+        "createdAt": "2026-10-17T12:18:04.441Z",
+        "reason": "Claude: the dot blinks only while the microphone is actually recording (live state), static in pause/idle"
+      },
+      {
+        "rule": "radial-halo",
+        "value": "*",
+        "files": [
+          "sbobina/static/widget.html"
+        ],
+        "createdAt": "2026-10-17T12:18:04.462Z",
+        "reason": "Claude: comes from app.css body::before/after dot grid (1px dots), which widget.html sets to display:none"
       }
     ]
   }

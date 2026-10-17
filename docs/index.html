@@ -32,7 +32,7 @@
 <!-- ============================ HERO ============================ -->
 <section class="hero" aria-labelledby="titolo">
   <div>
-    <p class="etichetta">Per studenti universitari · in italiano · gratis</p>
+    <p class="etichetta">Per studenti universitari · in italiano e in inglese · gratis</p>
     <h1 id="titolo">Dalla lezione registrata agli appunti, <span class="sotto">sul tuo computer.</span></h1>
   </div>
   <p class="lead">Sbobina prende la registrazione della lezione (nota vocale del telefono, registratore, file di Teams o Zoom) oppure registra dal microfono, e la trasforma in appunti completi per studiare e preparare l'esame: trascrizione corretta, schemi, mappa concettuale, glossario, domande di ripasso e PDF da stampare. Tutto gira sul tuo Mac o PC: niente account, niente costi, l'audio non esce dal computer.</p>
@@ -49,11 +49,8 @@
     <span class="chip">0 € a lezione</span>
   </div>
   <figure class="finestra schermo" style="margin:24px 0 0">
-    <div class="barra"><span>Sbobina 1.1</span><span class="mono">schermata iniziale</span></div>
-    <picture>
-      <source srcset="img/app-scuro.jpg" media="(prefers-color-scheme: dark)">
-      <img src="img/app-chiaro.jpg" width="2880" height="1800" alt="La schermata iniziale di Sbobina: le lezioni divise per corso a sinistra, il titolo «Riprendi da dove eri, o aggiungi una lezione» e la zona dove trascinare la registrazione.">
-    </picture>
+    <div class="barra"><span>Sbobina 1.5</span><span class="mono">schermata iniziale</span></div>
+    <img src="img/app-chiaro.jpg" width="2880" height="1800" alt="La schermata iniziale di Sbobina: le lezioni divise per corso a sinistra, il titolo «Riprendi da dove eri, o aggiungi una lezione», la zona dove trascinare registrazioni, appunti, PDF o foto e i numeri dello studio.">
   </figure>
 </section>
 
@@ -61,17 +58,23 @@
 <section id="schermate" aria-labelledby="t-schermate">
   <p class="etichetta">Dentro l'app</p>
   <h2 id="t-schermate">Com'è, <span class="sotto">davvero</span>.</h2>
-  <p class="lead">Schermate dell'app vera, con due lezioni del primo anno elaborate sul Mac.</p>
+  <p class="lead">Schermate dell'app vera (versione 1.5), con sei lezioni del primo anno elaborate sul Mac.</p>
   <div class="galleria">
     <figure class="finestra"><div class="barra"><span>Appunti</span><span class="mono">Matematica</span></div>
       <img src="img/app-appunti.jpg" width="2880" height="1800" loading="lazy" alt="Gli appunti di una lezione di matematica: lettore audio, schede Appunti, Approfondimento, Trascrizione, Verifica, Ripasso e Chiedi, un riquadro «In sintesi» e la mappa concettuale.">
       <figcaption>Appunti con sintesi, mappa concettuale e il minuto della registrazione accanto a ogni titolo.</figcaption></figure>
+    <figure class="finestra"><div class="barra"><span>Evidenziatore</span><span class="mono">4 colori</span></div>
+      <img src="img/app-evidenzia.jpg" width="2880" height="1800" loading="lazy" alt="Una definizione negli appunti con tre frasi evidenziate in giallo, rosa e verde; formule scritte in LaTeX.">
+      <figcaption>Evidenzia mentre studi, in quattro colori. Un clic sulla frase e l'evidenziazione sparisce.</figcaption></figure>
+    <figure class="finestra"><div class="barra"><span>Chiedi</span><span class="mono">tutte le lezioni</span></div>
+      <img src="img/app-chiedi.jpg" width="2880" height="1800" loading="lazy" alt="La pagina «Chiedi alle tue lezioni»: domande di partenza come «Quali argomenti ha detto che chiederà all'esame?», il campo per scrivere e il filtro per corso.">
+      <figcaption>Una domanda su tutte le lezioni insieme: la risposta dice in quale lezione e a che minuto.</figcaption></figure>
     <figure class="finestra"><div class="barra"><span>Verifica</span><span class="mono">rapporto</span></div>
-      <img src="img/app-verifica.jpg" width="2880" height="1800" loading="lazy" alt="La scheda Verifica: il giudizio sugli appunti, nessun problema trovato e i termini aggiunti al glossario del corso; sotto, i pulsanti Scarica il PDF, Stampa, Markdown, Trascrizione, Rielabora e Glossario.">
+      <img src="img/app-verifica.jpg" width="2880" height="1800" loading="lazy" alt="La scheda Verifica: il giudizio sugli appunti, nessun problema trovato e i termini aggiunti al glossario del corso; sotto, i pulsanti Scarica il PDF, Altri PDF, Stampa, Markdown, Trascrizione, Rielabora e Glossario.">
       <figcaption>Il controllo degli appunti contro la trascrizione e i termini aggiunti al glossario.</figcaption></figure>
     <figure class="finestra"><div class="barra"><span>Registra</span><span class="mono">● REC</span></div>
-      <img src="img/app-registra.jpg" width="2880" height="1800" loading="lazy" alt="Il registratore: il livello del segnale, il tempo 0:00, i campi Corso e Titolo e il pulsante Inizia a registrare.">
-      <figcaption>Registra dal microfono: alla fine gli appunti partono da soli.</figcaption></figure>
+      <img src="img/app-registra.jpg" width="2880" height="1800" loading="lazy" alt="Il registratore: il riquadro del segnale, il tempo 0:00, i campi Corso e Titolo e il pulsante Inizia a registrare.">
+      <figcaption>Registra dal microfono, oppure dal widget sempre in primo piano.</figcaption></figure>
     <figure class="finestra"><div class="barra"><span>Impostazioni</span><span class="mono">appunti · AI</span></div>
       <img src="img/app-impostazioni.jpg" width="2880" height="1800" loading="lazy" alt="Le impostazioni: lunghezza e stile degli appunti e gli interruttori per mappa, schemi, domande, glossario, indicazioni del docente, approfondimento e verifica.">
       <figcaption>Scegli lunghezza, stile e quali sezioni scrivere.</figcaption></figure>
@@ -136,14 +139,20 @@
       <p>Carte create dalla lezione e ripasso a scatole: quelle che sbagli tornano più spesso. Esportabili per Anki.</p></div></article>
     <article class="finestra"><div class="barra"><span>Quiz</span><span class="mono">A B C D</span></div><div class="corpo">
       <p>Domande a scelta multipla con la spiegazione di ogni risposta.</p></div></article>
-    <article class="finestra"><div class="barra"><span>Chiedi alla lezione</span><span class="mono">?</span></div><div class="corpo">
-      <p>Fai una domanda: la risposta cita il minuto della registrazione da cui viene.</p></div></article>
+    <article class="finestra"><div class="barra"><span>Chiedi</span><span class="mono">?</span></div><div class="corpo">
+      <p>Fai una domanda a una lezione o a tutte insieme, anche filtrando per corso: la risposta usa solo i tuoi appunti e dice da quale lezione e da che minuto viene.</p></div></article>
+    <article class="finestra"><div class="barra"><span>Evidenziatore</span><span class="mono">4 colori</span></div><div class="corpo">
+      <p>Seleziona una frase e scegli il colore. Le evidenziazioni restano finché l'app è aperta e non finiscono nel PDF.</p></div></article>
     <article class="finestra"><div class="barra"><span>Cerca</span><span class="mono">/</span></div><div class="corpo">
       <p>Cerca nel testo di tutte le lezioni di tutti i corsi.</p></div></article>
     <article class="finestra"><div class="barra"><span>Modifica</span><span class="mono">✎</span></div><div class="corpo">
       <p>Correggi o completa gli appunti a mano: le tue modifiche restano.</p></div></article>
     <article class="finestra"><div class="barra"><span>Registra</span><span class="mono">● REC</span></div><div class="corpo">
-      <p>Registra la lezione dal microfono, con il livello dell'audio in tempo reale. Alla fine gli appunti partono da soli.</p></div></article>
+      <p>Registra dal microfono, con il livello dell'audio in tempo reale. Il widget resta sopra le altre finestre, va in pausa e si chiude nella barra dei menu; con Stop salva la registrazione e gli appunti li crei quando vuoi.</p></div></article>
+    <article class="finestra"><div class="barra"><span>Senza audio</span><span class="mono">PDF · foto</span></div><div class="corpo">
+      <p>Niente registrazione? Sbobina crea gli appunti anche da soli appunti, PDF (pure scansionati) o foto della lavagna.</p></div></article>
+    <article class="finestra"><div class="barra"><span>English</span><span class="mono">IT · EN</span></div><div class="corpo">
+      <p>Interfaccia, appunti, PDF e trascrizione anche in inglese, per i corsi tenuti in inglese.</p></div></article>
   </div>
 </section>
 
@@ -181,7 +190,7 @@
     <a class="finestra download" href="https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-macOS.dmg"><div class="barra"><span>macOS</span><span class="mono">.dmg</span></div><div class="corpo">
       <h3>Sbobina per Mac</h3><p>Mac con chip Apple (M1 o successivi), macOS 12 o più recente. Apri il .dmg e trascina Sbobina in Applicazioni.</p><span class="tasto pieno">Scarica per Mac</span></div></a>
     <a class="finestra download" href="https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-Windows.zip"><div class="barra"><span>Windows</span><span class="mono">.zip</span></div><div class="corpo">
-      <h3>Sbobina per Windows</h3><p>Windows 10 o 11, consigliata una scheda NVIDIA. Estrai lo zip e fai doppio clic su <b>Installa Sbobina.bat</b>.</p><span class="tasto pieno">Scarica per Windows</span></div></a>
+      <h3>Sbobina per Windows</h3><p>Windows 10 o 11, consigliata una scheda NVIDIA. Estrai lo zip e fai doppio clic su <b>Installa Sbobina.bat</b>. Per ora è la versione 1.2: le novità più recenti arrivano più avanti.</p><span class="tasto pieno">Scarica per Windows</span></div></a>
   </div>
   <p class="nota">Al primo avvio su Mac: tasto destro sull'app → <b>Apri</b>, perché l'app non è ancora firmata da Apple. Tutte le versioni sono nella pagina <a href="https://github.com/swumpyyy/sbobina/releases">Releases di GitHub</a>.</p>
   <h3 style="margin-top:56px">Dal codice sorgente</h3>

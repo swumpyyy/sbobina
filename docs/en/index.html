@@ -32,7 +32,7 @@
 <!-- ============================ HERO ============================ -->
 <section class="hero" aria-labelledby="title">
   <div>
-    <p class="etichetta">For university students · free</p>
+    <p class="etichetta">For university students · Italian and English · free</p>
     <h1 id="title">From the recorded lecture to study notes, <span class="sotto">on your own computer.</span></h1>
   </div>
   <p class="lead">Sbobina takes a lecture recording (a phone voice memo, a recorder, a Teams or Zoom file), or records from the microphone, and turns it into complete notes for studying and exam prep: a corrected transcript, outlines, a concept map, a glossary, review questions and a printable PDF. Everything runs on your Mac or PC. No account, no cost, and the audio never leaves your computer.</p>
@@ -48,13 +48,10 @@
     <span class="chip nudo">Gemma 4</span>
     <span class="chip">€0 per lecture</span>
   </div>
-  <p class="nota">Good to know: the app's interface and the notes it writes are in Italian, because it was built for Italian lectures.</p>
+  <p class="nota">Built for Italian lectures, and since 1.4.1 also in English: switch the language in Settings and the interface, the notes, the PDF and the transcription follow.</p>
   <figure class="finestra schermo" style="margin:24px 0 0">
-    <div class="barra"><span>Sbobina 1.1</span><span class="mono">home screen</span></div>
-    <picture>
-      <source srcset="../img/app-scuro.jpg" media="(prefers-color-scheme: dark)">
-      <img src="../img/app-chiaro.jpg" width="2880" height="1800" alt="Sbobina's home screen: lectures grouped by course on the left, the heading «Pick up where you left off, or add a lecture» and the area where you drop a recording.">
-    </picture>
+    <div class="barra"><span>Sbobina 1.5</span><span class="mono">home screen</span></div>
+    <img src="../img/app-chiaro.jpg" width="2880" height="1800" alt="Sbobina's home screen (Italian interface): lectures grouped by course on the left, the heading «Pick up where you left off, or add a lecture», the area where you drop recordings, notes, PDFs or photos, and your study numbers.">
   </figure>
 </section>
 
@@ -62,17 +59,23 @@
 <section id="screens" aria-labelledby="t-screens">
   <p class="etichetta">Inside the app</p>
   <h2 id="t-screens">What it <span class="sotto">really</span> looks like.</h2>
-  <p class="lead">Screenshots of the real app, with two first-year lectures processed on a Mac.</p>
+  <p class="lead">Screenshots of the real app (version 1.5, Italian interface), with six first-year lectures processed on a Mac.</p>
   <div class="galleria">
     <figure class="finestra"><div class="barra"><span>Notes</span><span class="mono">Maths</span></div>
       <img src="../img/app-appunti.jpg" width="2880" height="1800" loading="lazy" alt="Notes for a maths lecture: audio player, tabs for Notes, Deep dive, Transcript, Check, Review and Ask, an «In short» box and the concept map.">
       <figcaption>Notes with a summary, a concept map and the recording timestamp next to every heading.</figcaption></figure>
+    <figure class="finestra"><div class="barra"><span>Highlighter</span><span class="mono">4 colours</span></div>
+      <img src="../img/app-evidenzia.jpg" width="2880" height="1800" loading="lazy" alt="A definition in the notes with three phrases highlighted in yellow, pink and green; formulas typeset with LaTeX.">
+      <figcaption>Highlight while you study, in four colours. Click a phrase to remove it.</figcaption></figure>
+    <figure class="finestra"><div class="barra"><span>Ask</span><span class="mono">all lectures</span></div>
+      <img src="../img/app-chiedi.jpg" width="2880" height="1800" loading="lazy" alt="The «Ask your lectures» page: starter questions such as «Which topics did the teacher say will be on the exam?», the input field and the course filter.">
+      <figcaption>One question across all your lectures: the answer says which lecture and which minute it comes from.</figcaption></figure>
     <figure class="finestra"><div class="barra"><span>Check</span><span class="mono">report</span></div>
-      <img src="../img/app-verifica.jpg" width="2880" height="1800" loading="lazy" alt="The Check tab: the verdict on the notes, no problems found, and the terms added to the course glossary; below, buttons to download the PDF, print, export Markdown or the transcript, reprocess and open the glossary.">
+      <img src="../img/app-verifica.jpg" width="2880" height="1800" loading="lazy" alt="The Check tab: the verdict on the notes, no problems found, and the terms added to the course glossary; below, buttons to download the PDF or other PDFs, print, export Markdown or the transcript, reprocess and open the glossary.">
       <figcaption>The notes checked against the transcript, and the terms added to the course glossary.</figcaption></figure>
     <figure class="finestra"><div class="barra"><span>Record</span><span class="mono">● REC</span></div>
-      <img src="../img/app-registra.jpg" width="2880" height="1800" loading="lazy" alt="The recorder: the signal level, the 0:00 timer, Course and Title fields and the Start recording button.">
-      <figcaption>Record from the microphone: when you stop, the notes start by themselves.</figcaption></figure>
+      <img src="../img/app-registra.jpg" width="2880" height="1800" loading="lazy" alt="The recorder: the signal panel, the 0:00 timer, Course and Title fields and the Start recording button.">
+      <figcaption>Record from the microphone, or from the always-on-top widget.</figcaption></figure>
     <figure class="finestra"><div class="barra"><span>Settings</span><span class="mono">notes · AI</span></div>
       <img src="../img/app-impostazioni.jpg" width="2880" height="1800" loading="lazy" alt="Settings: length and style of the notes, and switches for the concept map, diagrams, questions, glossary, teacher's hints, deep dive and check.">
       <figcaption>Choose length, style and which sections to write.</figcaption></figure>
@@ -138,13 +141,19 @@
     <article class="finestra"><div class="barra"><span>Quiz</span><span class="mono">A B C D</span></div><div class="corpo">
       <p>Multiple-choice questions with an explanation for every answer.</p></div></article>
     <article class="finestra"><div class="barra"><span>Ask the lecture</span><span class="mono">?</span></div><div class="corpo">
-      <p>Ask a question: the answer cites the minute of the recording it comes from.</p></div></article>
+      <p>Ask one lecture or all of them at once, optionally filtered by course: the answer uses only your notes and says which lecture and minute it comes from.</p></div></article>
+    <article class="finestra"><div class="barra"><span>Highlighter</span><span class="mono">4 colours</span></div><div class="corpo">
+      <p>Select a phrase and pick a colour. Highlights last while the app is open and stay out of the PDF.</p></div></article>
     <article class="finestra"><div class="barra"><span>Search</span><span class="mono">/</span></div><div class="corpo">
       <p>Search the text of every lecture in every course.</p></div></article>
     <article class="finestra"><div class="barra"><span>Edit</span><span class="mono">✎</span></div><div class="corpo">
       <p>Fix or complete the notes by hand: your changes stay, and the AI version can be restored.</p></div></article>
     <article class="finestra"><div class="barra"><span>Record</span><span class="mono">● REC</span></div><div class="corpo">
-      <p>Record the lecture from the microphone with a live audio level. When you stop, the notes start by themselves.</p></div></article>
+      <p>Record from the microphone with a live audio level. The widget stays above other windows, pauses, and tucks into the menu bar; Stop saves the recording and you make the notes whenever you like.</p></div></article>
+    <article class="finestra"><div class="barra"><span>No audio</span><span class="mono">PDF · photos</span></div><div class="corpo">
+      <p>No recording? Sbobina also builds notes from your own notes, PDFs (scanned ones too) or photos of the board.</p></div></article>
+    <article class="finestra"><div class="barra"><span>Language</span><span class="mono">IT · EN</span></div><div class="corpo">
+      <p>Interface, notes, PDF and transcription in Italian or English, for courses taught in either language.</p></div></article>
   </div>
 </section>
 
@@ -182,7 +191,7 @@
     <a class="finestra download" href="https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-macOS.dmg"><div class="barra"><span>macOS</span><span class="mono">.dmg</span></div><div class="corpo">
       <h3>Sbobina for Mac</h3><p>A Mac with an Apple chip (M1 or later), macOS 12 or newer. Open the .dmg and drag Sbobina into Applications.</p><span class="tasto pieno">Download for Mac</span></div></a>
     <a class="finestra download" href="https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-Windows.zip"><div class="barra"><span>Windows</span><span class="mono">.zip</span></div><div class="corpo">
-      <h3>Sbobina for Windows</h3><p>Windows 10 or 11, an NVIDIA graphics card recommended. Extract the zip and double-click <b>Installa Sbobina.bat</b>.</p><span class="tasto pieno">Download for Windows</span></div></a>
+      <h3>Sbobina for Windows</h3><p>Windows 10 or 11, an NVIDIA graphics card recommended. Extract the zip and double-click <b>Installa Sbobina.bat</b>. For now this is version 1.2: the newest features come later.</p><span class="tasto pieno">Download for Windows</span></div></a>
   </div>
   <p class="nota">First launch on a Mac: right-click the app → <b>Open</b>, because the app is not signed by Apple yet. Every version is on the <a href="https://github.com/swumpyyy/sbobina/releases">GitHub Releases page</a>.</p>
   <h3 style="margin-top:56px">From source</h3>
