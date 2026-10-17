@@ -38,7 +38,7 @@ class Ponte:
         if self.registratore is not None:
             self.registratore.show()
             return
-        larghezza, altezza = 360, 58
+        larghezza, altezza = 380, 78
         schermo = webview.screens[0] if webview.screens else None
         x = (schermo.width - larghezza - 24) if schermo else None
         self.registratore = webview.create_window(
@@ -277,6 +277,12 @@ def main() -> None:
     )
     ponte.finestra.events.shown += lambda: _barra_titolo(ponte.finestra, None)
     webview.start()
+    try:
+        # Una registrazione in corso si chiude per bene (il pezzo resta in dati/registrazioni):
+        # senza, ffmpeg sopravvive all'app e tiene il microfono acceso.
+        httpx2.post(f"{indirizzo}/api/registrazione/pausa", headers={"X-Sbobina": "1"}, timeout=20)
+    except httpx2.HTTPError:
+        pass
     server.should_exit = True
     from sbobina.llm import ferma_download, ferma_llama
 

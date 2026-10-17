@@ -27,6 +27,7 @@ def microfono_windows() -> str:
     return trovato.group(1)
 
 
+NIENTE_AUDIO = f"Il microfono non manda audio: dai a Sbobina il permesso in {PERMESSO}, poi riprova."
 RE_LIVELLO = re.compile(r"lavfi\.astats\.Overall\.RMS_level=(-?[\d.]+|-inf)")
 
 
@@ -85,15 +86,18 @@ class Registratore:
             self._in_pausa = False
 
     def _avvia_pezzo(self, dispositivo: str) -> None:
-        file = self.cartella / f"{self._nome}-{len(self._pezzi) + 1}.m4a"
+        # Pezzi in ADTS (.aac) scritti pacchetto per pacchetto: se l'app si chiude di colpo il file resta leggibile.
+        # Un .m4a interrotto invece non ha l'indice ("moov atom not found") e l'audio è perso.
+        file = self.cartella / f"{self._nome}-{len(self._pezzi) + 1}.aac"
         self._segnale = False
         self._livello = -90.0
         # astats misura ogni ~0,1 s; ametadata stampa il livello su stdout, che leggiamo in un thread.
+        # direct=1: senza, ffmpeg tiene le righe in un buffer da 4 KB e il livello arriva a raffiche di secondi.
         comando = [
             "ffmpeg", "-hide_banner", "-loglevel", "error",
             *(["-f", "dshow", "-i", f"audio={microfono_windows()}"] if WINDOWS else ["-f", "avfoundation", "-i", dispositivo]),
-            "-af", "asetnsamples=4410,astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.RMS_level:file=-",
-            "-ac", "1", "-c:a", "aac", "-b:a", "96k", str(file),
+            "-af", "asetnsamples=4410,astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.RMS_level:file=-:direct=1",
+            "-ac", "1", "-c:a", "aac", "-b:a", "96k", "-flush_packets", "1", "-f", "adts", str(file),
         ]
         try:
             self._processo = subprocess.Popen(
@@ -110,6 +114,8 @@ class Registratore:
             trovato = RE_LIVELLO.search(riga)
             if trovato:
                 self._segnale = True
+                if self._errore == NIENTE_AUDIO:
+                    self._errore = ""  # il permesso è arrivato dopo: l'avviso non serve più
                 valore = trovato.group(1)
                 self._livello = -90.0 if valore == "-inf" else max(-90.0, float(valore))
         errore = (processo.stderr.read() if processo.stderr else "").strip()  # type: ignore[union-attr]
@@ -122,7 +128,7 @@ class Registratore:
         pezzo = time.monotonic() - self._inizio if self.attiva else 0.0
         if self.attiva and not self._segnale and pezzo > 5 and not self._errore:
             # Senza permesso il sistema non consegna l'audio: ffmpeg resta fermo senza errori.
-            self._errore = f"Il microfono non manda audio: dai a Sbobina il permesso in {PERMESSO}, poi riprova."
+            self._errore = NIENTE_AUDIO
         return {
             "attiva": self.in_corso,
             "pausa": self._in_pausa,
@@ -163,22 +169,20 @@ class Registratore:
             if not pezzi:
                 self._butta()
                 raise RuntimeError(self._errore or "La registrazione è vuota: controlla il permesso del microfono.")
+            # Sempre in .m4a alla fine (senza ricodificare): il lettore dell'app ci si sposta meglio che in un .aac.
             file = self.cartella / f"{self._nome}.m4a"
-            if len(pezzi) == 1:
-                pezzi[0].replace(file)
-            else:
-                elenco = self.cartella / f"{self._nome}.txt"
-                elenco.write_text("".join(f"file '{p.name}'\n" for p in pezzi), encoding="utf-8")
-                unione = subprocess.run(
-                    ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0",
-                     "-i", str(elenco), "-c", "copy", str(file)],
-                    capture_output=True, text=True,
-                )
-                elenco.unlink(missing_ok=True)
-                if unione.returncode != 0 or not file.is_file():
-                    # I pezzi restano nella cartella delle registrazioni: niente audio perso.
-                    self._pezzi = []
-                    raise RuntimeError(f"Non riesco a unire i pezzi della registrazione: {unione.stderr[-200:]}")
+            elenco = self.cartella / f"{self._nome}.txt"
+            elenco.write_text("".join(f"file '{p.name}'\n" for p in pezzi), encoding="utf-8")
+            unione = subprocess.run(
+                ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0",
+                 "-i", str(elenco), "-c", "copy", "-movflags", "+faststart", str(file)],
+                capture_output=True, text=True,
+            )
+            elenco.unlink(missing_ok=True)
+            if unione.returncode != 0 or not file.is_file():
+                # I pezzi restano nella cartella delle registrazioni: niente audio perso.
+                self._pezzi = []
+                raise RuntimeError(f"Non riesco a unire i pezzi della registrazione: {unione.stderr[-200:]}")
             self._butta()
             return file
 

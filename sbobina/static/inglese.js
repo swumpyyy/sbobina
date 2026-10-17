@@ -92,6 +92,7 @@
     "Gli appunti compaiono qui quando l'elaborazione arriva ad Appunti.": "The notes appear here when processing reaches Notes.",
     "Bozza: la verifica con la registrazione è in corso e potrebbe correggerla.": "Draft: the check against the recording is running and may correct it.",
     "Modifica": "Edit",
+    "PAUSA": "PAUSED", "Registratore 1.1": "Recorder 1.1",
     "Elabora": "Process", "Da elaborare": "To process", "· da elaborare": "· to process", "Apri il widget": "Open the widget",
     "Registrazione salvata. Scegli il corso e premi Elabora: Sbobina crea gli appunti.": "Recording saved. Pick the course and press Process: Sbobina writes the notes.",
     "Pronto a registrare": "Ready to record", "Ferma e salva": "Stop and save", "Riduci nella barra dei menu": "Shrink to the menu bar",

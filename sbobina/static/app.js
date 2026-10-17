@@ -1839,7 +1839,7 @@
 
   async function mostraRegistrazione() {
     stato.vista = "registrazione";
-    const BARRE = 32;
+    const BARRE = 48;
     const vu = h("div", { class: "vu-barre", "aria-hidden": "true" }, Array.from({ length: BARRE }, () => h("i")));
     const tempo = h("div", { class: "tempo-reg dati", role: "timer" }, "0:00");
     const errore = h("p", { class: "errore-modulo", role: "alert", hidden: true });
@@ -1877,6 +1877,7 @@
     };
     const inCorso = (si) => {
       avvia.hidden = si; ferma.hidden = !si; annulla.hidden = !si; pausa.hidden = !si; pannello.classList.toggle("attiva", si);
+      if (!si) pannello.classList.remove("in-pausa");
       if (widget) widget.hidden = si;
     };
     pausa.addEventListener("click", async () => {

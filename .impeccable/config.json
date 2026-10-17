@@ -44,6 +44,15 @@
         "value": "geist",
         "createdAt": "2026-10-13T21:45:33.974Z",
         "reason": "Lectio brand font the user adopted for the app on 2026-10-13 (DESIGN.md, Lectio update); repo pages must match the app"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "sbobina/static/widget.html"
+        ],
+        "createdAt": "2026-10-17T12:07:44.933Z",
+        "reason": "Claude: widget links the app's app.css, whose retro hard offset shadows (no blur) are the project's documented style, not a glow"
       }
     ]
   }

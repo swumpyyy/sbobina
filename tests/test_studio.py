@@ -141,15 +141,14 @@ def test_registratore_senza_registrazione(tmp_path):
 
 def test_registratore_unisce_i_pezzi_dopo_la_pausa(tmp_path, audio_prova):
     """Ferma dopo una pausa: i pezzi diventano un file solo, lungo quanto la somma, e spariscono."""
-    import shutil
     import subprocess
 
     registratore = Registratore(tmp_path / "reg")
     registratore.cartella.mkdir()
     registratore._nome = "registrazione-prova"
-    registratore._pezzi = [registratore.cartella / f"registrazione-prova-{i}.m4a" for i in (1, 2)]
-    for pezzo in registratore._pezzi:
-        shutil.copyfile(audio_prova, pezzo)
+    registratore._pezzi = [registratore.cartella / f"registrazione-prova-{i}.aac" for i in (1, 2)]
+    for pezzo in registratore._pezzi:  # come li scrive il registratore: AAC in ADTS
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-i", str(audio_prova), "-c", "copy", "-f", "adts", str(pezzo)], check=True)
     registratore._in_pausa = True
     assert registratore.stato()["attiva"] is True and registratore.stato()["pausa"] is True
     file = registratore.ferma()

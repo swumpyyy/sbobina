@@ -1104,20 +1104,6 @@ mark.evidenza:hover { text-decoration: line-through; text-decoration-color: var(
 /* Registrazione */
 .registrazione { display: grid; gap: 18px; }
 .registrazione > p { margin: -8px 0 0; color: var(--inchiostro-tenue); max-width: 62ch; }
-.quadrante-reg {
-  display: grid; justify-items: center; gap: 14px; padding: 32px 20px;
-  border-radius: var(--r-medio); background: var(--vetro-tenue); border: 1px solid var(--filo-scuro);
-}
-.vu-barre { display: flex; align-items: center; gap: 5px; height: 90px; }
-.vu-barre i {
-  width: 6px; height: 100%; border-radius: 99px;
-  background: linear-gradient(180deg, var(--blu-forte), var(--blu) 50%, color-mix(in oklab, var(--blu) 50%, white));
-  transform: scaleY(0.06); transition: transform 140ms var(--uscita);
-  opacity: 0.4;
-}
-.registrazione.attiva .vu-barre i { opacity: 1; }
-.tempo-reg { font-size: 44px; font-weight: 600; letter-spacing: -0.03em; }
-.registrazione.attiva .tempo-reg { color: var(--guasto); }
 .tasto.registra .icona { background: rgba(255, 255, 255, 0.22); }
 
 /* Ricerca nel testo */
@@ -1438,38 +1424,42 @@ h2 { font-weight: 700; letter-spacing: -0.02em; }
 .foglio { border-radius: 0; border: 1px solid var(--tema-linea); box-shadow: var(--ombra); background: var(--carta); }
 .carta { border-radius: 0; border: 1px solid var(--tema-linea); box-shadow: 4px 4px 0 var(--tema-linea); }
 
-/* --- registrare: a riposo è una finestra normale; mentre registra diventa il desktop rosa a puntini -- */
-.pannello.registrazione { transition: background-color 500ms var(--uscita); }
-.pannello.registrazione.attiva {
-  background:
-    radial-gradient(circle, rgba(30, 30, 30, 0.32) 1px, transparent 1.3px) 0 0 / 6px 6px,
-    var(--rosa);
-}
+/* --- registrare: la finestra resta una finestra; il REC sta nella barra del titolo e nel misuratore ---- */
 .pannello.registrazione.attiva::before { content: attr(data-titolo); background: var(--tema); color: var(--su-tema); }
-.pannello.registrazione.attiva > h2, .pannello.registrazione.attiva > p, .pannello.registrazione.attiva .campo > span { color: #1e1e1e; }
-/* il quadrante "Segnale": finestra di carta con il tempo in Geist Black e il misuratore a celle */
+/* il quadrante "Segnale": finestra di carta con il misuratore a celle sopra e il tempo in Geist Black sotto */
 .quadrante-reg {
   position: relative; background: var(--carta); border: 1px solid var(--tema-linea); box-shadow: var(--ombra);
-  padding: 44px 22px 18px; display: grid; gap: 14px;
+  padding: 50px 22px 20px; display: grid; justify-items: stretch; gap: 16px;
 }
 .quadrante-reg::before {
   content: "Segnale 1.1"; position: absolute; inset: 0 0 auto 0; height: 28px; display: flex; align-items: center;
   padding: 0 12px; background: var(--tema); color: var(--su-tema); font-size: 12.5px; font-weight: 600;
 }
-.registrazione.attiva .quadrante-reg::before { content: "Segnale 1.1 · ● REC"; }
+.registrazione.attiva .quadrante-reg::before { content: "Segnale 1.1 · REC"; padding-left: 30px; }
+.registrazione.in-pausa .quadrante-reg::before { content: "Segnale 1.1 · PAUSA"; }
+/* il punto REC: rosso e lampeggiante mentre registra, fermo in pausa */
+.registrazione.attiva .quadrante-reg::after {
+  content: ""; position: absolute; top: 9px; left: 12px; width: 10px; height: 10px;
+  background: var(--guasto); outline: 1.5px solid var(--su-tema);
+  animation: rec-batte 1.1s steps(2, jump-none) infinite;
+}
+.registrazione.in-pausa .quadrante-reg::after { background: var(--su-tema); animation: none; }
+@keyframes rec-batte { 50% { opacity: 0.25; } }
+/* misuratore a celle: colonne di quadratini che si riempiono dal basso, a tutta larghezza */
+.vu-barre { display: flex; align-items: flex-end; gap: 3px; height: 120px; }
+.vu-barre i {
+  flex: 1; width: auto; height: 100%; opacity: 1; border-radius: 0 !important;
+  background: repeating-linear-gradient(to top, var(--tema) 0 6px, transparent 6px 9px) !important;
+  transform-origin: bottom; transform: scaleY(0.05); transition: transform 120ms var(--uscita);
+}
+.registrazione:not(.attiva) .vu-barre i, .registrazione.in-pausa .vu-barre i { opacity: 0.3; }
 .tempo-reg {
   font-family: var(--font-ui) !important; font-weight: 900; letter-spacing: -0.05em; line-height: 0.9;
   font-size: clamp(56px, 9vw, 110px); color: var(--inchiostro) !important; font-variant-numeric: tabular-nums;
 }
-.vu-barre i { border-radius: 0 !important; background: var(--tema) !important; }
-.registrazione.attiva .vu-barre i { background: var(--tema) !important; }
-/* comandi in vetro sopra il rosa: inchiostro per avviare, rosso per fermare */
-.registrazione .azioni-form .tasto {
-  background: rgba(254, 254, 254, 0.7); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3);
-  text-transform: uppercase; letter-spacing: 0.03em; min-height: 40px;
-}
-.registrazione .azioni-form .tasto.grande.registra { background: var(--tema); color: var(--su-tema); }
-.registrazione .azioni-form .tasto.grande:not(.registra) { background: rgba(254, 254, 254, 0.78); color: var(--guasto); border-color: var(--guasto); }
+.registrazione.in-pausa .tempo-reg { opacity: 0.45; }
+/* comandi come in tutta l'app: Ferma è il tasto pieno col tema, Pausa e Annulla sono finestre */
+.registrazione .azioni-form .tasto { text-transform: uppercase; letter-spacing: 0.03em; min-height: 40px; }
 
 /* gli appunti seguono Lectio: inchiostro, il rosa solo per ciò che conta all'esame */
 .appunti, .foglio { --accento: var(--tema-testo); --accento-forte: var(--tema-testo); --accento-tenue: var(--blu-tenue); }
@@ -1599,7 +1589,7 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14p
 /* interruttori dell'aspetto */
 :root[data-griglia="no"] body::before, :root[data-griglia="no"] body::after { display: none; }
 :root[data-vetro="no"] .testata, :root[data-vetro="no"] .scarico, :root[data-vetro="no"] .trasporto,
-:root[data-vetro="no"] .registrazione .azioni-form .tasto, :root[data-vetro="no"] .pannello.registrazione .tasto {
+:root[data-vetro="no"] .pannello.registrazione .tasto:not(.grande) {
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: var(--carta) !important;
 }
 :root[data-vetro="no"] .registrazione .azioni-form .tasto.grande.registra { background: var(--tema) !important; }
