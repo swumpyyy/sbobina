@@ -231,3 +231,21 @@ def test_lezione_solo_da_appunti_e_materiali(client):
 def test_pagina_e_statici_senza_cache_vecchia(client):
     for percorso in ("/", "/static/app.js", "/static/inglese.js"):
         assert client.get(percorso).headers["cache-control"] == "no-cache"
+
+
+def test_registrazione_salvata_e_poi_elaborata(client, audio_prova, tmp_path, monkeypatch):
+    """Il widget salva soltanto: la lezione aspetta Elabora, che le dà corso e titolo."""
+    from sbobina.registrazione import Registratore
+
+    copia = tmp_path / "registrazione.m4a"
+    copia.write_bytes(audio_prova.read_bytes())
+    monkeypatch.setattr(Registratore, "ferma", lambda self: copia)
+    salvata = client.post("/api/registrazione/ferma", headers=PROTETTO, json={"elabora": False}).json()
+    assert salvata["stato"] == "fermata" and salvata["titolo"].startswith("Registrazione")
+    time.sleep(0.5)
+    assert client.get(f"/api/lezioni/{salvata['id']}").json()["lezione"]["messaggio"] == "Da elaborare"
+    risposta = client.post(f"/api/lezioni/{salvata['id']}/rielabora", headers=PROTETTO,
+                           json={"da": "riprendi", "corso": "Chimica", "titolo": "Atomi"})
+    assert risposta.status_code == 200
+    finita = _attendi(client, salvata["id"])
+    assert (finita["stato"], finita["corso"], finita["titolo"]) == ("completata", "Chimica", "Atomi")

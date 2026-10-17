@@ -44,6 +44,33 @@
         "value": "geist",
         "createdAt": "2026-10-13T21:45:33.974Z",
         "reason": "Lectio brand font the user adopted for the app on 2026-10-13 (DESIGN.md, Lectio update); repo pages must match the app"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "sbobina/static/widget.html"
+        ],
+        "createdAt": "2026-10-17T12:07:44.933Z",
+        "reason": "Claude: widget links the app's app.css, whose retro hard offset shadows (no blur) are the project's documented style, not a glow"
+      },
+      {
+        "rule": "pulsing-dot",
+        "value": "*",
+        "files": [
+          "sbobina/static/widget.html"
+        ],
+        "createdAt": "2026-10-17T12:18:04.441Z",
+        "reason": "Claude: the dot blinks only while the microphone is actually recording (live state), static in pause/idle"
+      },
+      {
+        "rule": "radial-halo",
+        "value": "*",
+        "files": [
+          "sbobina/static/widget.html"
+        ],
+        "createdAt": "2026-10-17T12:18:04.462Z",
+        "reason": "Claude: comes from app.css body::before/after dot grid (1px dots), which widget.html sets to display:none"
       }
     ]
   }

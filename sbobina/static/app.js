@@ -160,6 +160,9 @@
     try { localStorage.setItem(CHIAVE_VISTE, JSON.stringify([...insieme])); } catch (e) { /* storage pieno */ }
   }
 
+  /** Registrata col widget e salvata: gli appunti partono solo quando lo studente preme Elabora. */
+  const daElaborare = (l) => l.stato === "fermata" && l.messaggio === "Da elaborare";
+
   function segnale(l, giaViste) {
     let tipo = "letta";
     let descrizione = "Pronta";
@@ -306,7 +309,7 @@
               h("span", {}, formattaData(l.data)),
               l.durata_secondi ? h("span", { class: "dati" }, formattaDurata(l.durata_secondi)) : null,
               l.stato === "errore" ? h("span", {}, "· da riprovare") : null,
-              l.stato === "fermata" ? h("span", {}, "· fermata") : null);
+              l.stato === "fermata" ? h("span", {}, daElaborare(l) ? "· da elaborare" : "· fermata") : null);
         elenco.append(h("button", {
           class: "preselezione",
           type: "button",
@@ -614,10 +617,12 @@
     $(".riempimento", console).style.setProperty("--p", String(progresso));
     $(".liquido", console).setAttribute("aria-valuenow", String(Math.round(progresso * 100)));
     $(".valore", console).textContent = String(Math.round(progresso * 100));
+    const nuova = daElaborare(l);
     $(".fase", console).textContent = guasto ? `Interrotta durante ${nomeFase.toLowerCase()}`
-      : fermata ? `Fermata durante ${nomeFase.toLowerCase()}` : nomeFase;
+      : nuova ? "Da elaborare" : fermata ? `Fermata durante ${nomeFase.toLowerCase()}` : nomeFase;
     $(".messaggio", console).textContent = guasto
       ? (l.errore || "Errore sconosciuto")
+      : nuova ? "Registrazione salvata. Scegli il corso e premi Elabora: Sbobina crea gli appunti."
       : fermata ? "Il lavoro fatto è salvato: Riprendi riparte da qui."
       : (l.messaggio || (inCoda ? "Parte quando finiscono le lezioni prima di questa." : "In corso…"));
 
@@ -629,10 +634,28 @@
       const tasto = h("button", { class: "tasto ferma", type: "button" }, icona("ferma"), "Ferma");
       tasto.addEventListener("click", () => fermaLezione(tasto));
       azioni.replaceChildren(tasto);
+    } else if (nuova) {
+      azioni.replaceChildren(moduloElabora(l));
     } else {
       azioni.replaceChildren(h("button", { class: "tasto grande", type: "button", onclick: () => rielabora("riprendi") },
         icona("ricarica"), guasto ? "Riprova da qui" : "Riprendi"));
     }
+  }
+
+  function moduloElabora(l) {
+    const corso = h("input", { name: "corso", list: "elenco-corsi-elabora", required: true, autocomplete: "off",
+      placeholder: "es. Diritto privato", value: l.corso === "Senza corso" ? null : l.corso });
+    const corsi = h("datalist", { id: "elenco-corsi-elabora" }, ...(stato.info ? stato.info.corsi : []).map((c) => h("option", { value: c.nome })));
+    const titolo = h("input", { name: "titolo", value: l.titolo, autocomplete: "off" });
+    const form = h("form", { class: "modulo-elabora" },
+      h("label", { class: "campo" }, h("span", {}, "Corso"), corso, corsi),
+      h("label", { class: "campo" }, h("span", {}, "Titolo"), titolo),
+      h("button", { class: "tasto grande", type: "submit" }, icona("onda"), "Elabora"));
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      rielabora("riprendi", { corso: corso.value, titolo: titolo.value });
+    });
+    return form;
   }
 
   async function fermaLezione(tasto) {
@@ -848,7 +871,8 @@
     }
     const articolo = h("article", { class: "appunti progressivo" });
     foglio.append(articolo);
-    window.Sbobina.render(articolo, d.appunti, { onTempo: d.audio ? vaiA : null });
+    window.Sbobina.render(articolo, d.appunti, { onTempo: d.audio ? vaiA : null })
+      .then(() => evidenziatore(foglio, articolo, `${d.lezione.id}:appunti`, d.appunti));
   }
 
   function mostraApprofondimento(foglio, d) {
@@ -866,7 +890,112 @@
     foglio.append(nota("Va oltre il riassunto: spiega il perché, aggiunge esempi ed esercizi. Ciò che non è stato detto a lezione è nei riquadri Integrazione."));
     const articolo = h("article", { class: "appunti" });
     foglio.append(articolo);
-    window.Sbobina.render(articolo, d.approfondimento, { onTempo: d.audio ? vaiA : null });
+    window.Sbobina.render(articolo, d.approfondimento, { onTempo: d.audio ? vaiA : null })
+      .then(() => evidenziatore(foglio, articolo, `${d.lezione.id}:approfondimento`, d.approfondimento));
+  }
+
+  // --- evidenziatore ----------------------------------------------------------
+  // Solo in memoria, per scelta: si perde chiudendo l'app e non va nel PDF.
+  // Ogni evidenziazione è un intervallo di caratteri nel testo dell'articolo (formule e schemi esclusi),
+  // così sopravvive al cambio di scheda; se gli appunti cambiano (Modifica), quelle vecchie si buttano.
+  const EVIDENZE = new Map();  // chiave → { sorgente, elenco: [{ id, inizio, fine, colore }] }
+  const COLORI_EVIDENZA = [["giallo", "Giallo"], ["verde", "Verde"], ["rosa", "Rosa"], ["azzurro", "Azzurro"]];
+  let contatoreEvidenze = 0;
+
+  function nodiTesto(radice) {
+    const giro = document.createTreeWalker(radice, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (n.parentElement.closest("svg, .katex, .schema, button") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    });
+    const nodi = [];
+    while (giro.nextNode()) nodi.push(giro.currentNode);
+    return nodi;
+  }
+
+  /** Posizione di (nodo, scarto) nel testo dell'articolo, contando solo i nodi di nodiTesto. */
+  function posizione(radice, nodo, scarto) {
+    const punto = document.createRange();
+    punto.setStart(nodo, scarto);
+    let totale = 0;
+    for (const n of nodiTesto(radice)) {
+      if (n === nodo) return totale + scarto;
+      if (punto.comparePoint(n, 0) > 0) return totale;  // il nodo comincia dopo il punto
+      totale += n.length;
+    }
+    return totale;
+  }
+
+  function dipingi(radice, ev) {
+    let totale = 0;
+    for (const n of nodiTesto(radice)) {
+      const da = Math.max(ev.inizio, totale) - totale;
+      const a = Math.min(ev.fine, totale + n.length) - totale;
+      totale += n.length;
+      if (a <= da || !n.data.slice(da, a).trim()) continue;
+      const pezzo = n.splitText(da);
+      pezzo.splitText(a - da);
+      const segno = h("mark", { class: `evidenza ${ev.colore}`, "data-evidenza": ev.id });
+      pezzo.replaceWith(segno);
+      segno.append(pezzo);
+    }
+  }
+
+  function cancella(radice, id) {
+    radice.querySelectorAll(id ? `mark[data-evidenza="${id}"]` : "mark.evidenza").forEach((m) => m.replaceWith(...m.childNodes));
+    radice.normalize();
+  }
+
+  function evidenziatore(foglio, articolo, chiave, sorgente) {
+    if (!foglio.isConnected) return;
+    let voce = EVIDENZE.get(chiave);
+    if (!voce || voce.sorgente !== sorgente) EVIDENZE.set(chiave, voce = { sorgente, elenco: [] });
+    voce.elenco.forEach((ev) => dipingi(articolo, ev));
+
+    const togliTutte = h("button", { class: "tasto trasparente", type: "button", hidden: !voce.elenco.length,
+      onclick: () => { cancella(articolo); voce.elenco = []; togliTutte.hidden = true; } }, icona("cestino"), "Togli le evidenziazioni");
+    let barra = $(".barra-foglio", foglio);
+    if (!barra) foglio.prepend(barra = h("div", { class: "barra-foglio" }));
+    barra.prepend(togliTutte);
+
+    const tavolozza = h("div", { class: "tavolozza", role: "toolbar", "aria-label": "Evidenzia", hidden: true },
+      COLORI_EVIDENZA.map(([colore, nome]) => h("button", { type: "button", class: `campione-evidenza ${colore}`, "aria-label": `Evidenzia in ${nome.toLowerCase()}`, title: nome,
+        onmousedown: (e) => e.preventDefault(),  // la selezione deve restare viva fino al clic
+        onclick: () => {
+          const sel = getSelection();
+          if (!sel.rangeCount) return;
+          const r = sel.getRangeAt(0);
+          const inizio = posizione(articolo, r.startContainer, r.startOffset);
+          const fine = posizione(articolo, r.endContainer, r.endOffset);
+          tavolozza.hidden = true;
+          if (fine <= inizio) return;
+          const ev = { id: String(++contatoreEvidenze), inizio, fine, colore };
+          sel.removeAllRanges();
+          voce.elenco.push(ev);
+          dipingi(articolo, ev);
+          togliTutte.hidden = false;
+        } })));
+    foglio.append(tavolozza);
+
+    articolo.addEventListener("mouseup", () => setTimeout(() => {
+      const sel = getSelection();
+      if (sel.isCollapsed || !sel.rangeCount || !articolo.contains(sel.anchorNode) || !sel.toString().trim()) { tavolozza.hidden = true; return; }
+      const r = sel.getRangeAt(0).getBoundingClientRect();
+      const base = foglio.getBoundingClientRect();
+      tavolozza.style.left = `${Math.max(8, r.left + r.width / 2 - base.left)}px`;
+      tavolozza.style.top = `${r.top - base.top - 8}px`;
+      tavolozza.hidden = false;
+    }));
+    articolo.addEventListener("click", (e) => {
+      const segno = e.target.closest("mark.evidenza");
+      if (!segno || !getSelection().isCollapsed) return;
+      const id = segno.dataset.evidenza;
+      cancella(articolo, id);
+      voce.elenco = voce.elenco.filter((ev) => ev.id !== id);
+      togliTutte.hidden = !voce.elenco.length;
+    });
+    document.addEventListener("selectionchange", function chiudi() {
+      if (!foglio.isConnected) { document.removeEventListener("selectionchange", chiudi); return; }
+      if (getSelection().isCollapsed) tavolozza.hidden = true;
+    });
   }
 
   /** Gli spunti della sezione "Per approfondire ancora", da usare come tasti. */
@@ -1052,7 +1181,7 @@
     return barra;
   }
 
-  async function rielabora(da) {
+  async function rielabora(da, nomi = {}) {
     const l = stato.dettaglio.lezione;
     const conferme = {
       appunti: "Riscrivere gli appunti di questa lezione? Quelli attuali verranno sostituiti.",
@@ -1064,7 +1193,7 @@
       await api(`/api/lezioni/${l.id}/rielabora`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ da }),
+        body: JSON.stringify({ da, ...nomi }),
       });
       await aggiornaElenco();
       await apriLezione(l.id);
@@ -1089,6 +1218,9 @@
   }
 
   // --- aggiornamento periodico --------------------------------------------
+
+  // Il widget e la barra dei menu fermano la registrazione da un'altra finestra: l'app nativa chiama questo.
+  window.sbobinaAggiornaElenco = () => aggiornaElenco().catch(() => {});
 
   async function aggiornaElenco() {
     const precedenti = new Map(stato.lezioni.map((l) => [l.id, l]));
@@ -1710,7 +1842,7 @@
 
   async function mostraRegistrazione() {
     stato.vista = "registrazione";
-    const BARRE = 32;
+    const BARRE = 48;
     const vu = h("div", { class: "vu-barre", "aria-hidden": "true" }, Array.from({ length: BARRE }, () => h("i")));
     const tempo = h("div", { class: "tempo-reg dati", role: "timer" }, "0:00");
     const errore = h("p", { class: "errore-modulo", role: "alert", hidden: true });
@@ -1721,14 +1853,22 @@
     const avvia = h("button", { class: "tasto grande registra", type: "button" }, icona("microfono"), "Inizia a registrare");
     const ferma = h("button", { class: "tasto grande", type: "button", hidden: true }, icona("ferma"), "Ferma e crea gli appunti");
     const annulla = h("button", { class: "tasto", type: "button", hidden: true }, "Annulla");
+    const pausa = h("button", { class: "tasto", type: "button", hidden: true }, icona("pausa"), "Pausa");
+    // Nell'app: un registratore piccolo, sempre in primo piano, che si riduce nella barra dei menu.
+    const widget = window.pywebview && window.pywebview.api.widget
+      ? h("button", { class: "tasto", type: "button", onclick: () => window.pywebview.api.widget() }, icona("microfono"), "Apri il widget")
+      : null;
     let timer = null;
     const storico = [];
     const aggiorna = async () => {
       let s;
       try { s = await api("/api/registrazione"); } catch (e) { return; }
       if (s.errore) { errore.textContent = s.errore; errore.hidden = false; }
-      if (!s.attiva) { clearTimeout(timer); return; }
+      if (!s.attiva) { clearTimeout(timer); inCorso(false); tempo.textContent = "0:00"; return; }
       tempo.textContent = formattaOrologio(s.secondi);
+      pausa.replaceChildren(icona(s.pausa ? "play" : "pausa"), s.pausa ? "Riprendi" : "Pausa");
+      pausa.dataset.pausa = s.pausa ? "1" : "";
+      pannello.classList.toggle("in-pausa", s.pausa);
       // dB → altezza: -60 dB silenzio, 0 dB pieno.
       storico.push(Math.max(0, Math.min(1, (s.livello + 60) / 60)));
       while (storico.length > BARRE) storico.shift();
@@ -1738,7 +1878,15 @@
       });
       timer = setTimeout(aggiorna, 120);
     };
-    const inCorso = (si) => { avvia.hidden = si; ferma.hidden = !si; annulla.hidden = !si; pannello.classList.toggle("attiva", si); };
+    const inCorso = (si) => {
+      avvia.hidden = si; ferma.hidden = !si; annulla.hidden = !si; pausa.hidden = !si; pannello.classList.toggle("attiva", si);
+      if (!si) pannello.classList.remove("in-pausa");
+    };
+    pausa.addEventListener("click", async () => {
+      try { await api(`/api/registrazione/${pausa.dataset.pausa ? "riprendi" : "pausa"}`, { method: "POST" }); } catch (e) { errore.textContent = e.message; errore.hidden = false; }
+      clearTimeout(timer);
+      aggiorna();
+    });
     avvia.addEventListener("click", async () => {
       errore.hidden = true;
       try { await api("/api/registrazione/avvia", { method: "POST" }); } catch (e) { errore.textContent = e.message; errore.hidden = false; return; }
@@ -1771,7 +1919,7 @@
         h("label", { class: "campo" }, h("span", {}, "Corso"), corso, corsi),
         h("label", { class: "campo" }, h("span", {}, "Titolo ", h("small", {}, "(facoltativo)")), titolo)),
       errore,
-      h("div", { class: "azioni-form" }, annulla, avvia, ferma));
+      h("div", { class: "azioni-form" }, annulla, widget, pausa, avvia, ferma));
     riempiPiastra([pannello]);
     // Una registrazione già in corso (es. dopo aver cambiato pagina) riprende da qui.
     try { if ((await api("/api/registrazione")).attiva) { inCorso(true); aggiorna(); } } catch (e) { /* server irraggiungibile */ }

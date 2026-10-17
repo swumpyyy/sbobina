@@ -24,10 +24,18 @@ per non far inventare nulla agli appunti.
 <table>
 <tr>
 <td><img src="docs/img/app-appunti.jpg" alt="Gli appunti di una lezione con sintesi e mappa concettuale"></td>
-<td><img src="docs/img/app-verifica.jpg" alt="Il rapporto di verifica degli appunti e i termini del glossario"></td>
+<td><img src="docs/img/app-evidenzia.jpg" alt="Frasi evidenziate in tre colori negli appunti"></td>
 </tr>
 <tr>
 <td align="center"><sub>Appunti con sintesi e mappa concettuale</sub></td>
+<td align="center"><sub>Evidenziatore in quattro colori</sub></td>
+</tr>
+<tr>
+<td><img src="docs/img/app-chiedi.jpg" alt="Chiedi alle tue lezioni"></td>
+<td><img src="docs/img/app-verifica.jpg" alt="Il rapporto di verifica degli appunti e i termini del glossario"></td>
+</tr>
+<tr>
+<td align="center"><sub>Chiedi a tutte le tue lezioni insieme</sub></td>
 <td align="center"><sub>Verifica degli appunti contro la trascrizione</sub></td>
 </tr>
 <tr>
@@ -35,12 +43,14 @@ per non far inventare nulla agli appunti.
 <td><img src="docs/img/app-impostazioni.jpg" alt="Le impostazioni degli appunti"></td>
 </tr>
 <tr>
-<td align="center"><sub>Registra dal microfono</sub></td>
+<td align="center"><sub>Registra dal microfono (o dal widget)</sub></td>
 <td align="center"><sub>Lunghezza, stile e sezioni degli appunti</sub></td>
 </tr>
 </table>
 
-> **English:** Sbobina turns lecture recordings into complete study notes (corrected transcript, outlines, concept map, glossary, review questions, PDF), fully on your own Mac or Windows PC, for free. The app and the notes are in Italian. [Read more in English →](https://sbobina.vercel.app/en/)
+<p align="center"><img src="docs/img/app-widget.png" alt="Il widget di registrazione: Registratore, Pronto a registrare, tasto Registra" width="400"><br><sub>Il widget di registrazione, sempre in primo piano</sub></p>
+
+> **English:** Sbobina turns lecture recordings into complete study notes (corrected transcript, outlines, concept map, glossary, review questions, PDF), fully on your own Mac or Windows PC, for free. Interface and notes in Italian or English (switch in Settings). [Read more in English →](https://sbobina.vercel.app/en/)
 
 ## Cosa ottieni per ogni lezione
 
@@ -58,8 +68,13 @@ per non far inventare nulla agli appunti.
   la trascrizione. **PDF di tutto il corso** con indice. Esportazione in **Markdown** e in una cartella
   per **Obsidian** (una nota per lezione, con collegamenti).
 - **Per studiare**: **flashcard** con ripasso a scatole (Leitner) ed esportazione per **Anki**, **quiz** a
-  scelta multipla con spiegazioni, **Chiedi alla lezione** (risposte che citano il minuto), **ricerca**
-  nel testo di tutte le lezioni, **modifica a mano** degli appunti.
+  scelta multipla con spiegazioni, **Chiedi** a una lezione o a **tutte le tue lezioni** insieme (risposte
+  che citano lezione e minuto), **evidenziatore** in quattro colori (resta finché l'app è aperta, non va
+  nel PDF), **ricerca** nel testo di tutte le lezioni, **modifica a mano** degli appunti.
+- **Widget di registrazione** sempre in primo piano: pausa, si chiude nella barra dei menu, con Stop salva
+  la registrazione e gli appunti li crei dopo, con corso e titolo.
+- **Lezioni senza audio**: appunti anche da soli appunti, PDF (pure scansionati) o foto della lavagna.
+- **In italiano o in inglese**: interfaccia, appunti, PDF e trascrizione (si sceglie nelle Impostazioni).
 - **Trascrizione che segue l'audio**: il paragrafo in ascolto si illumina, un clic e riascolti da lì;
   velocità 1×–2×.
 
@@ -97,7 +112,7 @@ aggiungendo il nome del docente).
 | Sistema | Download | Come si installa |
 |---|---|---|
 | macOS 12+ (Apple Silicon) | [Sbobina-macOS.dmg](https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-macOS.dmg) | Apri il .dmg e trascina Sbobina in Applicazioni. Al primo avvio: tasto destro → **Apri** (l'app non è ancora firmata da Apple). |
-| Windows 10/11 | [Sbobina-Windows.zip](https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-Windows.zip) | Estrai lo zip e fai doppio clic su **Installa Sbobina.bat**: installa Python e i pacchetti e mette Sbobina sul Desktop. Per ora è la versione 1.2: le novità della 1.4 arrivano su Windows più avanti. |
+| Windows 10/11 | [Sbobina-Windows.zip](https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-Windows.zip) | Estrai lo zip e fai doppio clic su **Installa Sbobina.bat**: installa Python e i pacchetti e mette Sbobina sul Desktop. Per ora è la versione 1.2: le novità dalla 1.4 in poi arrivano su Windows più avanti. |
 
 Oppure dal codice sorgente:
 
