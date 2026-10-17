@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Registratore</title>
+<style>
+/* Il registratore piccolo: una finestra senza bordi, sempre in primo piano, trascinabile ovunque. */
+@font-face { font-family: "Geist"; src: url("/static/fonts/Geist-Medium.otf") format("opentype"); font-weight: 500; }
+@font-face { font-family: "Geist"; src: url("/static/fonts/Geist-SemiBold.otf") format("opentype"); font-weight: 600 700; }
+@font-face { font-family: "Departure Mono"; src: url("/static/fonts/DepartureMono-Regular.otf") format("opentype"); }
+:root {
+  color-scheme: light dark;
+  --fondo: light-dark(#ffffff, #0f1830);
+  --inchiostro: light-dark(#0e1a31, #eaf1ff);
+  --tenue: light-dark(#63738f, #8597b9);
+  --filo: light-dark(rgba(20, 44, 92, 0.12), rgba(255, 255, 255, 0.1));
+  --blu: light-dark(#1f66f2, #4b8bff);
+  --rosso: light-dark(#d4361f, #ff8a7a);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: transparent; color: var(--inchiostro); overflow: hidden;
+  font: 600 14px/1.2 "Geist", system-ui, -apple-system, sans-serif; -webkit-user-select: none; user-select: none; }
+main { height: 100%; background: var(--fondo); display: flex; align-items: center; gap: 10px; padding: 0 10px 0 14px; border: 1px solid var(--filo); border-radius: 14px; }
+.spia { width: 12px; height: 12px; border-radius: 50%; background: var(--tenue); flex: none; }
+.rec .spia { background: var(--rosso); animation: batte 1.2s ease-in-out infinite; }
+.pausa .spia { background: var(--tenue); animation: none; }
+@keyframes batte { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .rec .spia { animation: none; } }
+.tempo { font: 400 20px/1 "Departure Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; min-width: 4.2ch; }
+.vu { flex: 1; height: 24px; display: flex; align-items: center; gap: 2px; min-width: 0; }
+.vu i { flex: 1; height: 100%; border-radius: 2px; background: var(--blu); transform: scaleY(.06); transition: transform 90ms linear; }
+.pausa .vu i { opacity: .35; }
+.testo { flex: 1; color: var(--tenue); font-weight: 500; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button { flex: none; width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border-radius: 10px;
+  border: 1px solid var(--filo); background: transparent; color: var(--inchiostro); cursor: pointer; }
+button:hover { background: var(--filo); }
+button:focus-visible { outline: 2px solid var(--blu); outline-offset: 1px; }
+button.principale { width: auto; padding: 0 12px; gap: 6px; display: flex; align-items: center; background: #d4361f; border-color: #d4361f; color: #fff; font: inherit; }
+button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main id="widget" class="pywebview-drag-region">
+  <span class="spia" aria-hidden="true"></span>
+  <span class="tempo" id="tempo" role="timer" hidden>0:00</span>
+  <div class="vu" id="vu" aria-hidden="true" hidden></div>
+  <span class="testo" id="testo" role="status">Pronto a registrare</span>
+  <button class="principale" id="registra" type="button" title="Inizia a registrare">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg><span>Registra</span>
+  </button>
+  <button id="pausa" type="button" aria-label="Pausa" title="Pausa" hidden></button>
+  <button id="ferma" type="button" aria-label="Ferma e salva" title="Ferma e salva" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg>
+  </button>
+  <button id="riduci" type="button" aria-label="Riduci nella barra dei menu" title="Riduci nella barra dei menu">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg>
+  </button>
+</main>
+<script src="/static/inglese.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const BARRE = 18;
+  const ICONA_PAUSA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke-width="3"/></svg>';
+  const ICONA_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>';
+  for (let i = 0; i < BARRE; i++) $("vu").append(document.createElement("i"));
+  const storico = [];
+  let timer = null;
+  let inPausa = false;
+  let avviso = 0;  // fino a quando resta il messaggio dopo Ferma
+
+  async function api(percorso, corpo) {
+    const r = await fetch(percorso, corpo === undefined ? {} : {
+      method: "POST", headers: { "Content-Type": "application/json", "X-Sbobina": "1" }, body: JSON.stringify(corpo),
+    });
+    const dati = r.status === 204 ? {} : await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(dati.detail || `Errore ${r.status}`);
+    return dati;
+  }
+
+  const orologio = (s) => {
+    s = Math.floor(s);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = String(s % 60).padStart(2, "0");
+    return h ? `${h}:${String(m).padStart(2, "0")}:${x}` : `${m}:${x}`;
+  };
+
+  function messaggio(testo, secondi = 0) {
+    $("testo").textContent = testo;
+    avviso = secondi ? Date.now() + secondi * 1000 : 0;
+  }
+
+  function mostra(s) {
+    const main = $("widget");
+    main.classList.toggle("rec", s.attiva && !s.pausa);
+    main.classList.toggle("pausa", s.attiva && s.pausa);
+    $("tempo").hidden = $("vu").hidden = $("pausa").hidden = $("ferma").hidden = !s.attiva;
+    $("registra").hidden = s.attiva;
+    $("testo").hidden = s.attiva && !s.errore;
+    if (s.errore) messaggio(s.errore);
+    else if (!s.attiva && Date.now() > avviso) messaggio("Pronto a registrare");
+    inPausa = s.pausa;
+    if (!s.attiva) return;
+    $("tempo").textContent = orologio(s.secondi);
+    $("pausa").innerHTML = s.pausa ? ICONA_PLAY : ICONA_PAUSA;
+    $("pausa").setAttribute("aria-label", s.pausa ? "Riprendi" : "Pausa");
+    $("pausa").title = s.pausa ? "Riprendi" : "Pausa";
+    storico.push(s.pausa ? 0 : Math.max(0, Math.min(1, (s.livello + 60) / 60)));
+    while (storico.length > BARRE) storico.shift();
+    $("vu").querySelectorAll("i").forEach((b, k) => {
+      b.style.transform = `scaleY(${0.06 + (storico[k - (BARRE - storico.length)] || 0) * 0.94})`;
+    });
+  }
+
+  // Sempre acceso: anche la barra dei menu può mettere in pausa o fermare, e qui si vede subito.
+  async function aggiorna() {
+    clearTimeout(timer);
+    try { mostra(await api("/api/registrazione")); } catch (e) { /* server non ancora pronto */ }
+    timer = setTimeout(aggiorna, 150);
+  }
+
+  async function azione(fn) {
+    try { await fn(); } catch (e) { messaggio(e.message, 8); $("testo").hidden = false; }
+    aggiorna();
+  }
+
+  $("registra").addEventListener("click", () => azione(() => api("/api/registrazione/avvia", {})));
+  $("pausa").addEventListener("click", () => azione(() =>
+    api(`/api/registrazione/${inPausa ? "riprendi" : "pausa"}`, {})));
+  $("ferma").addEventListener("click", () => azione(async () => {
+    await api("/api/registrazione/ferma", { elabora: false });
+    messaggio("Salvata tra le lezioni da elaborare", 6);
+  }));
+  $("riduci").addEventListener("click", () => {
+    if (window.pywebview && window.pywebview.api.riduci_widget) window.pywebview.api.riduci_widget();
+  });
+  api("/api/stato").then((i) => {
+    const lingua = (i.impostazioni && i.impostazioni.lingua) || "it";
+    if (window.SbobinaLingua) window.SbobinaLingua(lingua);
+  }).catch(() => {});
+  aggiorna();
+})();
+</script>
+</body>
+</html>

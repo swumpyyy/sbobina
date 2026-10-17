@@ -137,3 +137,24 @@ def test_registratore_senza_registrazione(tmp_path):
     assert registratore.stato()["attiva"] is False
     with pytest.raises(RuntimeError, match="nessuna registrazione"):
         registratore.ferma()
+
+
+def test_registratore_unisce_i_pezzi_dopo_la_pausa(tmp_path, audio_prova):
+    """Ferma dopo una pausa: i pezzi diventano un file solo, lungo quanto la somma, e spariscono."""
+    import shutil
+    import subprocess
+
+    registratore = Registratore(tmp_path / "reg")
+    registratore.cartella.mkdir()
+    registratore._nome = "registrazione-prova"
+    registratore._pezzi = [registratore.cartella / f"registrazione-prova-{i}.m4a" for i in (1, 2)]
+    for pezzo in registratore._pezzi:
+        shutil.copyfile(audio_prova, pezzo)
+    registratore._in_pausa = True
+    assert registratore.stato()["attiva"] is True and registratore.stato()["pausa"] is True
+    file = registratore.ferma()
+    durata = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(file)],
+                                  capture_output=True, text=True, check=True).stdout)
+    assert 39 < durata < 41
+    assert sorted(p.name for p in registratore.cartella.iterdir()) == ["registrazione-prova.m4a"]
+    assert registratore.stato()["attiva"] is False

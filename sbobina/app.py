@@ -26,6 +26,55 @@ class Ponte:
     def __init__(self, indirizzo: str):
         self.indirizzo = indirizzo
         self.finestra = None
+        self.registratore = None  # la finestrella del widget di registrazione
+        self._barra = None  # l'icona nella barra dei menu (solo macOS)
+
+    # --- widget di registrazione -------------------------------------------
+
+    def widget(self) -> None:
+        """Apre (o rimette davanti) il registratore piccolo, sempre in primo piano."""
+        import webview
+
+        if self.registratore is not None:
+            self.registratore.show()
+            return
+        larghezza, altezza = 360, 58
+        schermo = webview.screens[0] if webview.screens else None
+        x = (schermo.width - larghezza - 24) if schermo else None
+        self.registratore = webview.create_window(
+            "Registratore", self.indirizzo + "/static/widget.html", js_api=self,
+            width=larghezza, height=altezza, x=x, y=48 if schermo else None,
+            resizable=False, frameless=True, on_top=True, transparent=True, focus=False,
+        )
+        self.registratore.events.closed += self._widget_chiuso
+        self._barra = BarraMenu.crea(self)
+
+    def riduci_widget(self) -> None:
+        """Nasconde il widget: su macOS resta l'icona nella barra dei menu, su Windows si riduce a icona."""
+        if self.registratore is None:
+            return
+        if self._barra is not None:
+            self.registratore.hide()
+        else:
+            self.registratore.minimize()
+
+    def chiudi_widget(self) -> None:
+        if self.registratore is not None:
+            self.registratore.destroy()
+
+    def _widget_chiuso(self) -> None:
+        self.registratore = None
+        if self._barra is not None:
+            self._barra.togli()
+            self._barra = None
+
+    def comando_registrazione(self, azione: str) -> None:
+        """Pausa, riprendi o ferma (salva soltanto), dalla barra dei menu."""
+        corpo = {"elabora": False} if azione == "ferma" else {}
+        try:
+            httpx2.post(f"{self.indirizzo}/api/registrazione/{azione}", json=corpo, headers={"X-Sbobina": "1"}, timeout=60)
+        except httpx2.HTTPError:
+            pass  # il widget mostra l'errore al prossimo aggiornamento
 
     def salva(self, percorso: str, nome: str = "") -> str:
         """Scarica un file dal server locale e lo salva dove sceglie lo studente (finestra Salva di macOS)."""
@@ -99,6 +148,92 @@ class Ponte:
     def tema(self, scuro: bool) -> None:
         """La barra del titolo segue il tema scelto nell'app."""
         _barra_titolo(self.finestra, scuro)
+
+
+class BarraMenu:
+    """L'icona del registratore nella barra dei menu di macOS, accanto all'orologio: tempo e comandi."""
+
+    _bersaglio_classe = None
+
+    @classmethod
+    def crea(cls, ponte: Ponte) -> BarraMenu | None:
+        try:
+            from AppKit import NSMenu, NSMenuItem, NSStatusBar, NSVariableStatusItemLength
+            from Foundation import NSObject
+            from PyObjCTools import AppHelper
+        except ImportError:
+            return None
+        if cls._bersaglio_classe is None:
+            # Una classe Objective-C si registra una volta sola per processo.
+            class SbobinaBarraBersaglio(NSObject):
+                def mostra_(self, _):
+                    self.ponte.widget()
+
+                def pausa_(self, _):
+                    threading.Thread(target=self.ponte.comando_registrazione, args=(self.azione_pausa,), daemon=True).start()
+
+                def ferma_(self, _):
+                    threading.Thread(target=self.ponte.comando_registrazione, args=("ferma",), daemon=True).start()
+
+                def chiudi_(self, _):
+                    self.ponte.chiudi_widget()
+
+            cls._bersaglio_classe = SbobinaBarraBersaglio
+        barra = cls()
+        barra.attiva = True
+
+        def costruisci() -> None:
+            bersaglio = cls._bersaglio_classe.alloc().init()
+            bersaglio.ponte, bersaglio.azione_pausa = ponte, "pausa"
+            voce = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
+            voce.button().setTitle_("Sbobina")
+            menu = NSMenu.alloc().init()
+            menu.setAutoenablesItems_(False)
+            voci = {}
+            for chiave, titolo, azione in (("mostra", "Mostra il registratore", "mostra:"), ("pausa", "Pausa", "pausa:"),
+                                           ("ferma", "Ferma e salva", "ferma:"), ("chiudi", "Chiudi il registratore", "chiudi:")):
+                v = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(titolo, azione, "")
+                v.setTarget_(bersaglio)
+                menu.addItem_(v)
+                voci[chiave] = v
+            voce.setMenu_(menu)
+            barra.voce, barra.voci, barra.bersaglio = voce, voci, bersaglio
+
+        AppHelper.callAfter(costruisci)
+        threading.Thread(target=barra._aggiorna, args=(ponte.indirizzo,), daemon=True).start()
+        return barra
+
+    def _aggiorna(self, indirizzo: str) -> None:
+        from PyObjCTools import AppHelper
+
+        while self.attiva:
+            try:
+                s = httpx2.get(f"{indirizzo}/api/registrazione", timeout=5).json()
+            except (httpx2.HTTPError, ValueError):
+                s = {"attiva": False}
+            AppHelper.callAfter(self._mostra, s)
+            time.sleep(1)
+
+    def _mostra(self, s: dict) -> None:
+        if not self.attiva or not hasattr(self, "voce"):
+            return
+        secondi = int(s.get("secondi") or 0)
+        tempo = f"{secondi // 3600}:{secondi // 60 % 60:02d}:{secondi % 60:02d}" if secondi >= 3600 else f"{secondi // 60}:{secondi % 60:02d}"
+        attiva, pausa = s.get("attiva"), s.get("pausa")
+        self.voce.button().setTitle_(f"{'⏸' if pausa else '●'} {tempo}" if attiva else "Sbobina")
+        self.bersaglio.azione_pausa = "riprendi" if pausa else "pausa"
+        self.voci["pausa"].setTitle_("Riprendi" if pausa else "Pausa")
+        self.voci["pausa"].setEnabled_(bool(attiva))
+        self.voci["ferma"].setEnabled_(bool(attiva))
+        self.voci["chiudi"].setEnabled_(not attiva)  # chiudere non deve mai buttare una registrazione
+
+    def togli(self) -> None:
+        from AppKit import NSStatusBar
+        from PyObjCTools import AppHelper
+
+        self.attiva = False
+        if hasattr(self, "voce"):
+            AppHelper.callAfter(lambda: NSStatusBar.systemStatusBar().removeStatusItem_(self.voce))
 
 
 def _identita_macos() -> None:

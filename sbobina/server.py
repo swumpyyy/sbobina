@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
@@ -54,6 +55,8 @@ def richiede_intestazione(x_sbobina: str | None = Header(default=None)) -> None:
 
 class Rielaborazione(BaseModel):
     da: str = "appunti"
+    corso: str = ""  # una registrazione salvata dal widget riceve corso e titolo solo qui
+    titolo: str = ""
 
 
 class Approfondimento(BaseModel):
@@ -75,9 +78,13 @@ class Esito(BaseModel):
 
 
 class NuovaRegistrazione(BaseModel):
-    corso: str
+    corso: str = ""
     titolo: str = ""
     data: str = ""
+    elabora: bool = True  # False: salva soltanto (dal widget), gli appunti si creano dopo con Elabora
+
+
+DA_ELABORARE = "Da elaborare"  # messaggio di una lezione registrata e salvata, mai partita
 
 
 class Glossario(BaseModel):
@@ -462,6 +469,11 @@ def crea_app(
             raise HTTPException(409, "La lezione è già in elaborazione.")
         if corpo.da not in RIPARTENZE:
             raise HTTPException(400, f"Valore non valido: {corpo.da}")
+        nomi = {k: v.strip() for k, v in (("corso", corpo.corso), ("titolo", corpo.titolo)) if v.strip()}
+        if nomi:
+            archivio.aggiorna(id_lezione, **nomi)
+            if "corso" in nomi and not archivio.carica_corso(nomi["corso"]):
+                archivio.salva_corso(Corso(nome=nomi["corso"]))
         lezione = prepara_rielaborazione(archivio, id_lezione, corpo.da)
         coda.accoda(id_lezione)
         return riassunto(lezione)
@@ -636,18 +648,37 @@ def crea_app(
     def stato_registrazione() -> dict:
         return registratore.stato()
 
+    @app.post("/api/registrazione/pausa", dependencies=protetto)
+    def pausa_registrazione() -> dict:
+        try:
+            registratore.pausa()
+        except RuntimeError as e:
+            raise HTTPException(409, str(e)) from e
+        return registratore.stato()
+
+    @app.post("/api/registrazione/riprendi", dependencies=protetto)
+    def riprendi_registrazione() -> dict:
+        try:
+            registratore.riprendi()
+        except RuntimeError as e:
+            raise HTTPException(409, str(e)) from e
+        return registratore.stato()
+
     @app.post("/api/registrazione/ferma", dependencies=protetto)
     def ferma_registrazione(corpo: NuovaRegistrazione) -> dict:
-        if not corpo.corso.strip():
+        if corpo.elabora and not corpo.corso.strip():
             raise HTTPException(400, "Indica il corso.")
         try:
             file = registratore.ferma()
         except RuntimeError as e:
             raise HTTPException(409, str(e)) from e
+        titolo = corpo.titolo.strip() or time.strftime("Registrazione %d/%m %H:%M")
         lezione = archivio.crea_lezione(
-            audio=file, nome_audio=file.name, corso=corpo.corso, titolo=corpo.titolo,
-            data_lezione=corpo.data, sposta=True,
+            audio=file, nome_audio=file.name, corso=corpo.corso, titolo=titolo,
+            data_lezione=corpo.data or time.strftime("%Y-%m-%d"), sposta=True,
         )
+        if not corpo.elabora:
+            return riassunto(archivio.aggiorna(lezione.id, stato="fermata", messaggio=DA_ELABORARE))
         coda.accoda(lezione.id)
         return riassunto(lezione)
 

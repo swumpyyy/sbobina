@@ -470,6 +470,8 @@ a { color: var(--blu-testo); text-underline-offset: 3px; }
 .fase-blocco .fase { display: block; font-size: 19px; font-weight: 620; letter-spacing: -0.015em; }
 .fase-blocco .messaggio { margin: 4px 0 0; color: var(--inchiostro-tenue); font-size: 14px; min-height: 1.5em; }
 .avanzamento .azioni { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.modulo-elabora { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.modulo-elabora .campo { flex: 1 1 180px; min-width: 0; }
 
 .liquido {
   position: relative;
@@ -1005,7 +1007,25 @@ a { color: var(--blu-testo); text-underline-offset: 3px; }
 
 /* --- studio: flashcard, quiz, chiedi, editor ---------------------------- */
 
-.barra-foglio { display: flex; justify-content: flex-end; margin: -12px -12px 8px 0; }
+.barra-foglio { display: flex; gap: 6px; justify-content: flex-end; margin: -12px -12px 8px 0; }
+
+/* evidenziatore: solo nell'app (niente stampa), colori trasparenti che funzionano in chiaro e scuro */
+.foglio { position: relative; }
+mark.evidenza { color: inherit; border-radius: 3px; padding: 0 1px; cursor: pointer; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+mark.evidenza.giallo, .campione-evidenza.giallo { background: rgba(255, 214, 0, 0.42); }
+mark.evidenza.verde, .campione-evidenza.verde { background: rgba(52, 199, 89, 0.34); }
+mark.evidenza.rosa, .campione-evidenza.rosa { background: rgba(255, 79, 154, 0.3); }
+mark.evidenza.azzurro, .campione-evidenza.azzurro { background: rgba(10, 132, 255, 0.3); }
+mark.evidenza:hover { text-decoration: line-through; text-decoration-color: var(--inchiostro-lieve); }
+.tavolozza {
+  position: absolute; z-index: 5; transform: translate(-50%, -100%);
+  display: flex; gap: 6px; padding: 6px; border-radius: 99px;
+  background: var(--vetro-forte); border: 1px solid var(--filo-scuro); box-shadow: var(--ombra);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.campione-evidenza { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--filo-scuro); cursor: pointer; padding: 0; }
+.campione-evidenza:focus-visible { outline: 2px solid var(--blu); outline-offset: 2px; }
+@media print { mark.evidenza { background: none !important; } .tavolozza { display: none !important; } }
 .editor {
   width: 100%; min-height: 320px; resize: vertical;
   padding: 18px 20px; border-radius: var(--r-medio);
