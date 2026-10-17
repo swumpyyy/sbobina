@@ -145,6 +145,7 @@ body::before, body::after { display: none; }
   $("ferma").addEventListener("click", () => azione(async () => {
     await api("/api/registrazione/ferma", { elabora: false });
     messaggio("Salvata tra le lezioni da elaborare", 6);
+    if (window.pywebview && window.pywebview.api.lezione_salvata) window.pywebview.api.lezione_salvata();
   }));
   $("riduci").addEventListener("click", () => {
     if (window.pywebview && window.pywebview.api.riduci_widget) window.pywebview.api.riduci_widget();

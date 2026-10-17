@@ -1219,6 +1219,9 @@
 
   // --- aggiornamento periodico --------------------------------------------
 
+  // Il widget e la barra dei menu fermano la registrazione da un'altra finestra: l'app nativa chiama questo.
+  window.sbobinaAggiornaElenco = () => aggiornaElenco().catch(() => {});
+
   async function aggiornaElenco() {
     const precedenti = new Map(stato.lezioni.map((l) => [l.id, l]));
     stato.lezioni = await api("/api/lezioni");
@@ -1878,7 +1881,6 @@
     const inCorso = (si) => {
       avvia.hidden = si; ferma.hidden = !si; annulla.hidden = !si; pausa.hidden = !si; pannello.classList.toggle("attiva", si);
       if (!si) pannello.classList.remove("in-pausa");
-      if (widget) widget.hidden = si;
     };
     pausa.addEventListener("click", async () => {
       try { await api(`/api/registrazione/${pausa.dataset.pausa ? "riprendi" : "pausa"}`, { method: "POST" }); } catch (e) { errore.textContent = e.message; errore.hidden = false; }

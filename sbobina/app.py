@@ -75,6 +75,13 @@ class Ponte:
             httpx2.post(f"{self.indirizzo}/api/registrazione/{azione}", json=corpo, headers={"X-Sbobina": "1"}, timeout=60)
         except httpx2.HTTPError:
             pass  # il widget mostra l'errore al prossimo aggiornamento
+        if azione == "ferma":
+            self.lezione_salvata()
+
+    def lezione_salvata(self) -> None:
+        """La finestra principale ridisegna l'elenco: la lezione «da elaborare» compare subito."""
+        if self.finestra is not None:
+            self.finestra.evaluate_js("window.sbobinaAggiornaElenco && window.sbobinaAggiornaElenco()")
 
     def salva(self, percorso: str, nome: str = "") -> str:
         """Scarica un file dal server locale e lo salva dove sceglie lo studente (finestra Salva di macOS)."""
