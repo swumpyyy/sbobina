@@ -75,6 +75,8 @@ per non far inventare nulla agli appunti.
   la registrazione e gli appunti li crei dopo, con corso e titolo.
 - **Lezioni senza audio**: appunti anche da soli appunti, PDF (pure scansionati) o foto della lavagna.
 - **In italiano o in inglese**: interfaccia, appunti, PDF e trascrizione (si sceglie nelle Impostazioni).
+- **Aggiornamenti**: all'avvio Sbobina controlla se è uscita una versione nuova e ti porta alla pagina di
+  download (si spegne nelle Impostazioni).
 - **Trascrizione che segue l'audio**: il paragrafo in ascolto si illumina, un clic e riascolti da lì;
   velocità 1×–2×.
 
@@ -112,7 +114,7 @@ aggiungendo il nome del docente).
 | Sistema | Download | Come si installa |
 |---|---|---|
 | macOS 12+ (Apple Silicon) | [Sbobina-macOS.dmg](https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-macOS.dmg) | Apri il .dmg e trascina Sbobina in Applicazioni. Al primo avvio: tasto destro → **Apri** (l'app non è ancora firmata da Apple). |
-| Windows 10/11 | [Sbobina-Windows.zip](https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-Windows.zip) | Estrai lo zip e fai doppio clic su **Installa Sbobina.bat**: installa Python e i pacchetti e mette Sbobina sul Desktop. Per ora è la versione 1.2: le novità dalla 1.4 in poi arrivano su Windows più avanti. |
+| Windows 10/11 | [Sbobina-Windows.zip](https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-Windows.zip) | Estrai lo zip e fai doppio clic su **Installa Sbobina.bat**: installa Python e i pacchetti e mette Sbobina sul Desktop. Stessa versione del Mac. |
 
 Oppure dal codice sorgente:
 
@@ -177,7 +179,7 @@ Il registro degli errori è in `~/Library/Logs/Sbobina.log`.
 
 ### App per Windows
 
-Windows 10/11 con una scheda NVIDIA (pensato per una RTX serie 50 con 8 GB; non ancora provato su un PC vero). Una volta sola, dalla cartella del progetto:
+Windows 10/11 con una scheda NVIDIA (provato su una RTX 5060 con 8 GB). Una volta sola, dalla cartella del progetto:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\installa_windows.ps1
@@ -191,7 +193,8 @@ Installa Python 3.12 (se manca), i pacchetti e ffmpeg, e mette **Sbobina** sul D
 - **Whisper** con faster-whisper sulla GPU (DLL CUDA via pip); se CUDA non va, trascrive sul processore, più lento.
 
 Su Windows le foto delle slide passano dall'OCR di Windows (serve il pacchetto lingua italiano), le notifiche sono
-toast di sistema, il microfono è il primo dispositivo audio di DirectShow. Dati e modelli in `%LOCALAPPDATA%\Sbobina`,
+toast di sistema, il microfono è il primo dispositivo audio di DirectShow, il widget di registrazione si riduce
+nell'area di notifica (accanto all'orologio) invece che nella barra dei menu. Dati e modelli in `%LOCALAPPDATA%\Sbobina`,
 registro in `%LOCALAPPDATA%\Sbobina\sbobina.log` (e `llama-server.log` per il motore AI).
 
 ### App web

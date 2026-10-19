@@ -249,6 +249,10 @@ def crea_app(
         dati["anni"] = list(impostazioni.ANNI)
         return dati
 
+    @app.get("/api/aggiornamento")
+    def aggiornamento(forza: bool = False) -> dict:
+        return sistema.aggiornamento(forza)
+
     @app.get("/api/impostazioni")
     def leggi_impostazioni() -> dict:
         return impostazioni.carica(config.cartella_dati).a_dict()

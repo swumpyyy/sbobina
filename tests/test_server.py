@@ -204,9 +204,9 @@ def test_versione_una_sola_in_tutto_il_progetto():
     import sbobina
 
     radice = Path(__file__).resolve().parents[1]
-    assert tomllib.loads((radice / "pyproject.toml").read_text())["project"]["version"] == sbobina.__version__
+    assert tomllib.loads((radice / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"] == sbobina.__version__
     breve = ".".join(sbobina.__version__.split(".")[:2])
-    assert f"SBOBINA.OS {breve}<" in (radice / "sbobina/static/index.html").read_text()
+    assert f"SBOBINA.OS {breve}<" in (radice / "sbobina/static/index.html").read_text(encoding="utf-8")
 
 
 def test_lezione_solo_da_appunti_e_materiali(client):
@@ -249,3 +249,33 @@ def test_registrazione_salvata_e_poi_elaborata(client, audio_prova, tmp_path, mo
     assert risposta.status_code == 200
     finita = _attendi(client, salvata["id"])
     assert (finita["stato"], finita["corso"], finita["titolo"]) == ("completata", "Chimica", "Atomi")
+
+
+def test_aggiornamento_confronta_le_versioni_e_aspetta_il_file_del_sistema(monkeypatch):
+    import sbobina
+    from sbobina import sistema
+
+    class Risposta:
+        def __init__(self, tag, file):
+            self.dati = {"tag_name": tag, "assets": [{"name": n} for n in file]}
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.dati
+
+    pacchetto = "Sbobina-Windows.zip"
+    monkeypatch.setattr(sistema, "PACCHETTO", pacchetto)
+    monkeypatch.setattr(sbobina, "__version__", "1.5.0")
+    for tag, file, nuova in (("v1.10.0", [pacchetto], True), ("v1.5.0", [pacchetto], False),
+                             ("v1.4.1", [pacchetto], False), ("v1.6.0", ["Sbobina-macOS.dmg"], False)):
+        monkeypatch.setattr(sistema.httpx2, "get", lambda *a, _r=Risposta(tag, file), **k: _r)
+        assert sistema.aggiornamento(forza=True)["nuova"] is nuova, tag
+
+    def offline(*a, **k):
+        raise sistema.httpx2.ConnectError("offline")
+
+    monkeypatch.setattr(sistema.httpx2, "get", offline)
+    esito = sistema.aggiornamento(forza=True)
+    assert esito["nuova"] is False and "internet" in esito["errore"]

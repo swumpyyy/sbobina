@@ -1,4 +1,5 @@
 import json
+import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -24,7 +25,8 @@ def test_validazione_e_chiave_mascherata(tmp_path):
         Impostazioni.da_dict({"temperatura": 9})
     impostazioni.salva(tmp_path, imp)
     assert impostazioni.carica(tmp_path).chiave_claude == "sk-ant-segreta1234"
-    assert oct((tmp_path / "impostazioni.json").stat().st_mode)[-3:] == "600"
+    if os.name != "nt":  # su Windows niente permessi Unix: la cartella in %LOCALAPPDATA% è già solo dell'utente
+        assert oct((tmp_path / "impostazioni.json").stat().st_mode)[-3:] == "600"
 
 
 def test_file_rovinato_non_blocca(tmp_path):

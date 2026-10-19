@@ -215,7 +215,7 @@ def crea_pdf(pagina: str, destinazione: Path) -> None:
             [browser, "--headless", "--disable-gpu", "--no-pdf-header-footer", "--allow-file-access-from-files",
              f"--user-data-dir={Path(cartella) / 'profilo'}", "--virtual-time-budget=20000",
              f"--print-to-pdf={temporaneo}", sorgente.as_uri()],
-            capture_output=True, text=True, timeout=180,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=180,
         )
         if risultato.returncode != 0 or not temporaneo.is_file() or temporaneo.stat().st_size < 1000:
             raise RuntimeError(f"Creazione del PDF non riuscita: {risultato.stderr.strip()[-300:]}")

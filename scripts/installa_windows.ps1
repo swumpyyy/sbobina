@@ -38,6 +38,7 @@ $Collegamento = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path 
 $Collegamento.TargetPath = $Avvio
 $Collegamento.WorkingDirectory = $Progetto
 $Collegamento.WindowStyle = 7  # ridotta a icona
+$Collegamento.IconLocation = Join-Path $Progetto "sbobina\static\sbobina.ico"
 $Collegamento.Save()
 
 Write-Host ""

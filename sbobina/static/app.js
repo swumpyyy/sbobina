@@ -212,7 +212,33 @@
         h("strong", {}, "Manca la chiave di Claude."),
         h("span", {}, "Aggiungi ANTHROPIC_API_KEY al file .env, oppure torna al modello locale gratuito.")));
     }
+    const agg = stato.aggiornamento;
+    if (agg && agg.nuova && !agg.nascosto) {
+      avvisi.push(h("div", { class: "avviso", role: "status" }, icona("scarica"),
+        h("strong", {}, `È uscita Sbobina ${agg.ultima}.`),
+        h("div", { class: "preparazione" },
+          h("span", {}, `Tu hai la ${agg.attuale}. Lezioni e impostazioni restano dove sono.`),
+          linkDownload(),
+          h("button", { class: "tasto trasparente", type: "button",
+            onclick: (e) => { agg.nascosto = true; e.currentTarget.closest(".avviso").remove(); } }, "Più tardi"))));
+    }
     return avvisi;
+  }
+
+  // --- aggiornamenti: una domanda a GitHub all'avvio, il download dal sito ------------
+
+  function linkDownload() {
+    const pagina = document.documentElement.lang === "en" ? "https://sbobina.vercel.app/en/#download" : "https://sbobina.vercel.app/#scarica";
+    return h("a", { class: "tasto", href: pagina, target: "_blank", rel: "noopener" }, icona("scarica"), "Vai alla pagina di download");
+  }
+
+  async function controllaAggiornamento(forza = false) {
+    try {
+      stato.aggiornamento = await api(`/api/aggiornamento${forza ? "?forza=true" : ""}`);
+    } catch (e) {
+      stato.aggiornamento = { nuova: false, errore: e.message };
+    }
+    return stato.aggiornamento;
   }
 
   async function preparaAI() {
@@ -1972,7 +1998,7 @@
     radice.style.fontSize = i.scala_testo && i.scala_testo !== 100 ? `${i.scala_testo}%` : "";
     if (window.pywebview && window.pywebview.api.tema) {
       const scuro = i.tema === "scuro" || (i.tema !== "chiaro" && matchMedia("(prefers-color-scheme: dark)").matches);
-      window.pywebview.api.tema(scuro);
+      window.pywebview.api.tema(scuro, getComputedStyle(radice).backgroundColor);
     }
   }
 
@@ -2118,6 +2144,22 @@
     const sezione = (id, titolo, testo, ...figli) => h("section", { "data-titolo": `${titolo} 1.1`, class: "pannello imp", "aria-labelledby": id },
       h("h2", { id }, titolo), testo ? h("p", {}, testo) : null, ...figli);
 
+    const versione = h("div", { class: "preparazione", role: "status", "aria-live": "polite" });
+    const disegnaVersione = (a) => {
+      const controlla = h("button", { class: "tasto", type: "button" }, icona("ricarica"), "Controlla ora");
+      controlla.addEventListener("click", async () => {
+        controlla.disabled = true;
+        versione.replaceChildren(h("span", {}, "Controllo…"));
+        disegnaVersione(await controllaAggiornamento(true));
+      });
+      const testo = a.errore ? a.errore
+        : a.nuova ? `È uscita Sbobina ${a.ultima}: tu hai la ${a.attuale}.`
+        : `Hai l'ultima versione (${a.attuale}).`;
+      versione.replaceChildren(h("span", {}, testo), a.nuova ? linkDownload() : controlla);
+    };
+    if (stato.aggiornamento) disegnaVersione(stato.aggiornamento);
+    else controllaAggiornamento().then(disegnaVersione);
+
     // AI: motore, modello, chiave, Whisper
     const zonaAI = h("div", { class: "zona-ai" });
     const disegnaAI = () => {
@@ -2253,6 +2295,11 @@
         h("div", { class: "griglia-interruttori" },
           interruttore("Notifica", i.notifiche, (v) => { cambia({ notifiche: v }); if (v) chiediPermessoNotifiche(); }, "Anche se Sbobina è in secondo piano."),
           interruttore("Suono", i.suono, (v) => { cambia({ suono: v }); if (v) suonoFine(); }, "Un breve accordo."))),
+      sezione("imp-aggiornamenti", "Aggiornamenti", null,
+        h("div", { class: "griglia-interruttori" },
+          interruttore("Controlla all'avvio", i.aggiornamenti !== false, (v) => cambia({ aggiornamenti: v }),
+            "Se è uscita una versione nuova te lo dico e ti porto alla pagina di download.")),
+        versione),
       sezione("imp-dati", "I tuoi dati", `Audio, trascrizioni e appunti restano in questa cartella, sul tuo ${PC}.`,
         h("div", { class: "riga-dati" },
           h("code", {}, sistema.cartella_dati),
@@ -2434,6 +2481,9 @@
     else if (daHash === "primo-avvio" || (!imp().configurato && !stato.lezioni.length)) mostraPrimoAvvio();
     else if (daHash && stato.lezioni.some((l) => l.id === daHash)) await apriLezione(daHash, { mantieniScheda: !!schedaHash });
     else mostraBenvenuto();
+    if (imp().aggiornamenti !== false) {
+      controllaAggiornamento().then((a) => { if (a.nuova && stato.vista === "benvenuto") mostraBenvenuto(); });
+    }
   }
 
   // App nativa: i collegamenti di download passano dalla finestra Salva di macOS.
