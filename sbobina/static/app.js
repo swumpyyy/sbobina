@@ -1995,6 +1995,12 @@
     if (i.vetro === false) radice.dataset.vetro = "no"; else delete radice.dataset.vetro;
     if (i.animazioni_ridotte) radice.dataset.movimento = "ridotto"; else delete radice.dataset.movimento;
     if (window.SbobinaLingua) window.SbobinaLingua(i.lingua || "it");
+    // Il tasto mostra la lingua verso cui passa, scritta in quella lingua.
+    const inglese = i.lingua === "en", tastoLingua = $("#btn-lingua");
+    tastoLingua.lang = inglese ? "it" : "en";
+    tastoLingua.title = inglese ? "Passa all'italiano" : "Switch to English";
+    tastoLingua.setAttribute("aria-label", inglese ? "Italiano" : "English");
+    tastoLingua.querySelector(".etichetta-lunga").textContent = inglese ? "Italiano" : "English";
     radice.style.fontSize = i.scala_testo && i.scala_testo !== 100 ? `${i.scala_testo}%` : "";
     if (window.pywebview && window.pywebview.api.tema) {
       const scuro = i.tema === "scuro" || (i.tema !== "chiaro" && matchMedia("(prefers-color-scheme: dark)").matches);
@@ -2438,6 +2444,8 @@
     $("#btn-impostazioni").addEventListener("click", mostraImpostazioni);
     $("#btn-registra").addEventListener("click", mostraRegistrazione);
     $("#btn-chiedi").addEventListener("click", mostraChiediTutte);
+    $("#btn-lingua").addEventListener("click", () =>
+      salvaImpostazioni({ lingua: imp().lingua === "en" ? "it" : "en" }).then(() => location.reload()));
     $("#marchio").addEventListener("click", (e) => {
       e.preventDefault();
       stato.selezionata = null;
