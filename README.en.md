@@ -58,6 +58,7 @@ complete notes to prepare for your exam. Free, on your Mac or Windows PC, and th
 - **For studying**: flashcards (Leitner), quizzes, **Ask** across all lectures, highlighter, search, manual editing.
 - **Record** from the microphone, also from the always-on-top widget; notes also **without audio** (PDF, photos).
 - **Italian or English** with the button at the top: interface, notes, PDF and transcript.
+- **Updates**: at launch Sbobina checks whether a new version is out and takes you to the download page.
 
 ## How it works
 
@@ -162,7 +163,7 @@ The error log is in `~/Library/Logs/Sbobina.log`.
 
 ### Windows app
 
-Windows 10/11 with an NVIDIA card (designed for an RTX 50 series with 8 GB; not yet tried on a real PC). Once, from the project folder:
+Windows 10/11 with an NVIDIA card (tested on an RTX 5060 with 8 GB). Once, from the project folder:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\installa_windows.ps1
@@ -233,7 +234,7 @@ The notes end up in `dati/lezioni/<id>/appunti.md` and `appunti.html` (open it a
 ## Known issues
 
 - **Mac app not signed by Apple.** On first launch macOS blocks it: right-click → **Open**. It needs an Apple Developer ID (paid), not obtained yet.
-- **Windows not yet tried on a real PC.** The installer, llama.cpp and Whisper with CUDA have only been checked from the Mac: there may be errors on first launch.
+- **Windows tested on one PC only** (Windows 11, RTX 5060 8 GB): a full lecture works, a clean install from the zip has not been fully tested yet.
 - **Recording from the microphone** requires the Mac's permission (System Settings → Privacy & Security → Microphone). Without it, the app says so; a long recording from the app has not yet been thoroughly tested.
 - **Slow or interrupted model downloads.** On some networks Hugging Face stalls or closes the connection: Sbobina restarts on its own after 60 seconds without data. The largest model weighs about 15 GB, so the first download can take hours.
 - **Flashcards and quizzes with the built-in AI.** Sometimes Gemma writes broken JSON: Sbobina repairs it and retries once, but "try again" may appear. Just regenerate.

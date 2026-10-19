@@ -58,6 +58,7 @@ completi per preparare l'esame. Gratis, sul tuo Mac o PC Windows, e l'audio non 
 - **Per studiare**: flashcard (Leitner), quiz, **Chiedi** a tutte le lezioni, evidenziatore, ricerca, modifica a mano.
 - **Registra** dal microfono, anche dal widget sempre in primo piano; appunti anche **senza audio** (PDF, foto).
 - **Italiano o inglese** con il tasto in alto: interfaccia, appunti, PDF e trascrizione.
+- **Aggiornamenti**: all'avvio Sbobina controlla se c'è una versione nuova e ti porta alla pagina di download.
 
 ## Come funziona
 
@@ -97,7 +98,7 @@ sceglie la versione giusta. Il **glossario del corso cresce da solo** e si può 
 | Sistema | Download | Come si installa |
 |---|---|---|
 | macOS 12+ (Apple Silicon) | [Sbobina-macOS.dmg](https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-macOS.dmg) | Apri il .dmg e trascina Sbobina in Applicazioni. Al primo avvio: tasto destro → **Apri** (l'app non è ancora firmata da Apple). |
-| Windows 10/11 | [Sbobina-Windows.zip](https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-Windows.zip) | Estrai lo zip e fai doppio clic su **Installa Sbobina.bat**: installa Python e i pacchetti e mette Sbobina sul Desktop. |
+| Windows 10/11 | [Sbobina-Windows.zip](https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-Windows.zip) | Estrai lo zip e fai doppio clic su **Installa Sbobina.bat**: installa Python e i pacchetti e mette Sbobina sul Desktop. Stessa versione del Mac. |
 
 Oppure dal codice sorgente:
 
@@ -162,7 +163,7 @@ Il registro degli errori è in `~/Library/Logs/Sbobina.log`.
 
 ### App per Windows
 
-Windows 10/11 con una scheda NVIDIA (pensato per una RTX serie 50 con 8 GB; non ancora provato su un PC vero). Una volta sola, dalla cartella del progetto:
+Windows 10/11 con una scheda NVIDIA (provato su una RTX 5060 con 8 GB). Una volta sola, dalla cartella del progetto:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\installa_windows.ps1
@@ -176,7 +177,8 @@ Installa Python 3.12 (se manca), i pacchetti e ffmpeg, e mette **Sbobina** sul D
 - **Whisper** con faster-whisper sulla GPU (DLL CUDA via pip); se CUDA non va, trascrive sul processore, più lento.
 
 Su Windows le foto delle slide passano dall'OCR di Windows (serve il pacchetto lingua italiano), le notifiche sono
-toast di sistema, il microfono è il primo dispositivo audio di DirectShow. Dati e modelli in `%LOCALAPPDATA%\Sbobina`,
+toast di sistema, il microfono è il primo dispositivo audio di DirectShow, il widget di registrazione si riduce
+nell'area di notifica (accanto all'orologio) invece che nella barra dei menu. Dati e modelli in `%LOCALAPPDATA%\Sbobina`,
 registro in `%LOCALAPPDATA%\Sbobina\sbobina.log` (e `llama-server.log` per il motore AI).
 
 ### App web
@@ -233,7 +235,7 @@ Gli appunti finiscono in `dati/lezioni/<id>/appunti.md` e `appunti.html` (aprila
 ## Problemi noti
 
 - **App per Mac non firmata da Apple.** Al primo avvio macOS la blocca: tasto destro → **Apri**. Serve un Apple Developer ID (a pagamento), non ancora preso.
-- **Windows non ancora provato su un PC vero.** Installer, llama.cpp e Whisper con CUDA sono stati controllati solo dal Mac: possono esserci errori al primo avvio.
+- **Windows provato su un solo PC** (Windows 11, RTX 5060 8 GB): una lezione completa funziona, l'installazione pulita dallo zip non è ancora stata provata fino in fondo.
 - **Registrare dal microfono** richiede il permesso del Mac (Impostazioni di Sistema → Privacy e sicurezza → Microfono). Senza, l'app lo dice; una registrazione lunga dall'app non è ancora stata provata a fondo.
 - **Download dei modelli lenti o interrotti.** Da alcune reti Hugging Face si blocca o chiude la connessione: Sbobina riparte da sola dopo 60 secondi senza dati. Il modello più grande pesa circa 15 GB, quindi il primo download può richiedere ore.
 - **Flashcard e quiz con l'AI integrata.** A volte Gemma scrive un JSON rotto: Sbobina lo ripara e riprova una volta, ma può comparire "riprova". Basta rigenerare.

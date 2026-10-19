@@ -27,7 +27,7 @@ def _esegui(comando: list[str]) -> str:
         raise ErroreAudio(
             "ffmpeg non è installato: installalo (es. 'pip install static-ffmpeg', 'brew install ffmpeg' o 'sudo apt install ffmpeg')."
         )
-    risultato = subprocess.run(comando, capture_output=True, text=True)
+    risultato = subprocess.run(comando, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if risultato.returncode != 0:
         dettaglio = (risultato.stderr or "").strip().splitlines()[-3:]
         raise ErroreAudio("ffmpeg non è riuscito a leggere l'audio: " + " | ".join(dettaglio))
