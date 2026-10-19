@@ -186,3 +186,40 @@ footer { border-top: 1px solid var(--inchiostro); padding: 28px clamp(16px, 4vw,
   .catena li::before { width: 44px; height: 44px; font-size: 20px; }
 }
 @media (prefers-reduced-motion: reduce) { .tasto, .download { transition: none; } }
+
+/* Schemi: il percorso della lezione e cosa gira sul computer. Solo HTML e CSS, così restano nitidi e traducibili. */
+.schema { margin: 36px 0 0; }
+.flusso { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(6, 1fr); gap: 28px; }
+.flusso li { background: var(--carta); border: 1px solid var(--inchiostro); box-shadow: 4px 4px 0 var(--inchiostro); padding: 14px; position: relative; display: flex; flex-direction: column; gap: 4px; }
+.flusso li:not(:last-child)::after { content: "→"; position: absolute; right: -24px; top: 50%; transform: translateY(-50%); font: 18px var(--mono); color: var(--lectio); }
+.flusso li.chiave { box-shadow: 4px 4px 0 var(--lectio); }
+.flusso .mono { font-size: 12px; color: var(--lieve); }
+.flusso b { font-size: 17px; letter-spacing: -0.01em; }
+.flusso small { color: var(--tenue); font-size: 14px; line-height: 1.4; }
+.uscite { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 28px; padding-top: 18px; border-top: 1px dashed var(--inchiostro); }
+.uscite > span:first-child { font: 13px var(--mono); color: var(--lieve); margin-right: 6px; }
+.ritorno { font: 13px var(--mono); color: var(--lieve); margin: 14px 0 0; }
+.ritorno b { color: var(--lectio); font-weight: 400; }
+.mappa-pc { display: grid; grid-template-columns: 3fr 1fr; gap: 28px; align-items: stretch; margin-top: 32px; }
+.pc { border: 2px solid var(--inchiostro); padding: 18px; background: var(--carta); }
+.pc > .mono, .cloud > .mono { font-size: 13px; color: var(--lieve); display: block; margin-bottom: 12px; }
+.pc .colonne { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.pc h3 { font-size: 17px; margin-bottom: 8px; }
+.pc dl { margin: 0; display: grid; gap: 8px; }
+.pc dl div { border: 1px solid var(--inchiostro); background: var(--finestra); padding: 8px 12px; }
+.pc dt { font: 12px var(--mono); color: var(--lieve); }
+.pc dd { margin: 0; font-size: 15px; }
+.cloud { border: 2px dashed var(--lieve); padding: 18px; position: relative; color: var(--tenue); font-size: 15px; }
+.cloud::before { content: "⇠ solo con una tua chiave"; position: absolute; left: -2px; top: -12px; transform: translateY(-50%); font: 12px var(--mono); color: var(--lieve); white-space: nowrap; }
+html[lang="en"] .cloud::before { content: "⇠ only with your own key"; }
+.cloud ul { margin: 0; padding-left: 18px; }
+@media (max-width: 960px) {
+  .flusso { grid-template-columns: 1fr 1fr; }
+  .flusso li:not(:last-child)::after { display: none; }
+  .mappa-pc { grid-template-columns: 1fr; gap: 40px; }
+}
+@media (max-width: 560px) {
+  .flusso { grid-template-columns: 1fr; gap: 26px; }
+  .flusso li:not(:last-child)::after { content: "↓"; display: block; right: auto; left: 50%; top: auto; bottom: -24px; transform: translateX(-50%); }
+  .pc .colonne { grid-template-columns: 1fr; }
+}

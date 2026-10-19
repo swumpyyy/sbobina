@@ -1,7 +1,7 @@
 <p align="center"><img src="docs/img/banner.png" alt="Sbobina: dalla lezione agli appunti, sul tuo computer" width="100%"></p>
 
 <p align="center"><code>SBOBINA.OS1</code> · <b>Mac</b> · <b>Windows</b> · gratis · in locale<br>
-<a href="https://sbobina.vercel.app"><b>Sito</b></a> · <a href="https://sbobina.vercel.app/en/"><b>English</b></a> · <a href="docs/brandkit.html">Brand kit</a> · <a href="#installazione">Installa</a></p>
+<a href="https://sbobina.vercel.app"><b>Sito</b></a> · <a href="README.en.md"><b>English</b></a> · <a href="#installazione">Installa</a></p>
 
 <p align="center">
   <a href="https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-macOS.dmg"><img alt="Scarica per macOS" src="https://img.shields.io/badge/Scarica_per-macOS_(Apple_Silicon)-1e1e1e?style=for-the-badge&logo=apple&logoColor=white&labelColor=1f5bff"></a>
@@ -13,11 +13,8 @@
 
 **Dalle registrazioni delle lezioni ad appunti di studio accurati, con schemi e mappe concettuali.**
 
-Sbobina prende gli audio che hai già (note vocali del telefono, registratore, file di Teams/Zoom…)
-oppure registra la lezione dal microfono del computer, e li trasforma in appunti completi, pensati per
-studiare e preparare l'esame.
-L'obiettivo è l'accuratezza: ogni passaggio è progettato per ridurre gli errori di trascrizione e
-per non far inventare nulla agli appunti.
+Registra la lezione o carica il file che hai già (nota vocale, Teams, Zoom…): Sbobina scrive appunti
+completi per preparare l'esame. Gratis, sul tuo Mac o PC Windows, e l'audio non esce dal computer.
 
 <p align="center"><img src="docs/img/app-chiaro.jpg" alt="La schermata iniziale di Sbobina" width="100%"></p>
 
@@ -50,60 +47,48 @@ per non far inventare nulla agli appunti.
 
 <p align="center"><img src="docs/img/app-widget.png" alt="Il widget di registrazione: Registratore, Pronto a registrare, tasto Registra" width="400"><br><sub>Il widget di registrazione, sempre in primo piano</sub></p>
 
-> **English:** Sbobina turns lecture recordings into complete study notes (corrected transcript, outlines, concept map, glossary, review questions, PDF), fully on your own Mac or Windows PC, for free. Interface and notes in Italian or English (switch in Settings). [Read more in English →](https://sbobina.vercel.app/en/)
+> **English:** Sbobina turns lecture recordings into complete study notes, fully on your own Mac or Windows PC, for free. One button in the app switches between Italian and English. [README in English →](README.en.md)
 
 ## Cosa ottieni per ogni lezione
 
-- **Appunti completi in Markdown**: definizioni, teoremi con ipotesi e tesi, dimostrazioni ed
-  esercizi con tutti i passaggi, esempi, formule in LaTeX, tabelle di confronto.
-- **Mappa concettuale** interattiva della lezione e **schemi** (flussi, processi, classificazioni).
-- **Indicazioni del docente**: tutto ciò che è stato segnalato come importante o "da esame" (⭐).
-- **Glossario** dei termini tecnici e **domande di ripasso** con risposta nascosta.
-- **Tempi cliccabili** `⏱ 23:15`: un clic e riascolti quel punto della registrazione.
-- **Trascrizione revisionata** completa e un **rapporto di verifica** con i problemi trovati e corretti.
-- **Approfondimento**: non un riassunto ma una spiegazione più ampia dell'argomento, con esempi,
-  esercizi svolti e domande d'esame. Puoi chiedere di **approfondire ancora** un punto: l'AI aggiunge
-  una nuova sezione.
-- **PDF della lezione** con copertina (corso, data, durata): solo appunti, con l'approfondimento o con
-  la trascrizione. **PDF di tutto il corso** con indice. Esportazione in **Markdown** e in una cartella
-  per **Obsidian** (una nota per lezione, con collegamenti).
-- **Per studiare**: **flashcard** con ripasso a scatole (Leitner) ed esportazione per **Anki**, **quiz** a
-  scelta multipla con spiegazioni, **Chiedi** a una lezione o a **tutte le tue lezioni** insieme (risposte
-  che citano lezione e minuto), **evidenziatore** in quattro colori (resta finché l'app è aperta, non va
-  nel PDF), **ricerca** nel testo di tutte le lezioni, **modifica a mano** degli appunti.
-- **Widget di registrazione** sempre in primo piano: pausa, si chiude nella barra dei menu, con Stop salva
-  la registrazione e gli appunti li crei dopo, con corso e titolo.
-- **Lezioni senza audio**: appunti anche da soli appunti, PDF (pure scansionati) o foto della lavagna.
-- **In italiano o in inglese**: interfaccia, appunti, PDF e trascrizione (si sceglie nelle Impostazioni).
-- **Trascrizione che segue l'audio**: il paragrafo in ascolto si illumina, un clic e riascolti da lì;
-  velocità 1×–2×.
+- **Appunti completi** con formule in LaTeX e il minuto della registrazione accanto a ogni titolo (`⏱ 23:15`, un clic e riascolti).
+- **Mappa concettuale**, **schemi**, **glossario**, **domande di ripasso** e ciò che il docente ha detto "da esame" (⭐).
+- **Approfondimento** oltre la lezione, ampliabile su richiesta, e **rapporto di verifica**.
+- **PDF** della lezione o di tutto il corso, **Markdown**, **Obsidian** e flashcard per **Anki**.
+- **Per studiare**: flashcard (Leitner), quiz, **Chiedi** a tutte le lezioni, evidenziatore, ricerca, modifica a mano.
+- **Registra** dal microfono, anche dal widget sempre in primo piano; appunti anche **senza audio** (PDF, foto).
+- **Italiano o inglese** con il tasto in alto: interfaccia, appunti, PDF e trascrizione.
 
-## Perché è accurato
+## Come funziona
 
-Un'app che "registra e scrive" fa una trascrizione e un riassunto. Sbobina fa sei passaggi:
+Ogni passaggio toglie un tipo di errore. Ciò che il docente non ha detto finisce solo nei riquadri
+**Integrazione**, i punti dubbi restano segnati `[incerto]`.
 
-1. **Audio ripulito**: ffmpeg converte qualsiasi formato, toglie i rimbombi e uniforma il volume
-   (utile quando il docente si allontana dal microfono).
-2. **Termini dalle slide**: se carichi slide o dispense, l'AI ne estrae termini tecnici, nomi e
-   sigle e li passa al riconoscimento vocale, che così li scrive giusti.
-3. **Trascrizione con uno o due motori**: AssemblyAI (Universal-3.5 Pro) ed ElevenLabs (Scribe v2)
-   sono tra i più accurati sull'italiano; Whisper large-v3 funziona in locale e gratis. Con due
-   motori attivi, l'audio viene trascritto due volte in modo indipendente.
-4. **Revisione della trascrizione**: l'AI la corregge blocco per blocco (termini, nomi, formule
-   dettate a voce, punteggiatura) usando glossario e materiali. Quando i due motori non sono
-   d'accordo sceglie la versione giusta. Non riassume e non aggiunge nulla: i punti dubbi restano
-   segnati come `[incerto]`.
-5. **Appunti**: scritti dalla trascrizione revisionata e dalle slide. Ciò che non è stato detto a
-   lezione può comparire solo in un riquadro **Integrazione**, ben distinto.
-6. **Verifica e correzione**: una seconda lettura confronta gli appunti con la trascrizione frase per
-   frase (affermazioni non supportate, formule o ipotesi sbagliate, contenuti omessi, schemi errati)
-   e una terza applica le correzioni.
-7. **Approfondimento**: spiega l'argomento oltre la lezione. Ciò che non è stato detto a lezione
-   sta nei riquadri **Integrazione**; i dettagli incerti sono segnati come `[da verificare]`.
+```mermaid
+flowchart LR
+  A["Audio e materiali<br/><sub>registrazione · slide · foto</sub>"] --> B["Pulizia<br/><sub>ffmpeg</sub>"]
+  B --> C["Trascrizione<br/><sub>Whisper, parola per parola col minuto</sub>"]
+  C --> D["Revisione<br/><sub>Gemma 4 corregge termini e formule</sub>"]
+  D --> E["Appunti<br/><sub>mappa · schemi · glossario · domande</sub>"]
+  E --> F["Verifica<br/><sub>confronto frase per frase</sub>"]
+  F --> G["PDF · Ripasso · Chiedi · Obsidian · Anki"]
+  E -. "termini nuovi nel glossario del corso" .-> C
+```
 
-In più il **glossario del corso cresce da solo**: i termini di ogni lezione vengono usati per
-riconoscere meglio le lezioni successive dello stesso corso. Puoi modificarlo dall'app (ad esempio
-aggiungendo il nome del docente).
+Cosa gira dove:
+
+```mermaid
+flowchart LR
+  subgraph PC["Il tuo computer · gratis · l'audio resta qui"]
+    direction TB
+    M["Mac (Apple Silicon)<br/><sub>Whisper + Gemma 4 con MLX</sub>"]
+    W["Windows 10/11 (NVIDIA)<br/><sub>faster-whisper + Gemma 4 con llama.cpp</sub>"]
+  end
+  PC -. "solo con una tua chiave" .-> CL["Cloud facoltativo<br/><sub>Claude · AssemblyAI · ElevenLabs</sub>"]
+```
+
+Con AssemblyAI o ElevenLabs attivi l'audio viene trascritto due volte in modo indipendente e la revisione
+sceglie la versione giusta. Il **glossario del corso cresce da solo** e si può modificare dall'app.
 
 ## Installazione
 
@@ -112,7 +97,7 @@ aggiungendo il nome del docente).
 | Sistema | Download | Come si installa |
 |---|---|---|
 | macOS 12+ (Apple Silicon) | [Sbobina-macOS.dmg](https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-macOS.dmg) | Apri il .dmg e trascina Sbobina in Applicazioni. Al primo avvio: tasto destro → **Apri** (l'app non è ancora firmata da Apple). |
-| Windows 10/11 | [Sbobina-Windows.zip](https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-Windows.zip) | Estrai lo zip e fai doppio clic su **Installa Sbobina.bat**: installa Python e i pacchetti e mette Sbobina sul Desktop. Per ora è la versione 1.2: le novità dalla 1.4 in poi arrivano su Windows più avanti. |
+| Windows 10/11 | [Sbobina-Windows.zip](https://github.com/swumpyyy/sbobina/releases/latest/download/Sbobina-Windows.zip) | Estrai lo zip e fai doppio clic su **Installa Sbobina.bat**: installa Python e i pacchetti e mette Sbobina sul Desktop. |
 
 Oppure dal codice sorgente:
 
@@ -261,13 +246,6 @@ L'audio resta sul tuo computer, salvo quando usi i servizi cloud di trascrizione
 ElevenLabs), a cui viene inviato l'audio. Con l'AI locale (predefinita) anche trascrizione e
 materiali restano sul computer; solo se scegli Claude vengono inviati ad Anthropic. Tutti i risultati sono salvati in locale nella cartella `dati/`.
 Il server ascolta solo su `localhost`.
-
-## Brand kit
-
-Tema **Lectio**: carta e inchiostro a 1 bit, finestre con la barra del titolo nera, griglia a puntini, un solo
-accento blu elettrico. Il marchio è la voce che diventa testo: cinque barre d'onda, la centrale in blu elettrico.
-
-<p align="center"><img src="docs/img/brandkit.png" alt="Brand kit di Sbobina" width="100%"></p>
 
 ## Struttura del progetto
 
