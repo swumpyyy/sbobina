@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
+
+import httpx2
 
 WINDOWS = sys.platform == "win32"
 # Modelli e impostazioni dell'app: Application Support su Mac, %LOCALAPPDATA% su Windows.
@@ -138,7 +142,7 @@ def scheda_nvidia() -> tuple[str, int]:
     try:
         uscita = subprocess.run(
             ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10,
         ).stdout.strip().splitlines()
         nome, mib = uscita[0].rsplit(",", 1)
         return nome.strip(), round(int(mib) / 1024)
@@ -220,3 +224,35 @@ def proposte(installati: set[str] | None = None) -> dict:
         for w in WHISPER
     ]
     return {"mac": info, "modelli": modelli, "whisper": whisper, "consigliato": consigliato}
+
+
+# --- aggiornamenti --------------------------------------------------------
+
+ULTIMA_RELEASE = "https://api.github.com/repos/swumpyyy/sbobina/releases/latest"
+# Il file della release per questo sistema: se il Mac esce prima, su Windows l'avviso aspetta il suo zip.
+PACCHETTO = "Sbobina-Windows.zip" if WINDOWS else "Sbobina-macOS.dmg" if sys.platform == "darwin" else ""
+_ULTIMA: dict = {}
+
+
+def _numeri(versione: str) -> tuple[int, ...]:
+    return tuple(int(n) for n in re.findall(r"\d+", versione)[:3])
+
+
+def aggiornamento(forza: bool = False) -> dict:
+    """La versione installata contro l'ultima release su GitHub (al massimo una domanda ogni 6 ore)."""
+    from sbobina import __version__
+
+    if forza or not _ULTIMA or time.time() - _ULTIMA["quando"] > 6 * 3600:
+        try:
+            risposta = httpx2.get(ULTIMA_RELEASE, timeout=8, follow_redirects=True,
+                                  headers={"Accept": "application/vnd.github+json", "User-Agent": f"Sbobina/{__version__}"})
+            risposta.raise_for_status()
+            dati = risposta.json()
+            _ULTIMA.update(quando=time.time(), versione=str(dati["tag_name"]).lstrip("v"),
+                           file={a.get("name") for a in dati.get("assets", [])})
+        except (httpx2.HTTPError, ValueError, KeyError, TypeError):
+            return {"attuale": __version__, "ultima": None, "nuova": False,
+                    "errore": "Non riesco a controllare gli aggiornamenti: sei connesso a internet?"}
+    pronta = not PACCHETTO or PACCHETTO in _ULTIMA["file"]
+    return {"attuale": __version__, "ultima": _ULTIMA["versione"], "errore": "",
+            "nuova": pronta and _numeri(_ULTIMA["versione"]) > _numeri(__version__)}

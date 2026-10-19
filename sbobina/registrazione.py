@@ -101,7 +101,7 @@ class Registratore:
         ]
         try:
             self._processo = subprocess.Popen(
-                comando, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+                comando, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace"
             )
         except OSError as e:
             raise RuntimeError(f"Non riesco ad avviare ffmpeg: {e}") from e
@@ -176,7 +176,7 @@ class Registratore:
             unione = subprocess.run(
                 ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0",
                  "-i", str(elenco), "-c", "copy", "-movflags", "+faststart", str(file)],
-                capture_output=True, text=True,
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
             )
             elenco.unlink(missing_ok=True)
             if unione.returncode != 0 or not file.is_file():

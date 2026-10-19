@@ -1,13 +1,14 @@
 """Verifica la richiesta che l'SDK Anthropic invia davvero, con un trasporto HTTP finto."""
 
 import json
+import sys
 from pathlib import Path
 
 import anthropic
 import httpx2
 import pytest
 
-from sbobina.llm import MLX, Claude, ErroreClaude, Utilizzo, costo_stimato, crea_modello, in_loop
+from sbobina.llm import MLX, Claude, LlamaCpp, ErroreClaude, Utilizzo, costo_stimato, crea_modello, in_loop
 
 
 def _sse(eventi: list[dict]) -> bytes:
@@ -118,7 +119,7 @@ def test_crea_modello_sceglie_il_motore(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
     # i nomi brevi delle versioni con Ollama diventano il repo MLX equivalente
     assert crea_modello("gemma4:12b").modello == "mlx-community/gemma-4-12B-it-4bit"
-    assert isinstance(crea_modello("mlx-community/gemma-4-26b-a4b-it-4bit"), MLX)
+    assert isinstance(crea_modello("mlx-community/gemma-4-26b-a4b-it-4bit"), LlamaCpp if sys.platform == "win32" else MLX)
     assert isinstance(crea_modello("claude-opus-5-5"), Claude)
 
 

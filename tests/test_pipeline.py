@@ -44,7 +44,7 @@ def test_elaborazione_completa(config, archivio, audio_prova, tmp_path):
     assert motore.chiamate[0]["lingua"] == "it"
 
     # La trascrizione revisionata mantiene i marcatori di tempo
-    trascrizione = f.trascrizione.read_text()
+    trascrizione = f.trascrizione.read_text(encoding="utf-8")
     assert trascrizione.startswith("[00:00] Parola0")
 
     # Appunti, verifica e correzione condividono lo stesso prefisso in cache
@@ -54,7 +54,7 @@ def test_elaborazione_completa(config, archivio, audio_prova, tmp_path):
     assert "<trascrizione>" in prefissi[0][-1]["text"]
 
     # La correzione applica le segnalazioni della verifica
-    assert "intervallo chiuso" in f.appunti.read_text()
+    assert "intervallo chiuso" in f.appunti.read_text(encoding="utf-8")
 
     # Il glossario del corso impara dalla lezione
     glossario = archivio.carica_corso("Analisi 1").glossario
@@ -62,7 +62,7 @@ def test_elaborazione_completa(config, archivio, audio_prova, tmp_path):
 
     # Utilizzo registrato per fase e pagina esportata con gli appunti
     assert set(risultato.utilizzo) == {"termini", "revisione", "appunti", "verifica", "correzione", "approfondimento"}
-    html = f.html.read_text()
+    html = f.html.read_text(encoding="utf-8")
     assert "Sbobina.render" in html and "teorema di rolle" in html.lower()
     assert "</script>" not in html.split("Sbobina.render(")[1].split(");</script>")[0]
 
@@ -74,7 +74,7 @@ def test_senza_problemi_niente_correzione(config, archivio, audio_prova, tmp_pat
     assert risultato.stato == "completata"
     assert "termini" not in llm.fasi(), "senza materiali non serve l'estrazione dei termini"
     assert "correzione" not in llm.fasi()
-    assert File(archivio.cartella(lezione.id)).appunti.read_text().strip() == APPUNTI_FINTI
+    assert File(archivio.cartella(lezione.id)).appunti.read_text(encoding="utf-8").strip() == APPUNTI_FINTI
 
 
 def test_due_motori_vengono_riconciliati(config, archivio, audio_prova, tmp_path):
@@ -203,7 +203,7 @@ def test_materiali_pdf_e_immagini_diventano_blocchi(tmp_path):
 
 def test_dati_lezione_salvati_come_json_leggibile(config, archivio, audio_prova, tmp_path):
     lezione = _crea(archivio, audio_prova, tmp_path)
-    dati = json.loads((archivio.cartella(lezione.id) / "lezione.json").read_text())
+    dati = json.loads((archivio.cartella(lezione.id) / "lezione.json").read_text(encoding="utf-8"))
     assert dati["corso"] == "Analisi 1" and dati["materiali"] == ["slide-lezione-3.txt"]
     assert dati["titolo"] == "Lezione 3 - Rolle"
 
@@ -213,7 +213,7 @@ def test_approfondimento_ed_espansioni(config, archivio, audio_prova, tmp_path):
     llm = FintoLLM()
     Elaborazione(config, archivio, llm, [FintoMotore()]).esegui(lezione.id)
     f = File(archivio.cartella(lezione.id))
-    assert f.approfondimento.read_text().startswith("# Approfondimento: Rolle")
+    assert f.approfondimento.read_text(encoding="utf-8").startswith("# Approfondimento: Rolle")
 
     # Lo studente chiede di andare più a fondo: si aggiunge una sezione, il resto non si rifà.
     archivio.modifica(lezione.id, lambda lez: lez.da_approfondire.append("teorema di Lagrange"))
@@ -221,7 +221,7 @@ def test_approfondimento_ed_espansioni(config, archivio, audio_prova, tmp_path):
     risultato = Elaborazione(config, archivio, llm, [FintoMotore()]).esegui(lezione.id)
     assert risultato.stato == "completata", risultato.errore
     assert llm.fasi()[chiamate_prima:] == ["espansione"]
-    testo = f.approfondimento.read_text()
+    testo = f.approfondimento.read_text(encoding="utf-8")
     assert "## Il quadro generale" in testo and "## Approfondimento: teorema di Lagrange" in testo
     assert archivio.carica(lezione.id).da_approfondire == []
 

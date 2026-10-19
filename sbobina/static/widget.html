@@ -147,6 +147,10 @@ body::before, body::after { display: none; }
     messaggio("Salvata tra le lezioni da elaborare", 6);
     if (window.pywebview && window.pywebview.api.lezione_salvata) window.pywebview.api.lezione_salvata();
   }));
+  if (!/Mac/.test(navigator.userAgent)) {  // su Windows l'icona sta nell'area di notifica, accanto all'orologio
+    $("riduci").title = "Riduci nell'area di notifica";
+    $("riduci").setAttribute("aria-label", $("riduci").title);
+  }
   $("riduci").addEventListener("click", () => {
     if (window.pywebview && window.pywebview.api.riduci_widget) window.pywebview.api.riduci_widget();
   });
